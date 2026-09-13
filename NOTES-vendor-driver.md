@@ -347,10 +347,25 @@ The FPGA writes meter values into the meter buffer on a timer.
     METER_TIMER = (K / rateHz) - 1
     K = 0x3B9AC (244140) if GENERAL bit 30 set, else 0x1DCD6 (122070)
 
-The kext uses 20 Hz. The buffer holds `numHostMeters` 16-bit values plus 4
-bytes. The exact position of the 4-byte word is unverified. The HAL polls
-this buffer (`_updateMeters`). Meter DMA runs whenever a user client is
-attached, independent of audio.
+The kext uses 20 Hz. Meter DMA runs whenever a user client is attached,
+independent of audio.
+
+Buffer layout (`Ensemble2AudioDevice::CopyMeterData`):
+
+| Offset | Size | Content |
+|--------|------|---------|
+| 0x00 | 1 | Sequence counter. The FPGA changes it on every update |
+| 0x01 | 3 | Padding |
+| 0x04 | 30 * 2 | Input meters, uint16, one per input channel |
+| 0x40 | 30 * 2 | Output meters, uint16 |
+| 0x7C | 4 * 2 | Monitor meters |
+| 0x84 | 16 * 2 | Mixer meters |
+| 0xA4 | 8 * 2 | Further meters (not decoded) |
+| 0xB4 | n * 2 | DSP core meters, present if `numHostMeters > 88` |
+
+Ensemble reports 88 host meters, so the buffer is 4 + 88 * 2 = 0xB4
+bytes. The HAL thread polls byte 0 every 5 ms and copies the block when the
+value changes.
 
 ---
 
@@ -535,6 +550,192 @@ value. Extra report IDs:
 
 A Get-all request (type 4) returns one report per property.
 
+### 5.8 Enum values
+
+From the name tables in `Ensemble2AudioDevice::_customPropertyGetPropertyData`
+and `getClockSourceNameForID`.
+
+`_Ensemble2ClockSource` (command 0x2A). The second column is the CoreAudio
+clock source item ID that the HAL publishes.
+
+| Value | HAL ID | Name |
+|-------|--------|------|
+| 0 | 0xAF00 | Internal |
+| 1 | 0xAF01 | Word Clock |
+| 2 | 0xAF002 | SPDIF Coax |
+| 3 | 0xAF003 | Optical 1 (name depends on the port format) |
+| 4 | 0xAF004 | Optical 2 |
+
+Command 0x41 reports external clock lock. `data[0] != 0` = locked.
+
+`_Ensemble2AnalogInputType` (command 0x01):
+
+| Value | Name |
+|-------|------|
+| 0 | +4dBu |
+| 1 | -10dBV |
+| 2 | invalid |
+| 3 | Mic |
+| 4 | Instrument |
+
+`_Ensemble2MonitorOutput` (commands 0x11 to 0x14, 0x20):
+
+| Value | Name |
+|-------|------|
+| 0 | Headphone 1 |
+| 1 | Headphone 2 |
+| 2 | Speaker |
+
+`_Ensemble2MainOutChannelModes` (command 0x0F):
+
+| Value | Name |
+|-------|------|
+| 0 | Line |
+| 1 | Stereo |
+| 2 | 2 Speaker Sets |
+| 3 | 3 Speaker Sets |
+| 4 | 5.1 (Out 1-6) |
+| 5 | 7.1 (Out 1-8) |
+| 6 | 9.1 (Out 1-10) |
+
+`_OpticalPortFormat` (command 0x1A): 0 = ADAT/SMUX, 1 = S/PDIF.
+
+`_Ensemble2Group` (command 0x07): 0 = Off, 1 to 5 = group number.
+
+`_Ensemble2TouchButtonFunction` (command 0x25, remote button assignment):
+
+| Value | Name | Value | Name |
+|-------|------|-------|------|
+| 0 | None | 20 | Polarity |
+| 1 | Toggle Device | 21 | Group |
+| 2 | Mute Panic | 22 | Soft Limit |
+| 3 | Mute Speakers | 23 to 30 | Select Input 1 to 8 |
+| 4 | Mute Headphones | 31 | Launch Apogee Control |
+| 5 | Mute All Outputs | 32 | Digital Reference Level |
+| 6 | Mute Toggle Headphone/Speaker | 33 | High Pass Filter |
+| 7 | Dim Speakers | 34 | Insert |
+| 8 | Dim Headphones | 35 | Toggle Main Source |
+| 9 | Dim All Outputs | 36 to 38 | Select Speaker Set 1 to 3 |
+| 10 | Mono Speakers | | |
+| 11 | Mono Headphones | | |
+| 12 | Mono All Outputs | | |
+| 13 | Toggle Speaker Sets | | |
+| 14 | Set Main Out to Reference Level | | |
+| 15 | Clear Meters | | |
+| 16 | Toggle Talkback | | |
+| 17 | Momentary Talkback | | |
+| 18 | Analog Input Level | | |
+| 19 | 48V Phantom Power | | |
+
+### 5.9 Output routing source codes
+
+Command 0x15 takes `p1 = destination`, `p2 = source`. Destination is the
+physical output pair index. Source codes
+(`Ensemble2AudioDevice::convertToOutputRouteSource`):
+
+| Source byte | Meaning |
+|-------------|---------|
+| 0x00 to 0x0B | Hardware mixer 1 to 6 output, L/R interleaved (value / 2 = mixer) |
+| 0x10 to 0x1E | Mixer 7 to 14 output (value - 0x10) / 2 + 6 |
+| 0x30 to 0x53 | Software playback channel `value - 0x30` (0 to 35) |
+| 0x54, 0x55 | Special mixer source (FX send), maps to mixer 12/13 |
+| 0x60, 0x62, 0x64, 0x66 | Hardware input pair `(value - 0x60) / 2` |
+
+The HAL publishes the 36 output channels as "Playback 1" to "Playback 36".
+The DMA output ring therefore carries software playback channels, not
+physical outputs. The PSoC routing matrix assigns each playback pair to a
+physical destination.
+
+### 5.10 Input channel order (Ensemble)
+
+From `Ensemble2AudioDevice::createChannelName(isInput = true, index)`:
+
+| Index | Name |
+|-------|------|
+| 0 to 7 | Analog 1 to 8 (prefix shows Mic, Line, or Instrument) |
+| 8 | Front Panel Mic |
+| 9, 10 | Guitar 1, 2 |
+| 11, 12 | SPDIF Cx L, R |
+| 13 to 28 | Optical 1 to 16 |
+| 29 to 33 | Mix 1 L, Mix 1 R, FX Send L, FX Send R, and one more (unverified) |
+
+The record ring holds 34 channels in this order.
+
+### 5.11 Custom CoreAudio properties (Apogee Control API)
+
+Apogee Control and Maestro talk to the HAL plugin through custom
+`AudioObjectPropertySelector` codes. A replacement plugin must answer the
+same selectors to keep those apps. The plugin's own debug names follow.
+All names carry the prefix `kApogeeCustomProperty_`.
+
+| Selector | Name | Selector | Name |
+|----------|------|----------|------|
+| `AA2o` | AnalogInToOpticalOut | `AEon` | MonitorOutputNameForID |
+| `ADbg` | Debug | `AEor` | OutputLevelRange |
+| `AEC1` | MiscChannelProperty1 | `AEos` | MonitorOutputIDList |
+| `AEC2` | SpecialEnsembleChannel | `AEpc` | PeakMeterClear |
+| `AEC3` | IsAnalog | `AEph` | PhantomPower |
+| `AEDs` | MiscDeviceSettings | `AEpx` | Prefix |
+| `AEE2` | LockHomeView | `AErI` | OutputSourceIDList |
+| `AEFT` | FunctionalTest | `AErM` | AnalogIOTypeIDList |
+| `AEFU` | FirmwareUpdate | `AErN` | AnalogIOTypeNameForID |
+| `AEGE` | GUIComponentDisable | `AErO` | OutputSourceID |
+| `AEGi` | FPButtonFunctionID | `AErb` | RemoteButtonAssignment |
+| `AEGl` | FPButtonFunctionIDList | `AErc` | RemoteAssignment |
+| `AEGn` | FPButtonFunctionNameForID | `AEre` | PhaseInverse |
+| `AEL8` | TouchFunction | `AErl` | AnalogIOTypeID |
+| `AEMI` | MixerID | `AEsl` | SoftLimitID |
+| `AEML` | MixerChannelLabel | `AEt1` | VersionInfo |
+| `AEMR` | MixerChannelLevelRange | `AEt2` | ResetRouting |
+| `AEMl` | MixerChannelLevel | `AEtr` | TrimValue |
+| `AEMm` | MixerChannelMute | `AEtv` | TrimValueRange |
+| `AEMp` | MixerChannelPan | `APDU` | DeviceUID |
+| `AEMs` | MixerChannelSolo | `APG0` | AutoLaunchMaestro |
+| `AERN` | OutputSourceNameForID | `APG4` | EnablePopup |
+| `AESd` | SnapshotDirty | `APOW` | OwnedObjects |
+| `AESs` | Snapshot | `APOw` | DeviceList |
+| `AEac` | AutoLaunchElementControl | `APen` | ElementName |
+| `AEbb` | Identify | `AUna` | UnitName |
+| `AEdS` | DigitalReferenceLevelIDList | `Adlg` | DialogBox |
+| `AEdT` | DigitalReferenceLevelNameForID | `Afln` | UnitOffline |
+| `AEdr` | DigitalReferenceLevelID | `Amdi` | MasterDeviceID |
+| `AEf1` | OpticalFormatID | `Amdl` | MasterDeviceIDList |
+| `AEf2` | OpticalFormatIDs | `Amid` | ModuleIndex |
+| `AEf3` | OpticalFormatNameForID | `Amni` | MasterDeviceNameForID |
+| `AEgQ` | GroupIDList | `Amtp` | ModuleType |
+| `AEgR` | GroupNameForID | `Atcf` | TalkbackConfiguration |
+| `AEgi` | RemoteButtonFunctionID | `Atdi` | TalkbackDestinationID |
+| `AEgl` | RemoteButtonFunctionIDList | `Atdl` | TalkbackDestinationIDList |
+| `AEgn` | RemoteButtonFunctionNameForID | `Atdn` | TalkbackDestinationNameForID |
+| `AEgp` | GroupID | `Atsi` | TalkbackSourceID |
+| `AEgr` | InputGainRange | `Atsl` | TalkbackSourceIDList |
+| `AEhf` | HighPassFilter | `Atsn` | TalkbackSourceNameForID |
+| `AEie` | InsertEnableForID | `DSP0` | DSPConfiguration |
+| `AEir` | InsertEnable | `DSP1` | DSPParameterAndEditorChanges |
+| `AEit` | InsertID | `DSP2` | DSPCoreMeters |
+| `AEiu` | InsertIDList | `DSP3` | DSPRackIsBypassed |
+| `AEiv` | InsertNameForID | `DSP4` | DSPRackIsLinked |
+| `AEl3` | OutputLevel | `DSP5` | DSPGlobalLinkEnable |
+| `AEll` | SoftLimitLevel | `DSP6` | DSPCoefficientChanges |
+| `AElr` | SoftLimitLevelRange | `DSP7` | DSPPrograms |
+| `AEm1` | OutputMute | `DSP8` | DSPMonitor |
+| `AEm4` | OutputDim | | |
+| `AEm5` | OutputSumToMono | | |
+| `AEmD` | MeterData | | |
+| `AEmI` | MixerIDList | | |
+| `AEmg` | InputGain | | |
+| `AEmo` | MonitorOutputID | | |
+| `AEoc` | OverMeterClear | | |
+| `AEof` | OpticalFormat | | |
+| `AEog` | OutputSettingID | | |
+| `AEoh` | OutputSettingIDList | | |
+| `AEoj` | OutputSettingNameForID | | |
+
+Property data travels as CFPropertyList-encoded CFData
+(`_readDataFromCFPropertyList`, `_writeDataToCFPropertyList`). Values are
+32-bit integers or CFStrings. The apps also read plain properties such as
+`kAudioDevicePropertyClockSource` with the IDs in section 5.8.
+
 ---
 
 ## 6. User client interface
@@ -661,9 +862,8 @@ Sample rate changes need command 0x29.
 ### 8.3 Unverified items
 
 - Bit layouts of `STATUS`, `HOST_CONTROL`, `INTERRUPT` bits 22 and 26.
-- Meter buffer word layout.
-- `_Ensemble2ClockSource` and other enum values. The HAL has them in
-  jump tables under `Ensemble2AudioDevice::*`.
+- Meter words at 0x7C and 0xA4.
+- Soft limit and analog output reference level enum values.
 - The two header words of the PSoC wire messages. The HAL sends 1, the
   PSoC reply header is copied but never read.
 - The timer period of 10 ms. The vtable slot matches `setTimeoutUS(10000)`
