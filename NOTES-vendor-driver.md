@@ -358,14 +358,33 @@ Buffer layout (`Ensemble2AudioDevice::CopyMeterData`):
 | 0x01 | 3 | Padding |
 | 0x04 | 30 * 2 | Input meters, uint16, one per input channel |
 | 0x40 | 30 * 2 | Output meters, uint16 |
-| 0x7C | 4 * 2 | Monitor meters |
-| 0x84 | 16 * 2 | Mixer meters |
-| 0xA4 | 8 * 2 | Further meters (not decoded) |
+| 0x7C | 4 * 2 | Output group, first 4 entries after the monitor pair |
+| 0x84 | 16 * 2 | Group 2, 16 entries on Ensemble and Element alike |
+| 0xA4 | 8 * 2 | Mixer master outputs, 4 stereo mixers |
 | 0xB4 | n * 2 | DSP core meters, present if `numHostMeters > 88` |
 
 Ensemble reports 88 host meters, so the buffer is 4 + 88 * 2 = 0xB4
 bytes. The HAL thread polls byte 0 every 5 ms and copies the block when the
 value changes.
+
+The HAL does not interpret the values. It repacks them into an
+`ApogeeMeterData` struct for Apogee Control (`_serializeMeterData`). The
+struct header holds four uint16 counts. The Ensemble constructor writes
+`0x0008_0024_0010_001E`: 30 inputs, 16 in group 2, 36 outputs, 8 mixer
+masters. Element writes 16 and 10 for the fixed groups, so group 4 is one
+stereo pair per mixer (Ensemble 4 mixers, Element 4 mixers plus FX send).
+
+`Ensemble2AudioDevice::CopyMeterData` fills the 36-entry output group in
+this order:
+
+| Position | Source | Content |
+|----------|--------|---------|
+| 0, 1 | 0x40, 0x44, or 0x48 | Monitor L/R. Copy of the output pair of the active speaker set |
+| 2 to 5 | 0x7C | Four output meters that precede the physical outputs |
+| 6 to 35 | 0x40 | 30 physical outputs |
+
+The names of positions 2 to 5 and of group 2 live in Apogee Control, not in
+the driver. The driver treats them as opaque.
 
 ---
 
@@ -568,15 +587,27 @@ clock source item ID that the HAL publishes.
 
 Command 0x41 reports external clock lock. `data[0] != 0` = locked.
 
-`_Ensemble2AnalogInputType` (command 0x01):
+`_Ensemble2AnalogInputType` (command 0x01). The wire value differs from the
+ID that the HAL publishes to Apogee Control (`AErl`, `AErN`):
 
-| Value | Name |
-|-------|------|
-| 0 | +4dBu |
-| 1 | -10dBV |
-| 2 | invalid |
-| 3 | Mic |
-| 4 | Instrument |
+| Wire value | Published ID | Name |
+|------------|--------------|------|
+| 0 | 0 | +4dBu |
+| 1 | 1 | -10dBV |
+| 2 | 3 | Mic |
+| 3 | 4 | Instrument |
+
+The HAL stores the wire value per input (array at device + 0x2FC, 10
+entries). `packetFromHardwareArrived` compares that array against 2 for mic
+gain reports and against 3 for instrument gain reports.
+
+`_Ensemble2AnalogOutputReferenceLevel` (command 0x0D, p1 = output 0 to 9):
+0 = +4dBu, 1 = -10dBV. The HAL stores it at device + 0x3F8 and publishes
+it through the same `AErl` selector with output scope.
+
+`_Ensemble2SoftLimit` (command 0x04, p1 = input 0 to 11): 0 = Off,
+1 = On. Ensemble has no soft limit level. The `AEll` and `AElr` selectors
+exist only in `ElementAudioDevice`.
 
 `_Ensemble2MonitorOutput` (commands 0x11 to 0x14, 0x20):
 
@@ -653,11 +684,15 @@ From `Ensemble2AudioDevice::createChannelName(isInput = true, index)`:
 | Index | Name |
 |-------|------|
 | 0 to 7 | Analog 1 to 8 (prefix shows Mic, Line, or Instrument) |
-| 8 | Front Panel Mic |
-| 9, 10 | Guitar 1, 2 |
-| 11, 12 | SPDIF Cx L, R |
-| 13 to 28 | Optical 1 to 16 |
-| 29 to 33 | Mix 1 L, Mix 1 R, FX Send L, FX Send R, and one more (unverified) |
+| 8, 9 | Front Panel Mic (two channels, same name) |
+| 10, 11 | Guitar 1, 2 |
+| 12, 13 | SPDIF Cx L, R |
+| 14 to 29 | Optical 1 to 16 |
+| 30 to 33 | Mix 1 L, Mix 1 R, FX Send L, FX Send R |
+
+The index tests in `createChannelName` are `<= 7`, `<= 9`, `<= 11`,
+`<= 13`, `<= 29`. Indices above 29 use `index - 34 + 4` to select the
+mixer return name.
 
 The record ring holds 34 channels in this order.
 
@@ -862,8 +897,8 @@ Sample rate changes need command 0x29.
 ### 8.3 Unverified items
 
 - Bit layouts of `STATUS`, `HOST_CONTROL`, `INTERRUPT` bits 22 and 26.
-- Meter words at 0x7C and 0xA4.
-- Soft limit and analog output reference level enum values.
+- Names of meter group 2 (0x84) and output positions 2 to 5 (0x7C). Apogee
+  Control assigns them. The driver never reads them.
 - The two header words of the PSoC wire messages. The HAL sends 1, the
   PSoC reply header is copied but never read.
 - The timer period of 10 ms. The vtable slot matches `setTimeoutUS(10000)`
