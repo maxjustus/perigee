@@ -76,8 +76,32 @@ DMA on the hardware timer.
 | Component | Language | Responsibility |
 |-----------|----------|----------------|
 | `EnsembleDext` | C++ (DriverKit) | Match 0x220119C2. Map BAR0. Allocate two rings and one timestamp page. Handle one MSI. Expose user client |
-| `EnsembleHAL.driver` | C++ or Swift | `AudioServerPlugIn`. Owns format, IO, mailbox, properties |
-| `probe/` | Swift CLI | Section 2. Also the regression tool for every later step |
+| `EnsembleHAL.driver` | Rust, `cdylib` | `AudioServerPlugIn`. Owns format, IO, mailbox, properties |
+| `probe/` | Rust CLI | Section 2. Also the regression tool for every later step |
+
+Language rationale:
+
+- The dext must be C++. DriverKit has no C ABI. `iig` emits C++ classes
+  that subclass `IOService` and `IOUserClient`. The dext holds about 400
+  lines and almost no logic, so a Rust core behind a C++ shim gains
+  nothing.
+- `AudioServerPlugIn` is a C API. The host loads a `CFPlugIn` bundle, calls
+  one exported factory, and receives `AudioServerPlugInDriverInterface`, a
+  struct of C function pointers. Rust reaches it through `coreaudio-sys`
+  (bindgen over `AudioServerPlugIn.h`). IOKit calls (`IOServiceOpen`,
+  `IOConnectCallMethod`, `IOConnectMapMemory64`) come from `io-kit-sys` or
+  a hand-written `extern "C"` block.
+- The probe uses the same IOKit bindings. It is the smallest piece, so it
+  proves the FFI layer before the plugin depends on it.
+
+Rust constraints:
+
+- `DoIOOperation` runs on the real-time audio thread. No allocation, no
+  lock that a non-real-time thread can hold, no logging.
+- The factory symbol named in `Info.plist` under `CFPlugInFactories` must
+  be a `#[no_mangle] extern "C"` function with the exact name.
+- The bundle is `EnsembleHAL.driver/Contents/MacOS/EnsembleHAL`, built as
+  a universal `cdylib` (arm64 + x86_64) and code-signed.
 
 ### 3.2 Dext user client
 
