@@ -94,6 +94,23 @@ Findings:
 - No bit gives a shorter interrupt period. The `CUR_*` registers are the
   only source of position between wraps.
 
+## Hot unplug
+
+A loop ran `probe ring` with the vendor HAL off. The Thunderbolt cable was
+pulled with the unit powered on, then reconnected. Log:
+
+    16:11:07.179
+    probe: register reads 0xffffffff: device gone
+    16:11:07
+    probe: no "com_apogeedigital_Ensemble2Device" in the IORegistry
+
+- `IOServiceOpen` succeeded. The next BAR0 read through the kext returned
+  0xFFFFFFFF, not an IOKit error.
+- Less than 1 second later, the device was gone from the IORegistry.
+- After reconnect, the kext matched a new device instance. No panic.
+- The unplug came between two probe runs, before `StartHardware`. Reads in
+  the middle of a stream were not tested.
+
 ## Get-all
 
 `probe getall` registers a Mach port with `IOConnectSetNotificationPort`.
