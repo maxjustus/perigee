@@ -70,6 +70,30 @@ Findings:
 The position-from-hardware design in `plan.md` section 3 holds. The
 position resolution equals the DMA burst depth.
 
+## Interrupt bits
+
+`probe irq [mask]` enables timestamps (`MiscRequest` type 6), maps the
+timestamp page (memory type 2), and starts the stream with depth 2. It ORs
+the mask into `INTERRUPT` for 2 seconds, then restores the register. The
+kext adds 0x4000 to `sampleTime` for each MSI, so `sampleTime / 0x4000`
+counts the MSIs. The probe reads it every 1 ms.
+
+| `INTERRUPT` | MSIs in 2 s | Times (ms), MSIs at each time |
+|-------------|-------------|------------------------------|
+| 0x01000000 (bit 24) | 5 | 341, 683, 1024, 1365, 1706. 1 each |
+| 0x01400000 (bits 24, 22) | 10 | 341, 682, 1024, 1366, 1707. 2 each |
+| 0x05000000 (bits 24, 26) | 5 | 341, 683, 1024, 1365, 1707. 1 each |
+
+Findings:
+
+- Bit 24 gives one MSI per ring wrap: 16384 frames at 48 kHz = 341.3 ms.
+- Bit 22 gives a second MSI within 1 ms of each wrap. It is probably the
+  wrap of the other ring. Both rings wrap at the same time.
+- Bit 26 gives no MSI during a normal stream. It can be an error
+  interrupt. This is unverified.
+- No bit gives a shorter interrupt period. The `CUR_*` registers are the
+  only source of position between wraps.
+
 ## Get-all
 
 `probe getall` registers a Mach port with `IOConnectSetNotificationPort`.
