@@ -25,7 +25,8 @@ fn run() -> Result<(), String> {
     let probe: fn(&Device) -> Result<(), String> = match std::env::args().nth(1).as_deref() {
         Some("regs") => regs,
         Some("ring") => ring,
-        _ => return Err("usage: probe regs|ring".into()),
+        Some("getall") => get_all,
+        _ => return Err("usage: probe regs|ring|getall".into()),
     };
     probe(&Device::open(c"com_apogeedigital_Ensemble2Device")?)
 }
@@ -123,6 +124,73 @@ fn gcd(a: u32, b: u32) -> u32 {
     if b == 0 { a } else { gcd(b, a % b) }
 }
 
+const PACKET_BYTES: usize = 120;
+
+fn get_all(device: &Device) -> Result<(), String> {
+    const GET_ALL: u8 = 4;
+    let port = device.notification_port()?;
+    let mut request = [0u8; PACKET_BYTES];
+    request[..8].copy_from_slice(&1u64.to_le_bytes());
+    request[8] = GET_ALL;
+    device.send(&request)?;
+    let start = Instant::now();
+    while let Some(packet) = receive(port, 2000)? {
+        println!(
+            "{:>6} ms {}",
+            start.elapsed().as_millis(),
+            describe(&packet)
+        );
+    }
+    Ok(())
+}
+
+#[repr(C)]
+struct Notification {
+    header: [u32; 6],
+    packet: [u8; PACKET_BYTES],
+    trailer: [u8; 68],
+}
+
+fn receive(port: u32, timeout_ms: u32) -> Result<Option<[u8; PACKET_BYTES]>, String> {
+    const MACH_RCV_MSG: i32 = 0x2;
+    const MACH_RCV_TIMEOUT: i32 = 0x100;
+    const MACH_RCV_TIMED_OUT: i32 = 0x1000_4003;
+    let mut message = Notification {
+        header: [0; 6],
+        packet: [0; PACKET_BYTES],
+        trailer: [0; 68],
+    };
+    let kr = unsafe {
+        mach_msg(
+            (&raw mut message).cast(),
+            MACH_RCV_MSG | MACH_RCV_TIMEOUT,
+            0,
+            size_of::<Notification>() as u32,
+            port,
+            timeout_ms,
+            0,
+        )
+    };
+    match kr {
+        0 if message.header[1] as usize == 24 + PACKET_BYTES => Ok(Some(message.packet)),
+        0 => Err(format!("notification of {} bytes", message.header[1])),
+        MACH_RCV_TIMED_OUT => Ok(None),
+        kr => Err(format!("mach_msg: {kr:#010x}")),
+    }
+}
+
+fn describe(packet: &[u8; PACKET_BYTES]) -> String {
+    let header = u64::from_le_bytes(packet[..8].try_into().unwrap());
+    let [kind, cmd, p1, p2, len] = packet[8..13] else {
+        unreachable!()
+    };
+    let data: String = packet[13..][..usize::from(len).min(PACKET_BYTES - 13)]
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect();
+    format!("header {header:016x} type {kind} cmd {cmd:#04x} p1 {p1} p2 {p2} len {len} data {data}")
+}
+
 struct Device {
     connect: u32,
 }
@@ -142,9 +210,43 @@ impl Device {
         Ok(Self { connect })
     }
 
+    fn notification_port(&self) -> Result<u32, String> {
+        const MACH_PORT_RIGHT_RECEIVE: u32 = 1;
+        const MACH_PORT_LIMITS_INFO: i32 = 1;
+        const MACH_PORT_QLIMIT_MAX: i32 = 1024;
+        let mut port = 0;
+        let kr = unsafe { mach_port_allocate(mach_task_self_, MACH_PORT_RIGHT_RECEIVE, &mut port) };
+        if kr != 0 {
+            return Err(format!("mach_port_allocate: {kr:#010x}"));
+        }
+        let kr = unsafe {
+            mach_port_set_attributes(
+                mach_task_self_,
+                port,
+                MACH_PORT_LIMITS_INFO,
+                &MACH_PORT_QLIMIT_MAX,
+                1,
+            )
+        };
+        if kr != 0 {
+            return Err(format!("mach_port_set_attributes: {kr:#010x}"));
+        }
+        let kr = unsafe { IOConnectSetNotificationPort(self.connect, 0, port, 0) };
+        if kr != 0 {
+            return Err(format!("IOConnectSetNotificationPort: {kr:#010x}"));
+        }
+        Ok(port)
+    }
+
+    fn send(&self, packet: &[u8; PACKET_BYTES]) -> Result<(), String> {
+        const SEND_REQUEST: u32 = 4;
+        self.call(SEND_REQUEST, packet, &mut [0u8; 0])
+            .map_err(|kr| format!("send: {kr:#010x}"))
+    }
+
     fn start(&self, depth: u32) -> Result<(), String> {
         const START_HARDWARE: u32 = 2;
-        self.call(START_HARDWARE, &[depth], &mut [])
+        self.call(START_HARDWARE, &[depth], &mut [0u32; 0])
             .map_err(|kr| format!("start: {kr:#010x}"))
     }
 
@@ -157,7 +259,7 @@ impl Device {
         checked(value[0])
     }
 
-    fn call(&self, selector: u32, input: &[u32], output: &mut [u32]) -> Result<(), i32> {
+    fn call<I, O>(&self, selector: u32, input: &[I], output: &mut [O]) -> Result<(), i32> {
         let mut size = size_of_val(output);
         let kr = unsafe {
             IOConnectCallStructMethod(
@@ -186,14 +288,35 @@ fn checked(value: u32) -> Result<u32, String> {
     }
 }
 
-#[link(name = "IOKit", kind = "framework")]
 unsafe extern "C" {
     static mach_task_self_: u32;
+    fn mach_port_allocate(task: u32, right: u32, name: *mut u32) -> i32;
+    fn mach_port_set_attributes(
+        task: u32,
+        name: u32,
+        flavor: i32,
+        info: *const i32,
+        count: u32,
+    ) -> i32;
+    fn mach_msg(
+        msg: *mut c_void,
+        option: i32,
+        send_size: u32,
+        rcv_size: u32,
+        rcv_name: u32,
+        timeout: u32,
+        notify: u32,
+    ) -> i32;
+}
+
+#[link(name = "IOKit", kind = "framework")]
+unsafe extern "C" {
     fn IOServiceMatching(name: *const c_char) -> *mut c_void;
     fn IOServiceGetMatchingService(main_port: u32, matching: *mut c_void) -> u32;
     fn IOServiceOpen(service: u32, owning_task: u32, kind: u32, connect: *mut u32) -> i32;
     fn IOServiceClose(connect: u32) -> i32;
     fn IOObjectRelease(object: u32) -> i32;
+    fn IOConnectSetNotificationPort(connect: u32, kind: u32, port: u32, reference: usize) -> i32;
     fn IOConnectCallStructMethod(
         connection: u32,
         selector: u32,
@@ -240,6 +363,17 @@ mod tests {
     fn backward_and_out_of_range_pointers_are_counted() {
         let s = summarize(RING, 4, &trace(&[0, 400, 300, 2000]));
         assert_eq!((s.backward, s.out_of_range), (1, 1));
+    }
+
+    #[test]
+    fn packet_shows_header_fields_and_data() {
+        let mut packet = [0u8; PACKET_BYTES];
+        packet[..8].copy_from_slice(&0x0102_0304_0506_0708u64.to_le_bytes());
+        packet[8..16].copy_from_slice(&[2, 0x32, 1, 7, 3, 0xAA, 0xBB, 0xCC]);
+        assert_eq!(
+            describe(&packet),
+            "header 0102030405060708 type 2 cmd 0x32 p1 1 p2 7 len 3 data aabbcc"
+        );
     }
 
     #[test]
