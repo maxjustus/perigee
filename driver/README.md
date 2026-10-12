@@ -22,6 +22,11 @@ IOKit compares drivers only when the device appears. A dext that owns the
 device keeps running until the device leaves, so each new build needs a
 replug.
 
+## Test
+
+`driver/test.sh` builds and runs the host-side unit tests. They cover the
+PSoC message parser and encoder in `EnsembleDriver/Protocol.h`.
+
 ## Check
 
 The driver publishes the BAR0 `ID` register as the `ID` property:

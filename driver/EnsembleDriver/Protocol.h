@@ -1,0 +1,71 @@
+#ifndef Protocol_h
+#define Protocol_h
+
+#include <stdint.h>
+
+namespace Ensemble {
+
+constexpr uint32_t kSlotWords = 30;
+constexpr uint8_t kMaxReportData = 100;
+
+struct Report {
+    uint8_t type;
+    uint8_t command;
+    uint8_t p1;
+    uint8_t p2;
+    uint8_t length;
+    uint8_t data[kMaxReportData];
+};
+
+struct Message {
+    uint32_t words[kSlotWords];
+    uint32_t count;
+};
+
+inline Message getAll()
+{
+    return {{1, 0, 4}, 3};
+}
+
+inline Message set(uint8_t command, uint8_t p1, uint8_t value)
+{
+    return {{1, 0, 1u | command << 8 | p1 << 16 | uint32_t(value) << 24}, 3};
+}
+
+// Words 0 and 1 are a header. Records follow. The PSoC can claim more data
+// than the message holds (report 0x41), so every read stops at `count`.
+template <typename Emit>
+void parseMessage(const uint32_t * words, uint32_t count, Emit && emit)
+{
+    auto byte = [&](uint32_t i) -> uint8_t { return uint8_t(words[i / 4] >> (8 * (i % 4))); };
+    const uint32_t end = count * 4;
+    uint32_t at = 8;
+    while (at + 4 <= end) {
+        Report r = {};
+        r.type = byte(at);
+        r.command = byte(at + 1);
+        r.p1 = byte(at + 2);
+        if (r.type == 1) {
+            r.length = 1;
+            r.data[0] = byte(at + 3);
+            at += 4;
+        } else if (r.type == 2 && at + 5 <= end) {
+            r.p2 = byte(at + 3);
+            const uint8_t claimed = byte(at + 4) < kMaxReportData ? byte(at + 4) : kMaxReportData;
+            const uint32_t available = end - (at + 5);
+            r.length = claimed < available ? claimed : uint8_t(available);
+            for (uint32_t i = 0; i < r.length; i++) {
+                r.data[i] = byte(at + 5 + i);
+            }
+            const uint32_t extra = claimed > 3 ? claimed - 3u : 0u;
+            at += 4 * (2 + (extra + 3) / 4);
+        } else {
+            return;
+        }
+        emit(r);
+    }
+}
+
+}
+
+#endif
