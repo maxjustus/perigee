@@ -776,7 +776,8 @@ Property data travels as CFPropertyList-encoded CFData
 ## 6. User client interface
 
 Class `com_apogeedigital_ElemEnsUserClient`. The HAL opens it with
-`IOServiceOpen(service, task, 0)`. One client at a time. On client death the
+`IOServiceOpen(service, task, 0)`. The kext accepts a second client. The
+newest client replaces the device's client. On client close or death the
 kext stops the hardware and disables meter DMA.
 
 ### 6.1 External methods
@@ -826,8 +827,8 @@ tries.
 ### 6.4 Notifications
 
 `registerNotificationPort` stores the port. Each PSoC record goes out as a
-Mach message: `msgh_id = 0x13`, size 0x98 = 24-byte header + 120-byte
-packet.
+Mach message: `msgh_bits = 0x13` (copy send), `msgh_id = 0`, kernel size
+0x98 = 32-byte header + 120-byte packet.
 
 ### 6.5 Power management
 
