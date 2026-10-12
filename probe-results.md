@@ -141,3 +141,33 @@ Only mixer flags changed, plus the volatile last byte of 0x41:
 All other settings kept their values: input types, gains, routing, output
 levels, sample rate, and clock source. A cycle with the vendor HAL removed
 must separate the power-on state from the HAL restore.
+
+## Kernel panic in the vendor kext
+
+The Mac panicked during repeated `coreaudiod` restarts. Each restart makes
+the vendor HAL send a Get-all. Report:
+`/Library/Logs/DiagnosticReports/panic-base+socd-2026-10-12-155210.000.panic`.
+
+- Kernel data abort. Probabilistic guard malloc reports an out-of-bounds
+  read, 1 byte past a 64-byte element of `kalloc.type.var6.64`.
+- Backtrace: `_messagingProtocolTimerHandler` + 0x118, then
+  `_processPropertyNotificationFromHardware` + 0x110, then `memcpy`.
+
+At `_processPropertyNotificationFromHardware` + 0xF0 the kext copies a
+type-2 record with `memcpy(packet + 13, record + 5, min(len, 100))`. It
+does not limit the copy to the words that remain in the message.
+
+The registers at the panic match the first Get-all message. `x25` = 13 is
+the word index of the record. In that message, 0x40 x4 fill words 2 to 9
+and 0xD2 fills words 10 to 12. So 0x41 starts at word 13. With
+`len = 8`, the copy reads bytes 57 to 64 of a 64-byte (16-word) message.
+Byte 64 is outside the buffer.
+
+Consequences:
+
+- The PSoC sends 7 data bytes for 0x41 but sets `len = 8`. `data[7]` of
+  0x41 is heap memory. This is why it changed between runs.
+- Each Get-all reads past the buffer. The guard samples few allocations,
+  so most reads pass. Each Get-all through the vendor kext carries a small
+  risk of a panic.
+- A new driver must limit each record to the message length.
