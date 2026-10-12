@@ -142,6 +142,23 @@ All other settings kept their values: input types, gains, routing, output
 levels, sample rate, and clock source. A cycle with the vendor HAL removed
 must separate the power-on state from the HAL restore.
 
+## Power cycle with the vendor HAL off
+
+`scripts/vendor-hal.sh off` removed the vendor HAL. The probe took a
+Get-all, the unit was power-cycled with no host and reconnected, and the
+probe took a second Get-all. No other software wrote to the unit.
+
+The two runs had the same 936 packets with the same values. Only the stale
+`p2` of type-1 packets differed.
+
+Consequences:
+
+- The unit keeps every setting that Get-all reports across a power cycle.
+- The mixer changes in the cycle with the vendor HAL loaded came from the
+  HAL restore, not from the unit.
+- A driver that skips the restore gets the last state that the unit was
+  given. The driver does not need to restore settings at attach.
+
 ## Kernel panic in the vendor kext
 
 The Mac panicked during repeated `coreaudiod` restarts. Each restart makes
