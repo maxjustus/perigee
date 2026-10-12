@@ -9,6 +9,7 @@
 
 #include "EnsembleDevice.h"
 #include "EnsembleDriver.h"
+#include "Bar0.h"
 #include "Registers.h"
 
 using namespace Ensemble;

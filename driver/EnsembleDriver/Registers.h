@@ -1,7 +1,7 @@
 #ifndef Registers_h
 #define Registers_h
 
-#include <PCIDriverKit/PCIDriverKit.h>
+#include <stdint.h>
 
 namespace Ensemble {
 
@@ -26,23 +26,6 @@ constexpr uint32_t kOutputChannels = 36;
 constexpr uint32_t kInputChannels = 34;
 constexpr double kSampleRate = 48000.0;
 constexpr uint32_t kDepth = 2;
-
-struct Bar0 {
-    IOPCIDevice * pci;
-    uint8_t index;
-
-    uint32_t read(uint64_t offset) const
-    {
-        uint32_t value = 0;
-        pci->MemoryRead32(index, offset, &value);
-        return value;
-    }
-
-    void write(uint64_t offset, uint32_t value) const
-    {
-        pci->MemoryWrite32(index, offset, value);
-    }
-};
 
 }
 

@@ -4,6 +4,7 @@
 #include <AudioDriverKit/AudioDriverKit.h>
 
 #include "EnsembleDevice.h"
+#include "Bar0.h"
 #include "Registers.h"
 
 using namespace Ensemble;
