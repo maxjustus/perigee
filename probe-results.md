@@ -45,3 +45,27 @@ The probe client's `start` enabled meter DMA before the reads.
 | 0x10 | STATUS | 0x00000000 | |
 | 0x14 | INTERRUPT | 0x00000000 | No MSI enabled |
 | 0x68 | INFO | 0x00000050 | Bits 7:6 = 1: PSoC bootloader status valid. Bit 4 not decoded |
+
+## Ring pointers
+
+`probe ring` calls `StartHardware` with depth 2 and the vendor HAL idle. It
+reads `CUR_OUTPUT_AUDIO_ADDRESS_LOW` and `CUR_INPUT_AUDIO_ADDRESS_LOW` about
+every 1 ms for 5 seconds. The client close stops the hardware.
+
+| Ring | Base (LOW register) | Out of range | Backward | Wraps | Frames/s | Step GCD |
+|------|---------------------|--------------|----------|-------|----------|----------|
+| Output | 0x80000000 | 0 | 0 | 14 | 48000.96 | 288 bytes |
+| Input | 0x00000000 | 0 | 0 | 14 | 48000.96 | 272 bytes |
+
+Findings:
+
+- The address registers read back the ring IOVA. They are not write-only.
+- Both `CUR_*` registers are live during the stream. They advance
+  monotonically and wrap at `channels * 0x4000 * 4` bytes from the base.
+- The step GCD is 2 frames in both rings (288 = 2 * 36 * 4,
+  272 = 2 * 34 * 4). The pointer moves in bursts of `SAMPLEDEPTH + 1`
+  frames.
+- The unit runs at 48 kHz. 5 seconds give 14 wraps of 16384 frames.
+
+The position-from-hardware design in `plan.md` section 3 holds. The
+position resolution equals the DMA burst depth.
