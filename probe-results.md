@@ -69,3 +69,55 @@ Findings:
 
 The position-from-hardware design in `plan.md` section 3 holds. The
 position resolution equals the DMA burst depth.
+
+## Get-all
+
+`probe getall` registers a Mach port with `IOConnectSetNotificationPort`.
+It sends one type-4 packet through `SendRequest` and prints each
+notification until 2 seconds pass with no notification. No host handshake
+was necessary. The probe client did not call `Open`.
+
+Each notification is a Mach message with `msgh_bits = 0x13` (copy send)
+and `msgh_id = 0`. The body is one 120-byte packet.
+
+Two runs gave 936 packets each, in the same order. The first packet came
+after 22 ms, the last after 172 ms. Packets come in batches about 12.5 ms
+apart.
+
+Packet fields:
+
+- The 8-byte header is 0 in all packets.
+- Type-1 packets carry the value in `data[0]` with `len = 1`. Their `p2`
+  is stale. It holds the `p2` of the previous type-2 packet.
+- In mixer packets (0x32 to 0x3A), `p1` is the channel (0 to 47) and `p2`
+  is the mixer (0 to 3).
+
+Order of command IDs, with packet count and type:
+
+| Order | IDs |
+|-------|-----|
+| Status | 0x40 x4 (2), 0xD2 x1 (2), 0x41 x1 (2) |
+| Inputs | 0x01 x12, 0x03 x12, 0x02 x9, 0x07 x12, 0x04 x8, 0x05 x8, 0x06 x8, 0x08 x8, 0x0A x2 |
+| Routing and outputs | 0x09 x17, 0x1C x2, 0x1D x2, 0x0F, 0x0D x10, 0x0E x10, 0x11 x3, 0x12 x3, 0x13 x3, 0x14 x3, 0x1A x2, 0x10, 0x16 x2, 0x15 x17 |
+| Front panel | 0x20, 0x21, 0x22, 0x23, 0x24, 0x26, 0x2B, 0x25 x4, 0x90 x4 (2) |
+| Mixer | 0x39 x46, 0x38 x46, 0x3A x46, 0x32 x192 (2), 0x35 x192 (2), 0x33 x184 (2), 0x34 x48 |
+| Clock | 0x29, 0x2A, 0xA0 |
+| End | 0x44 x1 (2), 0x42, 0x64 |
+
+IDs without a type mark are type 1.
+
+Decoded values:
+
+| ID | Data | Reading |
+|----|------|---------|
+| 0x40 p1 0 | 01 05 03 | Probably PSoC firmware 1.5.3 |
+| 0x40 p1 1 | 00 56 00 | 0x56 equals the PCI revision (FPGA firmware) |
+| 0x41 | 00 0D 6A 00 84 44 F1 00 | `data[0]` = 0: no external clock lock. `data[1..6]` equal bytes 1 to 6 of the Hardware UID, little-endian. `data[7]` was 0x00, then 0x08 |
+| 0x29 | 01 | 48 kHz. This agrees with the ring-pointer rate |
+| 0x2A | 00 | Clock source 0 |
+| 0x42 | 01 | Device ready. Last report before 0x64 |
+
+Differences from the notes:
+
+- 0x34 (MixerChannelSolo) arrives as type 1, one packet per channel.
+- 0x09, 0x44, 0x64 (as a Get-all report), and 0xD2 are not in the notes.
