@@ -458,7 +458,7 @@ of records follows. Each record starts with a type byte:
 | Type | Layout | Words |
 |------|--------|-------|
 | 1 | type, cmd, p1, value | 1 |
-| 2 | type, cmd, p1, p2, len, data[len] (len <= 100) | 2 + ceil((len - 3) / 4) |
+| 2 | type, cmd, p1, p2, len, data[len] (len <= 100). The copy ignores the message length | 2 + ceil((len - 3) / 4) |
 
 Each record becomes one 120-byte packet to the HAL. Any other type byte
 logs `message error` and stops the parse.
@@ -561,7 +561,7 @@ value. Extra report IDs:
 | ID | Meaning |
 |----|---------|
 | 0x40 | Device status (not decoded) |
-| 0x41 | External clock lock. data[0] != 0 = locked |
+| 0x41 | External clock lock. data[0] != 0 = locked. The PSoC sets len = 8 but sends 7 data bytes |
 | 0x42 | Device ready. The HAL then requests all properties |
 | 0x43 | Not decoded |
 | 0x52, 0x53 | Functional test result (not decoded) |
