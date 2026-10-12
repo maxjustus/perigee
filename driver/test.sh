@@ -3,6 +3,8 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 mkdir -p build
-env -u CC -u CXX xcrun clang++ -std=c++20 -Wall -Wextra -Werror -I EnsembleDriver \
-  tests/protocol_test.cpp -o build/protocol_test
-build/protocol_test
+for test in protocol mailbox; do
+  env -u CC -u CXX xcrun clang++ -std=c++20 -Wall -Wextra -Werror -I EnsembleDriver \
+    "tests/${test}_test.cpp" -o "build/${test}_test"
+  "build/${test}_test"
+done
