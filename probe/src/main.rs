@@ -26,7 +26,8 @@ fn run() -> Result<(), String> {
         Some("regs") => regs,
         Some("ring") => ring,
         Some("getall") => get_all,
-        _ => return Err("usage: probe regs|ring|getall".into()),
+        Some("irq") => irq,
+        _ => return Err("usage: probe regs|ring|getall|irq [mask]".into()),
     };
     probe(&Device::open(c"com_apogeedigital_Ensemble2Device")?)
 }
@@ -35,6 +36,38 @@ fn regs(device: &Device) -> Result<(), String> {
     for (name, offset) in REGISTERS {
         println!("{offset:#06x} {name:<9} {:#010x}", device.read(offset)?);
     }
+    Ok(())
+}
+
+const INTERRUPT: u32 = 0x14;
+
+fn irq(device: &Device) -> Result<(), String> {
+    const ENABLE_TIME_STAMP: u32 = 6;
+    const TIME_STAMP_PAGE: u32 = 2;
+    let extra = match std::env::args().nth(2) {
+        Some(mask) => u32::from_str_radix(mask.trim_start_matches("0x"), 16)
+            .map_err(|e| format!("mask {mask}: {e}"))?,
+        None => 0,
+    };
+    device.misc(ENABLE_TIME_STAMP, 1)?;
+    let sample_time = device.map(TIME_STAMP_PAGE)?;
+    device.start(2)?;
+    let before = device.read(INTERRUPT)?;
+    device.write(INTERRUPT, before | extra)?;
+    let start = Instant::now();
+    let (mut seen, mut times) = (0, Vec::new());
+    while start.elapsed() < Duration::from_secs(2) {
+        let msis = unsafe { sample_time.read_volatile() } / u64::from(RING_FRAMES);
+        if msis != seen {
+            times.push((start.elapsed().as_millis(), msis - seen));
+            seen = msis;
+        }
+        thread::sleep(Duration::from_millis(1));
+    }
+    let during = device.read(INTERRUPT)?;
+    device.write(INTERRUPT, before)?;
+    println!("INTERRUPT {before:#010x} -> {during:#010x}: {seen} MSIs in 2 s");
+    println!("ms (count): {times:?}");
     Ok(())
 }
 
@@ -244,6 +277,31 @@ impl Device {
             .map_err(|kr| format!("send: {kr:#010x}"))
     }
 
+    fn misc(&self, kind: u32, arg: u32) -> Result<(), String> {
+        const MISC_REQUEST: u32 = 5;
+        self.call(MISC_REQUEST, &[kind, arg], &mut [0u32; 0])
+            .map_err(|kr| format!("misc {kind}: {kr:#010x}"))
+    }
+
+    fn map(&self, kind: u32) -> Result<*const u64, String> {
+        const MAP_ANYWHERE: u32 = 1;
+        let (mut address, mut size) = (0u64, 0u64);
+        let kr = unsafe {
+            IOConnectMapMemory64(
+                self.connect,
+                kind,
+                mach_task_self_,
+                &mut address,
+                &mut size,
+                MAP_ANYWHERE,
+            )
+        };
+        if kr != 0 {
+            return Err(format!("map {kind}: {kr:#010x}"));
+        }
+        Ok(address as *const u64)
+    }
+
     fn start(&self, depth: u32) -> Result<(), String> {
         const START_HARDWARE: u32 = 2;
         self.call(START_HARDWARE, &[depth], &mut [0u32; 0])
@@ -257,6 +315,17 @@ impl Device {
         self.call(ACCESS_BAR0_REGISTER, &[READ, offset, 0], &mut value)
             .map_err(|kr| format!("read {offset:#06x}: {kr:#010x}"))?;
         checked(value[0])
+    }
+
+    fn write(&self, offset: u32, value: u32) -> Result<(), String> {
+        const ACCESS_BAR0_REGISTER: u32 = 6;
+        const WRITE: u32 = 0;
+        self.call(
+            ACCESS_BAR0_REGISTER,
+            &[WRITE, offset, value],
+            &mut [0u32; 0],
+        )
+        .map_err(|kr| format!("write {offset:#06x}: {kr:#010x}"))
     }
 
     fn call<I, O>(&self, selector: u32, input: &[I], output: &mut [O]) -> Result<(), i32> {
@@ -317,6 +386,14 @@ unsafe extern "C" {
     fn IOServiceClose(connect: u32) -> i32;
     fn IOObjectRelease(object: u32) -> i32;
     fn IOConnectSetNotificationPort(connect: u32, kind: u32, port: u32, reference: usize) -> i32;
+    fn IOConnectMapMemory64(
+        connect: u32,
+        kind: u32,
+        task: u32,
+        address: *mut u64,
+        size: *mut u64,
+        options: u32,
+    ) -> i32;
     fn IOConnectCallStructMethod(
         connection: u32,
         selector: u32,
