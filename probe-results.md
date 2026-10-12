@@ -121,3 +121,23 @@ Differences from the notes:
 
 - 0x34 (MixerChannelSolo) arrives as type 1, one packet per channel.
 - 0x09, 0x44, 0x64 (as a Get-all report), and 0xD2 are not in the notes.
+
+## Power cycle with the vendor HAL loaded
+
+The unit was disconnected, powered off, powered on with no host, and
+reconnected. The vendor HAL attached to the new device before the probe
+ran. The HAL restores a settings snapshot on connect, so this diff mixes
+the power-on state with that restore.
+
+The Get-all after the cycle had the same 936 packets in the same order.
+Only mixer flags changed, plus the volatile last byte of 0x41:
+
+| ID | Before | After |
+|----|--------|-------|
+| 0x39 IsStereo | Channels 2 to 5 set | Clear |
+| 0x38 IsVisible | 12, 13 clear. 14 to 21 set | 12, 13 set. 14 to 21 clear |
+| 0x35 Mute, mixers 0 to 2 | Different per mixer | Channels 8, 9 only, as in mixer 3 |
+
+All other settings kept their values: input types, gains, routing, output
+levels, sample rate, and clock source. A cycle with the vendor HAL removed
+must separate the power-on state from the HAL restore.
