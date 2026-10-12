@@ -1,0 +1,38 @@
+name: Ensemble
+options:
+  bundleIdPrefix: dev.ensemble
+  deploymentTarget:
+    macOS: "12.0"
+targets:
+  EnsembleHost:
+    type: application
+    platform: macOS
+    sources: [EnsembleHost]
+    dependencies:
+      - target: EnsembleDriver
+        embed: true
+        codeSign: true
+        copy:
+          destination: plugins
+          subpath: ../Library/SystemExtensions
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.ensemble.Host
+        ENABLE_DEBUG_DYLIB: NO
+        INFOPLIST_FILE: EnsembleHost/Info.plist
+        CODE_SIGN_ENTITLEMENTS: EnsembleHost/EnsembleHost.entitlements
+  EnsembleDriver:
+    type: driver-extension
+    platform: macOS
+    sources: [EnsembleDriver]
+    settings:
+      base:
+        SDKROOT: driverkit
+        SUPPORTED_PLATFORMS: driverkit
+        DRIVERKIT_DEPLOYMENT_TARGET: "21.0"
+        MACOSX_DEPLOYMENT_TARGET: ""
+        OTHER_LDFLAGS: -framework DriverKit -framework PCIDriverKit
+        PRODUCT_BUNDLE_IDENTIFIER: dev.ensemble.Host.Driver
+        PRODUCT_NAME: $(PRODUCT_BUNDLE_IDENTIFIER)
+        INFOPLIST_FILE: EnsembleDriver/Info.plist
+        CODE_SIGN_ENTITLEMENTS: EnsembleDriver/EnsembleDriver.entitlements
