@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 ---
 
 # Drive the Ensemble with one PCIDriverKit and AudioDriverKit dext
@@ -39,8 +39,10 @@ AudioDriverKit clock and buffer model directly:
 
 ## Consequences
 
-- The minimum macOS version is 12, the first release with AudioDriverKit
-  (DriverKit 21.0).
+- The primary target is the last few macOS releases on Apple silicon.
+  Intel Macs are a secondary target. AudioDriverKit starts at macOS 12
+  (DriverKit 21.0). macOS 12 is also the last release for the Mac Pro
+  (Late 2013), so the design does not exclude that Mac.
 - DriverKit has no physically contiguous allocation. The FPGA takes one
   base address per ring. The design needs `IODMACommand::PrepareForDMA`
   to return one IOMMU segment for each ring. The vendor kext rings sit at
