@@ -30,6 +30,11 @@ The driver publishes the BAR0 `ID` register as the `ID` property:
 
 The expected value is 2882400001 (0xABCDEF01).
 
+`swift driver/check.swift` finds the CoreAudio device named "Ensemble",
+prints its channels, rate, and safety offsets, and runs 5 s of IO with
+silent output. Expect 34 inputs, 36 outputs, about 48000 frames/s, and
+0 overloads.
+
 ## Return the device to the vendor driver
 
 1. Run `<app>/Contents/MacOS/EnsembleHost deactivate`.

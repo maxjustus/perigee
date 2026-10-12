@@ -39,6 +39,13 @@
 			<integer>10000</integer>
 			<key>IOProviderClass</key>
 			<string>IOPCIDevice</string>
+			<key>IOUserAudioDriverUserClientProperties</key>
+			<dict>
+				<key>IOClass</key>
+				<string>IOUserUserClient</string>
+				<key>IOUserClass</key>
+				<string>IOUserAudioDriverUserClient</string>
+			</dict>
 			<key>IOUserClass</key>
 			<string>EnsembleDriver</string>
 			<key>IOUserServerName</key>

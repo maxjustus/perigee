@@ -1,0 +1,32 @@
+#ifndef EnsembleDevice_h
+#define EnsembleDevice_h
+
+#include <DriverKit/IOInterruptDispatchSource.iig>
+#include <PCIDriverKit/IOPCIDevice.iig>
+#include <AudioDriverKit/IOUserAudioDevice.iig>
+
+using namespace AudioDriverKit;
+
+class EnsembleDevice: public IOUserAudioDevice
+{
+public:
+    virtual bool init(IOUserAudioDriver * in_driver,
+                      bool in_supports_prewarming,
+                      OSString * in_device_uid,
+                      OSString * in_model_uid,
+                      OSString * in_manufacturer_uid,
+                      uint32_t in_zero_timestamp_period) override LOCALONLY;
+    virtual void free() override LOCALONLY;
+
+    kern_return_t Attach(IOPCIDevice * pci, uint8_t bar0) LOCALONLY;
+    void Detach() LOCALONLY;
+
+    virtual kern_return_t StartIO(IOUserAudioStartStopFlags in_flags) final LOCALONLY;
+    virtual kern_return_t StopIO(IOUserAudioStartStopFlags in_flags) final LOCALONLY;
+
+private:
+    virtual void WrapOccurred(OSAction * action, uint64_t count, uint64_t time)
+        TYPE(IOInterruptDispatchSource::InterruptOccurred);
+};
+
+#endif

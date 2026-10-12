@@ -31,7 +31,8 @@ targets:
         SUPPORTED_PLATFORMS: driverkit
         DRIVERKIT_DEPLOYMENT_TARGET: "21.0"
         MACOSX_DEPLOYMENT_TARGET: ""
-        OTHER_LDFLAGS: -framework DriverKit -framework PCIDriverKit
+        CLANG_CXX_LANGUAGE_STANDARD: gnu++20
+        OTHER_LDFLAGS: -framework DriverKit -framework PCIDriverKit -framework AudioDriverKit
         PRODUCT_BUNDLE_IDENTIFIER: dev.ensemble.Host.Driver
         PRODUCT_NAME: $(PRODUCT_BUNDLE_IDENTIFIER)
         INFOPLIST_FILE: EnsembleDriver/Info.plist

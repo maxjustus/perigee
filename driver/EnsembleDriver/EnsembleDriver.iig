@@ -2,8 +2,11 @@
 #define EnsembleDriver_h
 
 #include <DriverKit/IOService.iig>
+#include <AudioDriverKit/IOUserAudioDriver.iig>
 
-class EnsembleDriver: public IOService
+using namespace AudioDriverKit;
+
+class EnsembleDriver: public IOUserAudioDriver
 {
 public:
     virtual bool init() override;
