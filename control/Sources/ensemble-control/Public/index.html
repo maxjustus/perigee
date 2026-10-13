@@ -594,8 +594,8 @@ const monitorLevel = document.getElementById("monitor-level");
 const monitorDb = document.getElementById("monitor-db");
 let monitorSocket = null, audio = null, playAt = 0, peak = 0, peakQueued = false;
 
-monitorChannel.append(...[...channelNames.slice(0, 30), "Mix 1 L", "Mix 1 R", "FX Send L", "FX Send R"]
-  .map((name, index) => new Option(name, index + 1)));
+const captureNames = @CAPTURE_NAMES@;
+monitorChannel.append(...captureNames.map((name, index) => new Option(name, index + 1)));
 monitorChannel.value = localStorage.getItem("monitorChannel") ?? 9;
 monitorChannel.onchange = () => {
   localStorage.setItem("monitorChannel", monitorChannel.value);

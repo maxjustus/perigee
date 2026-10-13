@@ -11,25 +11,35 @@ public func findEnsemble() -> AudioObjectID? {
 }
 
 public func propertyAddress(_ selector: AudioObjectPropertySelector,
-                            _ scope: AudioObjectPropertyScope = kAudioObjectPropertyScopeGlobal)
+                            _ scope: AudioObjectPropertyScope = kAudioObjectPropertyScopeGlobal,
+                            element: AudioObjectPropertyElement = kAudioObjectPropertyElementMain)
     -> AudioObjectPropertyAddress {
-    AudioObjectPropertyAddress(mSelector: selector, mScope: scope, mElement: kAudioObjectPropertyElementMain)
+    AudioObjectPropertyAddress(mSelector: selector, mScope: scope, mElement: element)
 }
 
 public func property<T>(_ object: AudioObjectID, _ selector: AudioObjectPropertySelector,
-                        _ scope: AudioObjectPropertyScope, _ initial: T) -> T {
+                        _ scope: AudioObjectPropertyScope, _ initial: T,
+                        element: AudioObjectPropertyElement = kAudioObjectPropertyElementMain) -> T {
     var value = initial
     var size = UInt32(MemoryLayout<T>.size)
-    var address = propertyAddress(selector, scope)
+    var address = propertyAddress(selector, scope, element: element)
     withUnsafeMutableBytes(of: &value) {
         _ = AudioObjectGetPropertyData(object, &address, 0, nil, &size, $0.baseAddress!)
     }
     return value
 }
 
-public func stringProperty(_ object: AudioObjectID, _ selector: AudioObjectPropertySelector) -> String {
-    let value: Unmanaged<CFString>? = property(object, selector, kAudioObjectPropertyScopeGlobal, nil)
+public func stringProperty(_ object: AudioObjectID, _ selector: AudioObjectPropertySelector,
+                           _ scope: AudioObjectPropertyScope = kAudioObjectPropertyScopeGlobal,
+                           element: AudioObjectPropertyElement = kAudioObjectPropertyElementMain) -> String {
+    let value: Unmanaged<CFString>? = property(object, selector, scope, nil, element: element)
     return value?.takeRetainedValue() as String? ?? ""
+}
+
+public func channelNames(_ device: AudioObjectID, _ scope: AudioObjectPropertyScope) -> [String] {
+    (0..<channelCount(device, scope)).map {
+        stringProperty(device, kAudioObjectPropertyElementName, scope, element: UInt32($0 + 1))
+    }
 }
 
 public func channelCount(_ device: AudioObjectID, _ scope: AudioObjectPropertyScope) -> Int {

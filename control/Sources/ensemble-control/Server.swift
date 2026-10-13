@@ -7,7 +7,8 @@ final class Server: @unchecked Sendable {
     private var clients: [ObjectIdentifier: NWConnection] = [:]
     private var listeners: [NWListener] = []
 
-    func start(controller: Controller, page: Data, httpPort: UInt16, webSocketPort: UInt16) throws {
+    func start(controller: Controller, page: @escaping @Sendable () -> Data, httpPort: UInt16,
+               webSocketPort: UInt16) throws {
         let rpc = try webSocketListener(port: webSocketPort)
         rpc.newConnectionHandler = { [self] connection in
             clients[ObjectIdentifier(connection)] = connection
@@ -23,9 +24,10 @@ final class Server: @unchecked Sendable {
         http.newConnectionHandler = { [self] connection in
             connection.start(queue: queue)
             connection.receive(minimumIncompleteLength: 1, maximumLength: 65536) { _, _, _, _ in
+                let body = page()
                 let header = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\n"
-                    + "Content-Length: \(page.count)\r\nConnection: close\r\n\r\n"
-                connection.send(content: Data(header.utf8) + page, completion: .contentProcessed { _ in
+                    + "Content-Length: \(body.count)\r\nConnection: close\r\n\r\n"
+                connection.send(content: Data(header.utf8) + body, completion: .contentProcessed { _ in
                     connection.cancel()
                 })
             }

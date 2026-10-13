@@ -1,3 +1,4 @@
+import CoreAudio
 import EnsembleIO
 import EnsembleModel
 import Foundation
@@ -23,7 +24,9 @@ do {
                                                         subdirectory: "Public")!, encoding: .utf8)
         .replacingOccurrences(of: "@RPC_PORT@", with: "\(webSocketPort)")
         .replacingOccurrences(of: "@MONITOR_PORT@", with: "\(monitorPort)")
-    try server.start(controller: controller, page: Data(page.utf8), httpPort: httpPort, webSocketPort: webSocketPort)
+    try server.start(controller: controller,
+                     page: { Data(page.replacingOccurrences(of: "@CAPTURE_NAMES@", with: captureNames()).utf8) },
+                     httpPort: httpPort, webSocketPort: webSocketPort)
     try monitor.start(port: monitorPort)
     poller = MeterPoller(buffer: try device.mapMeters()) { controller.meters($0) }
     try controller.send(getAll)
@@ -33,3 +36,9 @@ do {
     exit(1)
 }
 dispatchMain()
+
+func captureNames() -> String {
+    let names = findEnsemble().map { channelNames($0, kAudioObjectPropertyScopeInput) } ?? []
+    let json = try! JSONSerialization.data(withJSONObject: names, options: .withoutEscapingSlashes)
+    return String(decoding: json, as: UTF8.self)
+}

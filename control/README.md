@@ -145,9 +145,9 @@ phone. Expect about 150 ms of delay over Wi-Fi. iOS Safari stops the
 audio when the screen locks.
 
 A client sends a text message `{"channel": n}` to `ws://<host>:8739`.
-`n` is 1 to 34 in the capture order of `driver/EnsembleDriver/Controls.h`:
-Analog 1-8, Front Mic L and R, Guitar 1-2, S/PDIF L and R, Optical 1-16,
-Mix 1 L and R, then FX Send L and R. A new message changes the channel.
+`n` is 1 to 34, the element of a CoreAudio input channel of the device
+"Ensemble". The Monitor tab lists the channel names that the driver gives
+them. A new message changes the channel.
 After each CoreAudio IO cycle, the service sends the new samples in
 binary messages: the nominal sample rate as a little-endian uint32, then
 the samples as little-endian int16. The service runs CoreAudio input only while a client
