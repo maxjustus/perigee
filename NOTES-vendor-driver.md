@@ -543,7 +543,6 @@ the value in `data[0]`. A command with two arguments sends `p1` and
 | 0x3A | MixerChannelSoloSafe | 2 | channel | 1 byte |
 | 0x50 | FunctionalTestMode | 1 | mode | |
 | 0x51 | FunctionalTestResetAll | 1 | 0xAB | |
-| 0x5C | DSPCoreTransfer | 2 | | see HAL `doDSPCoreTransfer` |
 | 0x60 | FirmwareUpdateDFUMode | 1 | firmware type | |
 | 0x61 | FirmwareUpdateComplete | 1 | firmware type | 1 |
 | 0x62 | FirmwareUpdatePacket | 2 | | packet bytes |
@@ -555,9 +554,12 @@ the value in `data[0]`. A command with two arguments sends `p1` and
 | 0x93 | DAWMixerMute | 2 | mixer | channel, 1 byte (inverted) |
 | 0x94 | DAWMixerRouting | 1 | bool | 0x80 |
 | 0xA0 | OpticalIsSubMix | 1 | bool | 1 only with a second linked unit |
-| 0xD3 | DSPCoreRouting | 2 | | 3 bytes |
-| 0xD6 | DSPCore load/erase/coefficients | 2 | | 4 bytes |
-| 0xD7 | DSPCoreHaltResume | 2 | | 4 bytes |
+| 0xD0 | DSPCoreWriteCode | 2 | words in this chunk, 1 to 23 | p2 = start address. data = first-chunk flag, last-chunk flag, thread, total words, then the words |
+| 0xD1 | DSPCoreWriteCoefficients | 2 | as 0xD0 | as 0xD0 |
+| 0xD3 | DSPCoreRouting | 2 | rack channel | p2 = 0. data = DSP I/O channel, DSP I/O channel, 1 on or 0 off. The Ensemble HAL sends the same I/O channel twice |
+| 0xD4 | DSPCoreWriteStateInit | 2 | as 0xD0 | as 0xD0 |
+| 0xD6 | DSPCoreErase | 2 | memory: 0 code, 1 coefficients, 2 state | p2 = start address. data = 1, 1, thread, word count |
+| 0xD7 | DSPCoreHaltResume | 2 | 0 halt, 1 resume | p2 = start address. data = 0, 0, thread, word count. Resume-all sends p1 = 1 and all other bytes 0 |
 
 Mixer channels are 0 to 47. Channels 0 to 29 follow the input meter
 order, 30 to 45 carry Playback 1 to 16, and 46 and 47 are the mixer
