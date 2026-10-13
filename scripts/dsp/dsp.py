@@ -205,6 +205,18 @@ def store(offset=0, io=0, out=True, from_x=False, mode=0):
     return 2 | offset << 6 | mode << 18 | int(from_x) << 21 | int(out) << 22 | io << 23
 
 
+def jump(offset, condition, selector=3):
+    """Encodes opcode 0x01: jump by offset, a signed byte. Selectors 2 to 5 jump if x meets
+    condition. Selectors 0, 1, 6, and 7 always jump."""
+    return 1 | offset << 6 | selector << 14 | 0xF << 17 | condition << 21 | 1 << 24
+
+
+def copy(op, source, dest, thread=0, mode=0):
+    """Encodes opcodes 0x14 to 0x16: state word source of thread to dest. Mode m makes source
+    a 2^m-word circular group."""
+    return op | source << 6 | thread << 14 | mode << 18 | dest << 21
+
+
 def f32(value):
     return struct.unpack("<I", struct.pack("<f", value))[0]
 

@@ -1,6 +1,6 @@
 import unittest
 
-from dsp import Src, block, f32, get, ins, store, transfers
+from dsp import Src, block, copy, f32, get, ins, jump, store, transfers
 
 
 class WireTest(unittest.TestCase):
@@ -24,6 +24,14 @@ class InstructionTest(unittest.TestCase):
     def test_store(self):
         self.assertEqual(store(offset=1), 0x00400042)
         self.assertEqual(store(offset=2, out=False, from_x=True), 0x00200082)
+
+    def test_jump(self):
+        self.assertEqual(jump(3, 0b010), 0x01 | 3 << 6 | 0x7B << 14 | 0b010 << 21 | 0x01 << 24)
+        self.assertEqual(jump(0xFE, 0b101), 0x01 | 0xFE << 6 | 0x7B << 14 | 0b101 << 21 | 0x01 << 24)
+
+    def test_copy(self):
+        self.assertEqual(copy(0x14, 30, 20, thread=1), 0x14 | 30 << 6 | 1 << 14 | 20 << 21)
+        self.assertEqual(copy(0x15, 8, 20, mode=3), 0x15 | 8 << 6 | 3 << 18 | 20 << 21)
 
 
 class TransferTest(unittest.TestCase):

@@ -14,7 +14,7 @@ import sys
 
 import numpy as np
 
-from dsp import Src, block, ins, record, session, store
+from dsp import Src, block, copy, ins, jump, record, session, store
 
 B_VALUES = [-2.0, -0.75, -0.1, 0.0, 0.1, 0.5, 1.0, 3.0]
 SCALE, REF = 0.1, 0.25
@@ -103,7 +103,7 @@ async def jumps(core):
     xs = (-0.5, -1e-30, 0.0, 1e-30, 0.5)
     print("bits 23:21 | jump for x =", " ".join(f"{x:g}" for x in xs))
     for condition in range(8):
-        word = 0x01 | 3 << 6 | 0x7B << 14 | condition << 21 | 0x01 << 24
+        word = jump(3, condition)
         taken = []
         for x in xs:
             await core.coefs(coefs(x, P, Q))
@@ -117,10 +117,10 @@ async def copies(core):
     state[20] = 0.123
     await core.state(state)
     for label, word, read in (("no op, read s20", 0, None),
-                              ("0x14 s9 -> s20, read s20", 0x14 | 9 << 6 | 20 << 21, None),
-                              ("0x14 s9 -> s20, read x", 0x14 | 9 << 6 | 20 << 21, Src.X),
-                              ("0x16 s9 -> s20, read s20", 0x16 | 9 << 6 | 20 << 21, None),
-                              ("0x16 s9 -> s20, read x", 0x16 | 9 << 6 | 20 << 21, Src.X)):
+                              ("0x14 s9 -> s20, read s20", copy(0x14, 9, 20), None),
+                              ("0x14 s9 -> s20, read x", copy(0x14, 9, 20), Src.X),
+                              ("0x16 s9 -> s20, read s20", copy(0x16, 9, 20), None),
+                              ("0x16 s9 -> s20, read x", copy(0x16, 9, 20), Src.X)):
         body = [word] if word else []
         body.append(ins(5, b_src=read) if read else ins(5, b=20, b_src=Src.STATE))
         print(row(label, await points(core, program(body))), flush=True)
@@ -144,15 +144,15 @@ async def extra(core):
         print(row(f"A = s8 group, k={k}", await points(core, program([ins(6, a=8, a_src=Src.STATE, k=k)]))), flush=True)
     await core.coefs([1.0, 0.0, SCALE, REF, 3.0, 0.1, 1.0])
     loop = [ins(6, a=1), ins(6, a=4, to_r=False), ins(6, a=5, b_src=Src.R),
-            ins(8, a=6, b_src=Src.X, to_r=False), 0x01 | 0xFE << 6 | 0x7B << 14 | 0b101 << 21 | 0x01 << 24]
+            ins(8, a=6, b_src=Src.X, to_r=False), jump(0xFE, 0b101)]
     _, right = await run(core, program(loop))
     print(f"loop: r = 0, x = 3, three passes of r += 0.1 -> r = {np.median(right) / SCALE:+.4f}", flush=True)
     state = list(STATE)
     state[30] = 0.77
     await core.state(state, thread=1)
     await core.coefs(coefs(0.5))
-    copy = [0x14 | 30 << 6 | 1 << 14 | 20 << 21, ins(5, b=20, b_src=Src.STATE)]
-    print(row("0x14 from thread 1 s30", await points(core, program(copy))), flush=True)
+    body = [copy(0x14, 30, 20, thread=1), ins(5, b=20, b_src=Src.STATE)]
+    print(row("0x14 from thread 1 s30", await points(core, program(body))), flush=True)
 
 
 async def routes(core):
