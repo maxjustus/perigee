@@ -346,7 +346,7 @@ kern_return_t EnsembleDevice::addClockSource()
 void EnsembleDevice::ClockSourceChanged(uint64_t source)
 {
     if (source < kClockSourceCount) {
-        ivars->psoc->Send(set(kCommandClockSource, 0, uint8_t(source)));
+        ivars->psoc->Post(set(kCommandClockSource, 0, uint8_t(source)));
     }
 }
 
@@ -492,7 +492,7 @@ kern_return_t EnsembleDevice::HandleChangeSampleRate(double in_sample_rate)
     if (index < 0) {
         return kIOReturnBadArgument;
     }
-    ivars->psoc->Send(set(kCommandSampleRate, 0, uint8_t(index)));
+    ivars->psoc->Post(set(kCommandSampleRate, 0, uint8_t(index)));
     return applyRate(in_sample_rate);
 }
 

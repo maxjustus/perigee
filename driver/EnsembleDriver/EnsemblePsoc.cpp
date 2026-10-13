@@ -90,11 +90,22 @@ void EnsemblePsoc::Stop()
     }
 }
 
-void EnsemblePsoc::Send(const Message & message)
+kern_return_t EnsemblePsoc::Send(const Message & message)
+{
+    __block bool queued = false;
+    ivars->queue->DispatchSync(^{
+        queued = ivars->outbox.push(message);
+    });
+    return queued ? kIOReturnSuccess : kIOReturnNoSpace;
+}
+
+void EnsemblePsoc::Post(const Message & message)
 {
     const Message copy = message;
     ivars->queue->DispatchAsync(^{
-        ivars->outbox.push(copy);
+        if (!ivars->outbox.push(copy)) {
+            os_log(OS_LOG_DEFAULT, "EnsembleDriver: outbox full, message dropped");
+        }
     });
 }
 

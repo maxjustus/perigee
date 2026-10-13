@@ -19,7 +19,10 @@ public:
                         IODispatchQueue * queue) LOCALONLY;
     void Stop() LOCALONLY;
     kern_return_t Resume() LOCALONLY;
-    void Send(const Ensemble::Message & message) LOCALONLY;
+    // Send waits for the PSoC queue, which is the device work queue. Code
+    // that runs on that queue, such as the AudioDriverKit setters, uses Post.
+    kern_return_t Send(const Ensemble::Message & message) LOCALONLY;
+    void Post(const Ensemble::Message & message) LOCALONLY;
     void SetMonitorAttenuation(uint8_t attenuation) LOCALONLY;
     void AddListener(EnsembleUserClient * listener) LOCALONLY;
     void RemoveListener(EnsembleUserClient * listener) LOCALONLY;
