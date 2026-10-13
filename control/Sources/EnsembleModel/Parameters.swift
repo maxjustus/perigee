@@ -1,7 +1,16 @@
 public enum Kind: Equatable, Sendable {
     case bool
     case int(ClosedRange<Int>)
-    case choice([String])
+    case choice([Choice])
+}
+
+public struct Choice: Equatable, Sendable {
+    public let name: String
+    public let code: Int
+}
+
+private func choices(_ names: [String]) -> Kind {
+    .choice(names.enumerated().map { Choice(name: $0.element, code: $0.offset) })
 }
 
 public enum Wire: Equatable, Sendable {
@@ -18,19 +27,19 @@ public struct Parameter: Sendable {
     public let kind: Kind
 }
 
-public let parameters: [Parameter] = clock + outputs + inputs + mixers
+public let parameters: [Parameter] = clock + outputs + routing + inputs + mixers
 
 private let clock = [
     Parameter(path: "clock/sampleRate", command: 0x29, p1: 0,
-              kind: .choice(["44100", "48000", "88200", "96000", "176400", "192000"])),
+              kind: choices(["44100", "48000", "88200", "96000", "176400", "192000"])),
     Parameter(path: "clock/source", command: 0x2A, p1: 0,
-              kind: .choice(["Internal", "Word Clock", "S/PDIF Coax", "Optical 1", "Optical 2"])),
+              kind: choices(["Internal", "Word Clock", "S/PDIF Coax", "Optical 1", "Optical 2"])),
     Parameter(path: "clock/wordClockTermination", command: 0x2B, p1: 0, kind: .bool),
 ]
 
 private let outputs = [
     Parameter(path: "outputs/mainMode", command: 0x0F, p1: 0,
-              kind: .choice(["Line", "Stereo", "2 Speaker Sets", "3 Speaker Sets", "5.1", "7.1", "9.1"])),
+              kind: choices(["Line", "Stereo", "2 Speaker Sets", "3 Speaker Sets", "5.1", "7.1", "9.1"])),
 ] + ["headphone1", "headphone2", "speaker"].enumerated().flatMap { index, name in
     [
         Parameter(path: "outputs/\(name)/attenuation", command: 0x11, p1: UInt8(index), kind: .int(0...64)),
@@ -40,12 +49,23 @@ private let outputs = [
     ]
 }
 
+private let sources = Kind.choice(
+    (0..<18).map { Choice(name: "Playback \(2 * $0 + 1)-\(2 * $0 + 2)", code: 0x30 + 2 * $0) }
+        + (0..<6).map { Choice(name: "Mixer \($0 + 1)", code: 2 * $0) }
+        + (0..<4).map { Choice(name: "Inputs \(2 * $0 + 1)-\(2 * $0 + 2)", code: 0x60 + 2 * $0) }
+        + [Choice(name: "FX Send", code: 0x54)]
+)
+
+private let routing = (0..<17).map { pair in
+    Parameter(path: "routing/\(pair + 1)", command: 0x15, p1: UInt8(pair), kind: sources)
+}
+
 private let inputs = (0..<8).flatMap { channel in
     let prefix = "inputs/analog/\(channel + 1)"
     let p1 = UInt8(channel)
     return [
         Parameter(path: "\(prefix)/type", command: 0x01, p1: p1,
-                  kind: .choice(["+4dBu", "-10dBV", "Mic", "Instrument"])),
+                  kind: choices(["+4dBu", "-10dBV", "Mic", "Instrument"])),
         Parameter(path: "\(prefix)/micGain", command: 0x02, p1: p1, kind: .int(0...75)),
         Parameter(path: "\(prefix)/softLimit", command: 0x04, p1: p1, kind: .bool),
         Parameter(path: "\(prefix)/phantom", command: 0x05, p1: p1, kind: .bool),

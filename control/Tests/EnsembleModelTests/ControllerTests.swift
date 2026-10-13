@@ -128,6 +128,26 @@ func makeController() -> (Controller, FakeTransport, Broadcasts) {
     #expect(parameters.filter { $0.path.hasSuffix("/pan") }.count == 4 * 46)
 }
 
+@Test func routingSendsTheSourceCodeForADestination() {
+    let (controller, transport, _) = makeController()
+    _ = controller.handle(#"{"jsonrpc":"2.0","id":1,"method":"set","params":{"routing/2":"Playback 3-4"}}"#)
+    #expect(transport.sent == [[1, 0, word(1, 0x15, 1, 0x32)]])
+}
+
+@Test func routingReportShowsTheSourceName() {
+    let (controller, _, broadcasts) = makeController()
+    controller.receive(Report(type: 1, command: 0x15, p1: 15, p2: 0, data: [0x62]))
+    let changed = object(broadcasts.texts.last!)
+    #expect((changed["params"] as? [String: Any])?["routing/16"] as? String == "Inputs 3-4")
+}
+
+@Test func unknownSourceCodeStaysANumber() {
+    let (controller, _, broadcasts) = makeController()
+    controller.receive(Report(type: 1, command: 0x15, p1: 0, p2: 0, data: [0x7F]))
+    let changed = object(broadcasts.texts.last!)
+    #expect((changed["params"] as? [String: Any])?["routing/1"] as? Int == 0x7F)
+}
+
 @Test func reportDecodesFromAsyncArguments() {
     let args: [UInt64] = [2 | 0x41 << 8 | 0 << 16 | 0 << 24 | 3 << 32, 0xccbbaa]
     let report = Report(arguments: args)

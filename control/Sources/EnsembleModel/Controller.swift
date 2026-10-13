@@ -136,8 +136,8 @@ private func describe(_ parameter: Parameter) -> [String: Any] {
         return ["path": parameter.path, "kind": "bool"]
     case .int(let range):
         return ["path": parameter.path, "kind": "int", "min": range.lowerBound, "max": range.upperBound]
-    case .choice(let names):
-        return ["path": parameter.path, "kind": "choice", "choices": names]
+    case .choice(let choices):
+        return ["path": parameter.path, "kind": "choice", "choices": choices.map(\.name)]
     }
 }
 
@@ -147,8 +147,8 @@ private func json(_ value: Int, _ kind: Kind) -> Any {
         return value != 0
     case .int:
         return value
-    case .choice(let names):
-        return value < names.count ? names[value] : value
+    case .choice(let choices):
+        return choices.first { $0.code == value }?.name ?? value
     }
 }
 
@@ -162,9 +162,9 @@ private func encodeValue(_ value: Any, _ parameter: Parameter) throws -> Int {
         if let number = value as? Int, range.contains(number) {
             return number
         }
-    case .choice(let names):
-        if let name = value as? String, let index = names.firstIndex(of: name) {
-            return index
+    case .choice(let choices):
+        if let name = value as? String, let choice = choices.first(where: { $0.name == name }) {
+            return choice.code
         }
     }
     throw RPCError.invalidParams("bad value for \(parameter.path)")

@@ -44,6 +44,10 @@ The server sends two notifications:
 Mixer paths are `mixers/<1-4>/channels/<1-48>/{fader,mute,pan}`. A fader
 is 0 to 720 in 0.1 dB steps, with 600 at 0 dB. A pan is 0 to 127, with 64
 at the center.
+Routing paths are `routing/<1-17>`, one per output pair. The value is a
+source name: `Playback 1-2` to `Playback 35-36`, `Mixer 1` to `Mixer 6`,
+`Inputs 1-2` to `Inputs 7-8`, or `FX Send`. The physical names of the 17
+output pairs are unknown, so they stay numbered.
 
 ## Test
 
