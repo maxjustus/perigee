@@ -43,13 +43,17 @@ final class Device: Transport, @unchecked Sendable {
         terminationTimer = timer
     }
 
-    func send(_ words: [UInt32]) throws {
+    func send(_ words: [UInt32]) throws -> Bool {
         let kr = words.withUnsafeBytes {
             IOConnectCallStructMethod(connect, 0, $0.baseAddress, $0.count, nil, nil)
+        }
+        if kr == kIOReturnNoSpace {
+            return false
         }
         guard kr == KERN_SUCCESS else {
             throw DeviceError(description: String(format: "send: %#x", kr))
         }
+        return true
     }
 
     func mapMeters() throws -> UnsafeRawBufferPointer {

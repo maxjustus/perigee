@@ -59,7 +59,7 @@ header `1, 0`. Records follow, 4 bytes to a word, low byte first.
 | -32600 | The message is not an object with `"jsonrpc": "2.0"` and a string `method` |
 | -32601 | The method is unknown |
 | -32602 | A param, path, or value is not valid |
-| -32000 | The user client failed. `message` holds the error |
+| -32000 | The user client failed, or the driver outbox stayed full for 1 s. `message` holds the error |
 
 An error reply to -32700 or -32600 has `"id": null`.
 

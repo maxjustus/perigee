@@ -5,7 +5,17 @@ import Testing
 
 final class FakeTransport: Transport, @unchecked Sendable {
     var sent: [[UInt32]] = []
-    func send(_ words: [UInt32]) throws { sent.append(words) }
+    var full = 0
+    var attempts = 0
+    func send(_ words: [UInt32]) throws -> Bool {
+        attempts += 1
+        guard full == 0 else {
+            full -= 1
+            return false
+        }
+        sent.append(words)
+        return true
+    }
 }
 
 final class Broadcasts: @unchecked Sendable {
@@ -23,7 +33,7 @@ func word(_ b0: UInt32, _ b1: UInt32, _ b2: UInt32, _ b3: UInt32) -> UInt32 {
 func makeController() -> (Controller, FakeTransport, Broadcasts) {
     let transport = FakeTransport()
     let broadcasts = Broadcasts()
-    let controller = Controller(transport: transport) { broadcasts.texts.append($0) }
+    let controller = Controller(transport: transport, retryDelay: 0) { broadcasts.texts.append($0) }
     return (controller, transport, broadcasts)
 }
 
@@ -87,6 +97,22 @@ func makeController() -> (Controller, FakeTransport, Broadcasts) {
     let (controller, transport, _) = makeController()
     _ = controller.handle(#"{"jsonrpc":"2.0","id":4,"method":"raw.send","params":{"words":[1,0,4]}}"#)
     #expect(transport.sent == [[1, 0, 4]])
+}
+
+@Test func sendRetriesWhileTheDriverOutboxIsFull() {
+    let (controller, transport, _) = makeController()
+    transport.full = 2
+    let response = controller.handle(#"{"jsonrpc":"2.0","id":4,"method":"raw.send","params":{"words":[1,0,4]}}"#)
+    #expect(object(response!)["result"] as? Bool == true)
+    #expect(transport.sent == [[1, 0, 4]] && transport.attempts == 3)
+}
+
+@Test func sendFailsWhenTheDriverOutboxStaysFull() {
+    let (controller, transport, _) = makeController()
+    transport.full = .max
+    let response = controller.handle(#"{"jsonrpc":"2.0","id":4,"method":"raw.send","params":{"words":[1,0,4]}}"#)
+    #expect((object(response!)["error"] as? [String: Any])?["code"] as? Int == -32000)
+    #expect(transport.sent.isEmpty && transport.attempts == 100)
 }
 
 @Test func describeListsKindsAndRanges() {

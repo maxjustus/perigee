@@ -18,7 +18,7 @@ do {
                                                       subdirectory: "Public")!)
     try server.start(controller: controller, page: page, httpPort: httpPort, webSocketPort: webSocketPort)
     poller = MeterPoller(buffer: try device.mapMeters()) { controller.meters($0) }
-    try device.send([1, 0, 4])
+    try controller.send([1, 0, 4])
     print("ensemble-control: http://\(ProcessInfo.processInfo.hostName):\(httpPort)")
 } catch {
     FileHandle.standardError.write(Data("ensemble-control: \(error)\n".utf8))

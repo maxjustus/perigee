@@ -1,7 +1,8 @@
 import Foundation
 
 public protocol Transport: Sendable {
-    func send(_ words: [UInt32]) throws
+    /// Returns false if the driver outbox is full.
+    func send(_ words: [UInt32]) throws -> Bool
 }
 
 struct RPCError: Error {
@@ -13,6 +14,7 @@ struct RPCError: Error {
 
 public final class Controller: @unchecked Sendable {
     private let transport: Transport
+    private let retryDelay: TimeInterval
     private let broadcast: @Sendable (String) -> Void
     private let byPath = Dictionary(uniqueKeysWithValues: parameters.map { ($0.path, $0) })
     private let byKey = Dictionary(grouping: parameters.flatMap { parameter in
@@ -22,8 +24,10 @@ public final class Controller: @unchecked Sendable {
     private let lock = NSLock()
     private var values: [String: Int] = [:]
 
-    public init(transport: Transport, broadcast: @escaping @Sendable (String) -> Void) {
+    public init(transport: Transport, retryDelay: TimeInterval = 0.01,
+                broadcast: @escaping @Sendable (String) -> Void) {
         self.transport = transport
+        self.retryDelay = retryDelay
         self.broadcast = broadcast
     }
 
@@ -111,7 +115,7 @@ public final class Controller: @unchecked Sendable {
                     sendTargets(parameter).map { message(parameter, $0, value) }
                 }
             }
-            try messages.forEach(transport.send)
+            try messages.forEach(send)
             return true
         case "raw.send":
             guard let items = (params as? [String: Any])?["words"] as? [Any],
@@ -120,11 +124,24 @@ public final class Controller: @unchecked Sendable {
             else {
                 throw RPCError.invalidParams("raw.send takes words: 3 to 30 unsigned 32-bit integers")
             }
-            try transport.send(words)
+            try send(words)
             return true
         default:
             throw RPCError(code: -32601, message: "unknown method \(method)")
         }
+    }
+
+    // The dext empties its outbox every 10 ms, so 100 attempts wait about 1 s.
+    public func send(_ words: [UInt32]) throws {
+        for attempt in 1...100 {
+            if try transport.send(words) {
+                return
+            }
+            if attempt < 100 {
+                Thread.sleep(forTimeInterval: retryDelay)
+            }
+        }
+        throw RPCError(code: -32000, message: "driver outbox full")
     }
 
     // The caller holds the lock.
