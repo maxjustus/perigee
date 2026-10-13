@@ -25,22 +25,60 @@ Both listen on all interfaces, with no authentication.
 
 ## JSON-RPC methods
 
+Each WebSocket text message holds one JSON-RPC 2.0 request. The service
+does not support batch requests. If a request has no `id`, the service
+runs it and sends no reply.
+
 | Method | Params | Result |
 |--------|--------|--------|
-| `describe` | none | List of `{path, kind, min, max}` or `{path, kind, choices}` |
+| `describe` | none | List of `{path, kind}`, `{path, kind, min, max}`, or `{path, kind, choices}` |
 | `get` | none | Object of path: value, for every value reported so far |
 | `set` | Object of path: value | `true` after the commands are queued |
-| `raw.send` | `{words: [...]}`, 3 to 30 words | `true` |
+| `raw.send` | `{words: [...]}`, 3 to 30 unsigned 32-bit integers | `true` |
 
-`kind` is `bool`, `int`, or `choice`. A `choice` value is its name, for
-example `"96000"` for `clock/sampleRate`.
+`kind` is `bool`, `int`, or `choice`. Only an `int` has `min` and `max`.
+Only a `choice` has `choices`. In `set`, a `bool` value must be a JSON
+boolean. An `int` value must be a JSON integer from `min` to `max`. A
+`choice` value must be a name from `choices`, for example `"96000"` for
+`clock/sampleRate`. In `get` and `changed`, a choice value is its name.
+If the device reports a code with no name, the value is the integer code.
 
-The server sends two notifications:
+`set` checks every path and value before it sends a command. If one check
+fails, the service sends nothing. The result `true` does not confirm the
+change. `get` and `changed` show the new value after the dext reports the
+sent command. If the user client fails partway through a `set`, the
+earlier commands stay sent.
+
+`raw.send` sends the words to the PSoC unchanged. Words 0 and 1 are the
+header `1, 0`. Records follow, 4 bytes to a word, low byte first.
+`EnsembleModel/Wire.swift` encodes set and block records.
+
+| Code | Cause |
+|------|-------|
+| -32700 | The message is not valid JSON |
+| -32600 | The message is not an object with `"jsonrpc": "2.0"` and a string `method` |
+| -32601 | The method is unknown |
+| -32602 | A param, path, or value is not valid |
+| -32000 | The user client failed. `message` holds the error |
+
+An error reply to -32700 or -32600 has `"id": null`.
+
+The server sends three notifications:
 
 - `changed`: object of path: new value. The dext reports every sent set
   command and every front-panel change, so all clients get each change once.
 - `report`: a PSoC report with no parameter, as
-  `{type, command, p1, p2, data}`.
+  `{type, command, p1, p2, data}`. `type` 1 is a set record: `p2` is 0
+  and `data` holds one byte. `type` 2 is a block record with up to 100
+  bytes of `data`.
+- `meters`: peak levels as `{inputs, outputs, outputGroup, group2,
+  mixers}`, arrays of 30, 30, 4, 16, and 8 integers. `inputs` follows
+  mixer channels 1-30. `outputs` holds the 30 physical outputs.
+  `outputGroup` is Headphone 1 L/R, then Headphone 2 L/R. `group2` is
+  Playback 1-16 before the mixers.
+  `mixers` is the L/R master of each of the 4 mixers. Each value is
+  linear, with full scale at 16384: dBFS = 20 * log10(value / 16384).
+  The FPGA updates the meters 30 times a second.
 
 `EnsembleModel/Parameters.swift` defines the paths and their PSoC commands.
 Mixer paths are `mixers/<1-4>/channels/<n>/{fader,mute,pan}`. Channel
