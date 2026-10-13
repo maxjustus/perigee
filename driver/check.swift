@@ -9,7 +9,7 @@ func address(_ selector: AudioObjectPropertySelector,
 }
 
 func get<T>(_ object: AudioObjectID, _ selector: AudioObjectPropertySelector,
-            _ scope: AudioObjectPropertyScope = kAudioObjectPropertyScopeGlobal, _ initial: T) -> T {
+            _ scope: AudioObjectPropertyScope, _ initial: T) -> T {
     var value = initial
     var size = UInt32(MemoryLayout<T>.size)
     var addr = address(selector, scope)
@@ -22,10 +22,6 @@ func get<T>(_ object: AudioObjectID, _ selector: AudioObjectPropertySelector,
 func string(_ object: AudioObjectID, _ selector: AudioObjectPropertySelector) -> String {
     let value: Unmanaged<CFString>? = get(object, selector, kAudioObjectPropertyScopeGlobal, nil)
     return value?.takeRetainedValue() as String? ?? ""
-}
-
-func name(_ object: AudioObjectID) -> String {
-    string(object, kAudioObjectPropertyName)
 }
 
 func channels(_ device: AudioObjectID, _ scope: AudioObjectPropertyScope) -> Int {
@@ -51,7 +47,7 @@ func findEnsemble() -> AudioObjectID? {
     AudioObjectGetPropertyDataSize(AudioObjectID(kAudioObjectSystemObject), &addr, 0, nil, &size)
     var ids = [AudioObjectID](repeating: 0, count: Int(size) / 4)
     AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &addr, 0, nil, &size, &ids)
-    return ids.first { name($0) == "Ensemble" }
+    return ids.first { string($0, kAudioObjectPropertyName) == "Ensemble" }
 }
 
 guard let device = findEnsemble() else {
