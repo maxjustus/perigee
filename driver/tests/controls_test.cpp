@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 
 #include "Controls.h"
 
@@ -38,8 +39,16 @@ static void follow_clamps_each_monitor()
     CHECK(monitors[0] == 37 && monitors[1] == 0 && monitors[kSpeaker] == 30);
 }
 
+static void clock_sources_follow_the_vendor_order()
+{
+    CHECK(kClockSourceCount == 5);
+    CHECK(std::strcmp(kClockSourceNames[0], "Internal") == 0);
+    CHECK(std::strcmp(kClockSourceNames[4], "Optical 2") == 0);
+}
+
 int main()
 {
+    clock_sources_follow_the_vendor_order();
     attenuation_is_whole_decibels_below_zero();
     follow_moves_every_monitor_by_the_speaker_change();
     follow_clamps_each_monitor();

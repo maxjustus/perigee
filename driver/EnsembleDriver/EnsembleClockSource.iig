@@ -1,0 +1,26 @@
+#ifndef EnsembleClockSource_h
+#define EnsembleClockSource_h
+
+#include <AudioDriverKit/IOUserAudioSelectorControl.iig>
+
+using namespace AudioDriverKit;
+
+class EnsembleDevice;
+
+class EnsembleClockSource: public IOUserAudioSelectorControl
+{
+public:
+    virtual bool init(IOUserAudioDriver * in_driver,
+                      bool in_is_settable,
+                      IOUserAudioObjectPropertyElement in_control_element,
+                      IOUserAudioObjectPropertyScope in_control_scope,
+                      IOUserAudioClassID in_control_class_id) override LOCALONLY;
+    virtual void free() override LOCALONLY;
+
+    void SetDevice(EnsembleDevice * device) LOCALONLY;
+
+    virtual kern_return_t HandleChangeSelectedValues(const IOUserAudioSelectorValue * in_control_values,
+                                                     size_t in_num_values) override LOCALONLY;
+};
+
+#endif

@@ -3,6 +3,7 @@
 #include <DriverKit/IODMACommand.h>
 #include <AudioDriverKit/AudioDriverKit.h>
 
+#include "EnsembleClockSource.h"
 #include "EnsembleDevice.h"
 #include "EnsembleVolume.h"
 #include "Bar0.h"
@@ -40,6 +41,7 @@ struct EnsembleDevice_IVars {
     double reported_rate;
     Outbox outbox;
     OSSharedPtr<EnsembleVolume> volume;
+    OSSharedPtr<EnsembleClockSource> clock_source;
     uint8_t monitors[kMonitorOutputs];
     uint8_t monitors_known;
     int requested_volume;
@@ -69,6 +71,7 @@ bool EnsembleDevice::init(IOUserAudioDriver * in_driver,
 void EnsembleDevice::free()
 {
     if (ivars != nullptr) {
+        ivars->clock_source.reset();
         ivars->volume.reset();
         ivars->mailbox_action.reset();
         ivars->mailbox_timer.reset();
@@ -202,6 +205,10 @@ kern_return_t EnsembleDevice::Attach(IOPCIDevice * pci, uint8_t bar0)
     if (ret != kIOReturnSuccess) {
         return ret;
     }
+    ret = addClockSource();
+    if (ret != kIOReturnSuccess) {
+        return ret;
+    }
 
     uint32_t msi = 0;
     ret = findMSI(pci, &msi);
@@ -241,6 +248,33 @@ kern_return_t EnsembleDevice::addVolume()
     }
     ivars->volume->SetDevice(this);
     return AddControl(ivars->volume.get());
+}
+
+kern_return_t EnsembleDevice::addClockSource()
+{
+    ivars->clock_source = OSSharedPtr(OSTypeAlloc(EnsembleClockSource), OSNoRetain);
+    if (ivars->clock_source.get() == nullptr ||
+        !ivars->clock_source->init(ivars->driver.get(), true, IOUserAudioObjectPropertyElementMain,
+                                   IOUserAudioObjectPropertyScope::Global,
+                                   IOUserAudioClassID::ClockSourceControl)) {
+        return kIOReturnNoMemory;
+    }
+    IOUserAudioSelectorValueDescription sources[kClockSourceCount];
+    for (uint32_t i = 0; i < kClockSourceCount; i++) {
+        sources[i] = {i, OSSharedPtr(OSString::withCString(kClockSourceNames[i]), OSNoRetain)};
+    }
+    ivars->clock_source->AddControlValueDescriptions(sources, kClockSourceCount);
+    const IOUserAudioSelectorValue internal = 0;
+    ivars->clock_source->SetCurrentSelectedValues(&internal, 1);
+    ivars->clock_source->SetDevice(this);
+    return AddControl(ivars->clock_source.get());
+}
+
+void EnsembleDevice::ClockSourceChanged(uint64_t source)
+{
+    if (source < kClockSourceCount) {
+        Send(set(kCommandClockSource, 0, uint8_t(source)));
+    }
 }
 
 void EnsembleDevice::VolumeChanged(float in_decibels)
@@ -412,6 +446,9 @@ void IMPL(EnsembleDevice, MailboxTimerOccurred)
             if (report.p1 == kSpeaker) {
                 ivars->volume->SetDecibelValue(decibels(report.data[0]));
             }
+        } else if (report.command == kCommandClockSource && report.data[0] < kClockSourceCount) {
+            const IOUserAudioSelectorValue source = report.data[0];
+            ivars->clock_source->SetCurrentSelectedValues(&source, 1);
         }
     })) {
     }
