@@ -139,7 +139,7 @@ void IMPL(EnsemblePsoc, PollOccurred)
     auto handle = [&](const Report & report) {
         OSArray * listeners = ivars->listeners.get();
         for (uint32_t i = 0; i < listeners->getCount(); i++) {
-            OSDynamicCast(EnsembleUserClient, listeners->getObject(i))->Report(report);
+            OSRequiredCast(EnsembleUserClient, listeners->getObject(i))->Report(report);
         }
         if (report.command == kCommandOutputAttenuation && report.p1 < kMonitorOutputs) {
             ivars->monitors.report(report.p1, report.data[0]);
