@@ -149,9 +149,9 @@ A client sends a text message `{"channel": n}` to `ws://<host>:8739`.
 `n` is 1 to 34 in the capture order of `driver/EnsembleDriver/Controls.h`:
 Analog 1-8, Front Mic L and R, Guitar 1-2, S/PDIF L and R, Optical 1-16,
 Mix 1 L and R, then FX Send L and R. A new message changes the channel.
-For each CoreAudio IO cycle, the service sends one binary message: the
-nominal sample rate as a little-endian uint32, then the samples as
-little-endian int16. The service runs CoreAudio input only while a client
+After each CoreAudio IO cycle, the service sends the new samples in
+binary messages: the nominal sample rate as a little-endian uint32, then
+the samples as little-endian int16. The service runs CoreAudio input only while a client
 has a channel.
 
 macOS treats the input as a microphone. At the first capture, macOS asks

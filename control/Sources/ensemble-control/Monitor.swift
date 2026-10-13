@@ -5,11 +5,20 @@ import Network
 
 final class Monitor: @unchecked Sendable {
     private let queue = DispatchQueue(label: "monitor")
+    private let ready: DispatchSourceUserDataAdd
     private var listener: NWListener?
     private var clients: [ObjectIdentifier: (connection: NWConnection, channel: Int)] = [:]
     private var device = AudioObjectID(kAudioObjectUnknown)
     private var rate: UInt32 = 0
+    private var channels = 0
+    private var ring: SampleRing?
     private var proc: AudioDeviceIOProcID?
+
+    init() {
+        ready = DispatchSource.makeUserDataAddSource(queue: queue)
+        ready.setEventHandler { [self] in publish() }
+        ready.activate()
+    }
 
     func start(port: UInt16) throws {
         let listener = try webSocketListener(port: port)
@@ -58,17 +67,19 @@ final class Monitor: @unchecked Sendable {
             var address = globalAddress(kAudioDevicePropertyNominalSampleRate)
             AudioObjectAddPropertyListenerBlock(device, &address, queue) { [self] _, _ in readRate() }
             readRate()
+            channels = inputChannels(device)
+            ring = SampleRing(capacity: 16384 * channels)
         }
         // The IOProc runs on the device's IO thread. AudioDeviceStop on this queue waits for that thread,
         // so the IOProc must not wait for this queue.
-        AudioDeviceCreateIOProcIDWithBlock(&proc, device, nil) { [self] _, input, _, _, _ in
-            guard let buffer = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: input)).first,
-                  let samples = buffer.mData else {
+        AudioDeviceCreateIOProcIDWithBlock(&proc, device, nil) { [ring, channels, ready] _, input, _, _, _ in
+            guard let ring, let buffer = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: input)).first,
+                  Int(buffer.mNumberChannels) == channels, let samples = buffer.mData else {
                 return
             }
-            let data = Data(bytes: samples, count: Int(buffer.mDataByteSize))
-            let channels = Int(buffer.mNumberChannels)
-            queue.async { [self] in publish(data, channels) }
+            ring.write(UnsafeBufferPointer(start: samples.assumingMemoryBound(to: Float.self),
+                                           count: Int(buffer.mDataByteSize) / MemoryLayout<Float>.size))
+            ready.add(data: 1)
         }
         AudioDeviceStart(device, proc)
     }
@@ -81,9 +92,8 @@ final class Monitor: @unchecked Sendable {
         rate = UInt32(value)
     }
 
-    private func publish(_ data: Data, _ channels: Int) {
-        data.withUnsafeBytes { bytes in
-            let interleaved = bytes.bindMemory(to: Float.self)
+    private func publish() {
+        ring?.read { interleaved in
             for (connection, channel) in clients.values where (0..<channels).contains(channel) {
                 let frame = monitorFrame(rate: rate, interleaved: interleaved, channels: channels, channel: channel)
                 sendMessage(connection, frame, .binary)
@@ -115,6 +125,19 @@ private func findEnsemble() -> AudioObjectID? {
         AudioObjectGetPropertyData(device, &address, 0, nil, &size, &name)
         return name?.takeRetainedValue() as String? == "Ensemble"
     }
+}
+
+private func inputChannels(_ device: AudioObjectID) -> Int {
+    var address = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyStreamConfiguration,
+                                             mScope: kAudioObjectPropertyScopeInput,
+                                             mElement: kAudioObjectPropertyElementMain)
+    var size: UInt32 = 0
+    AudioObjectGetPropertyDataSize(device, &address, 0, nil, &size)
+    let list = UnsafeMutableRawPointer.allocate(byteCount: Int(size), alignment: MemoryLayout<AudioBufferList>.alignment)
+    defer { list.deallocate() }
+    AudioObjectGetPropertyData(device, &address, 0, nil, &size, list)
+    return UnsafeMutableAudioBufferListPointer(list.assumingMemoryBound(to: AudioBufferList.self))
+        .reduce(0) { $0 + Int($1.mNumberChannels) }
 }
 
 private func globalAddress(_ selector: AudioObjectPropertySelector) -> AudioObjectPropertyAddress {

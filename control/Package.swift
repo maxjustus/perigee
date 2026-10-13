@@ -6,7 +6,7 @@ let infoPlist = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appe
 
 let package = Package(
     name: "EnsembleControl",
-    platforms: [.macOS(.v14)],
+    platforms: [.macOS(.v15)],
     targets: [
         .target(name: "EnsembleModel"),
         .executableTarget(name: "ensemble-control", dependencies: ["EnsembleModel"], resources: [.copy("Public")],
