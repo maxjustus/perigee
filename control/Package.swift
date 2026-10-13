@@ -1,12 +1,17 @@
 // swift-tools-version:6.0
+import Foundation
 import PackageDescription
+
+let infoPlist = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("Info.plist").path
 
 let package = Package(
     name: "EnsembleControl",
     platforms: [.macOS(.v14)],
     targets: [
         .target(name: "EnsembleModel"),
-        .executableTarget(name: "ensemble-control", dependencies: ["EnsembleModel"], resources: [.copy("Public")]),
+        .executableTarget(name: "ensemble-control", dependencies: ["EnsembleModel"], resources: [.copy("Public")],
+                          linkerSettings: [.unsafeFlags(["-Xlinker", "-sectcreate", "-Xlinker", "__TEXT",
+                                                         "-Xlinker", "__info_plist", "-Xlinker", infoPlist])]),
         .testTarget(name: "EnsembleModelTests", dependencies: ["EnsembleModel"]),
     ]
 )

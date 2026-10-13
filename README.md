@@ -6,8 +6,9 @@ this model.
 
 - `driver/`: a DriverKit extension (dext). It publishes the Ensemble to
   CoreAudio. See `driver/README.md`.
-- `control/`: the control service. It gives a web UI on port 8737 and
-  JSON-RPC on port 8738. See `control/README.md`.
+- `control/`: the control service. It gives a web UI on port 8737,
+  JSON-RPC on port 8738, and a remote monitor stream on port 8739. See
+  `control/README.md`.
 - `NOTES-vendor-driver.md`: the device protocol.
 - [Firmware map](docs/firmware/README.md): offline analysis, image checks,
   and unresolved recovery requirements.

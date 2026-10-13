@@ -3,7 +3,9 @@ import Foundation
 
 let httpPort: UInt16 = 8737
 let webSocketPort: UInt16 = 8738
+let monitorPort: UInt16 = 8739
 var poller: MeterPoller?
+let monitor = Monitor()
 
 do {
     let device = try Device(queue: DispatchQueue(label: "device"))
@@ -17,6 +19,7 @@ do {
     let page = try Data(contentsOf: Bundle.module.url(forResource: "index", withExtension: "html",
                                                       subdirectory: "Public")!)
     try server.start(controller: controller, page: page, httpPort: httpPort, webSocketPort: webSocketPort)
+    try monitor.start(port: monitorPort)
     poller = MeterPoller(buffer: try device.mapMeters()) { controller.meters($0) }
     try controller.send([1, 0, 4])
     print("ensemble-control: http://\(ProcessInfo.processInfo.hostName):\(httpPort)")

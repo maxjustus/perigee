@@ -8,11 +8,7 @@ final class Server: @unchecked Sendable {
     private var listeners: [NWListener] = []
 
     func start(controller: Controller, page: Data, httpPort: UInt16, webSocketPort: UInt16) throws {
-        let webSocket = NWProtocolWebSocket.Options()
-        webSocket.autoReplyPing = true
-        let parameters = NWParameters.tcp
-        parameters.defaultProtocolStack.applicationProtocols.insert(webSocket, at: 0)
-        let rpc = try NWListener(using: parameters, on: NWEndpoint.Port(rawValue: webSocketPort)!)
+        let rpc = try webSocketListener(port: webSocketPort)
         rpc.newConnectionHandler = { [self] connection in
             clients[ObjectIdentifier(connection)] = connection
             connection.stateUpdateHandler = { [self] state in
@@ -67,14 +63,25 @@ final class Server: @unchecked Sendable {
     }
 
     private func send(_ connection: NWConnection, _ text: String) {
-        let metadata = NWProtocolWebSocket.Metadata(opcode: .text)
-        let context = NWConnection.ContentContext(identifier: "text", metadata: [metadata])
-        connection.send(content: Data(text.utf8), contentContext: context, isComplete: true,
-                        completion: .contentProcessed { _ in })
+        sendMessage(connection, Data(text.utf8), .text)
     }
 
     private func drop(_ connection: NWConnection) {
         clients[ObjectIdentifier(connection)] = nil
         connection.cancel()
     }
+}
+
+func webSocketListener(port: UInt16) throws -> NWListener {
+    let webSocket = NWProtocolWebSocket.Options()
+    webSocket.autoReplyPing = true
+    let parameters = NWParameters.tcp
+    parameters.defaultProtocolStack.applicationProtocols.insert(webSocket, at: 0)
+    return try NWListener(using: parameters, on: NWEndpoint.Port(rawValue: port)!)
+}
+
+func sendMessage(_ connection: NWConnection, _ data: Data, _ opcode: NWProtocolWebSocket.Opcode) {
+    let metadata = NWProtocolWebSocket.Metadata(opcode: opcode)
+    let context = NWConnection.ContentContext(identifier: "message", metadata: [metadata])
+    connection.send(content: data, contentContext: context, isComplete: true, completion: .contentProcessed { _ in })
 }
