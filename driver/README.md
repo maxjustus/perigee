@@ -14,7 +14,8 @@ records the design.
 
 `make install` in the repository root builds, activates, and switches the
 Ensemble to the dext. `README.md` describes it. `driver/build.sh` only
-builds. It prints the path of the app.
+builds. It prints the path of the app. The dext build fails on a compiler
+warning or a Clang Static Analyzer finding.
 
 The dext personality uses the vendor kext's `IOMatchCategory` with a higher
 `IOProbeScore`. IOKit compares drivers only when it matches the device. At

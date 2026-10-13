@@ -34,6 +34,9 @@ targets:
         CLANG_CXX_LANGUAGE_STANDARD: gnu++20
         GCC_TREAT_WARNINGS_AS_ERRORS: YES
         WARNING_CFLAGS: -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wimplicit-fallthrough -Wno-unused-parameter
+        RUN_CLANG_STATIC_ANALYZER: YES
+        CLANG_STATIC_ANALYZER_MODE: deep
+        CLANG_ANALYZER_OTHER_FLAGS: -analyzer-werror
         OTHER_LDFLAGS: -framework DriverKit -framework PCIDriverKit -framework AudioDriverKit
         PRODUCT_BUNDLE_IDENTIFIER: dev.ensemble.Host.Driver
         PRODUCT_NAME: $(PRODUCT_BUNDLE_IDENTIFIER)
