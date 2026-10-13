@@ -1,3 +1,4 @@
+import EnsembleIO
 import EnsembleModel
 import Foundation
 
@@ -23,7 +24,7 @@ do {
     try server.start(controller: controller, page: page, httpPort: httpPort, webSocketPort: webSocketPort)
     try monitor.start(port: monitorPort)
     poller = MeterPoller(buffer: try device.mapMeters()) { controller.meters($0) }
-    try controller.send([1, 0, 4])
+    try controller.send(getAll)
     print("ensemble-control: http://\(ProcessInfo.processInfo.hostName):\(httpPort)")
 } catch {
     FileHandle.standardError.write(Data("ensemble-control: \(error)\n".utf8))

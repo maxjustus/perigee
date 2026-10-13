@@ -46,10 +46,11 @@ prints its channels, rate, and safety offsets, and runs 5 s of IO with
 silent output. Expect 34 inputs, 36 outputs, about 48000 frames/s, and
 0 overloads.
 
-`driver/build/ensemblectl getall` opens the driver's user client, sends a
-Get-all, and prints every PSoC report for 2 s. `ensemblectl set <command>
-<p1> <value>` sends one type-1 command, for example `set 0x12 2 1` to mute
-the speaker output.
+`make service` in the repository root builds
+`control/.build/release/ensemblectl`. `ensemblectl getall` opens the
+driver's user client, sends a Get-all, and prints every PSoC report for
+2 s. `ensemblectl set <command> <p1> <value>` sends one type-1 command,
+for example `set 0x12 2 1` to mute the speaker output.
 
 After a PSoC restart, the dext sends each subscriber a report of type 5
 with no data, and then sends a Get-all. The vendor kext sends the same

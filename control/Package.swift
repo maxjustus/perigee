@@ -9,9 +9,12 @@ let package = Package(
     platforms: [.macOS(.v15)],
     targets: [
         .target(name: "EnsembleModel"),
-        .executableTarget(name: "ensemble-control", dependencies: ["EnsembleModel"], resources: [.copy("Public")],
+        .target(name: "EnsembleIO", dependencies: ["EnsembleModel"]),
+        .executableTarget(name: "ensemble-control", dependencies: ["EnsembleIO", "EnsembleModel"],
+                          resources: [.copy("Public")],
                           linkerSettings: [.unsafeFlags(["-Xlinker", "-sectcreate", "-Xlinker", "__TEXT",
                                                          "-Xlinker", "__info_plist", "-Xlinker", infoPlist])]),
+        .executableTarget(name: "ensemblectl", dependencies: ["EnsembleIO", "EnsembleModel"]),
         .testTarget(name: "EnsembleModelTests", dependencies: ["EnsembleModel"]),
     ]
 )

@@ -3,6 +3,7 @@
 
 host := driver/build/Build/Products/Debug/EnsembleHost.app/Contents/MacOS/EnsembleHost
 service := control/.build/release/ensemble-control
+ctl := control/.build/release/ensemblectl
 agent := $(HOME)/Library/LaunchAgents/dev.ensemble.control.plist
 log := $(HOME)/Library/Logs/ensemble-control.log
 apps := $(HOME)/Applications
@@ -38,4 +39,5 @@ status:
 
 service:
 	cd control && env -u CC -u CXX -u LLVM_CONFIG swift build -c release
-	codesign --force --sign - --entitlements control/ensemble-control.entitlements $(service)
+	codesign --force --sign - --entitlements control/user-client.entitlements $(service)
+	codesign --force --sign - --entitlements control/user-client.entitlements $(ctl)

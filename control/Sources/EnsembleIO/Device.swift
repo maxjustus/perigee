@@ -6,20 +6,20 @@ struct DeviceError: Error, CustomStringConvertible {
     let description: String
 }
 
-final class Device: Transport, @unchecked Sendable {
+public final class Device: Transport, @unchecked Sendable {
     private let service: io_service_t
     private let connect: io_connect_t
     private let port: IONotificationPortRef
     private var onReport: ((Report) -> Void)?
     private var onTerminated: (() -> Void)?
 
-    init(queue: DispatchQueue) throws {
+    public init(queue: DispatchQueue) throws {
         service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceNameMatching("EnsembleDriver"))
         guard service != 0 else {
             throw DeviceError(description: "no EnsembleDriver in the IORegistry")
         }
         var connect: io_connect_t = 0
-        let kr = IOServiceOpen(service, mach_task_self_, 1, &connect)
+        let kr = IOServiceOpen(service, mach_task_self_, clientType, &connect)
         guard kr == KERN_SUCCESS else {
             throw DeviceError(description: String(format: "IOServiceOpen: %#x", kr))
         }
@@ -31,7 +31,7 @@ final class Device: Transport, @unchecked Sendable {
         IONotificationPortSetDispatchQueue(port, queue)
     }
 
-    func watchTermination(_ onTerminated: @escaping () -> Void) throws {
+    public func watchTermination(_ onTerminated: @escaping () -> Void) throws {
         self.onTerminated = onTerminated
         let callback: IOServiceInterestCallback = { refcon, _, message, _ in
             guard let refcon, message == kIOMessageServiceIsTerminated else { return }
@@ -45,9 +45,9 @@ final class Device: Transport, @unchecked Sendable {
         }
     }
 
-    func send(_ words: [UInt32]) throws -> Bool {
+    public func send(_ words: [UInt32]) throws -> Bool {
         let kr = words.withUnsafeBytes {
-            IOConnectCallStructMethod(connect, 0, $0.baseAddress, $0.count, nil, nil)
+            IOConnectCallStructMethod(connect, selectorSend, $0.baseAddress, $0.count, nil, nil)
         }
         if kr == kIOReturnNoSpace {
             return false
@@ -58,17 +58,17 @@ final class Device: Transport, @unchecked Sendable {
         return true
     }
 
-    func mapMeters() throws -> UnsafeRawBufferPointer {
+    public func mapMeters() throws -> UnsafeRawBufferPointer {
         var address: mach_vm_address_t = 0
         var size: mach_vm_size_t = 0
-        let kr = IOConnectMapMemory64(connect, 0, mach_task_self_, &address, &size, IOOptionBits(kIOMapAnywhere))
+        let kr = IOConnectMapMemory64(connect, memoryMeters, mach_task_self_, &address, &size, IOOptionBits(kIOMapAnywhere))
         guard kr == KERN_SUCCESS, let base = UnsafeRawPointer(bitPattern: UInt(address)) else {
             throw DeviceError(description: String(format: "map meters: %#x", kr))
         }
         return UnsafeRawBufferPointer(start: base, count: Int(size))
     }
 
-    func subscribe(_ onReport: @escaping (Report) -> Void) throws {
+    public func subscribe(_ onReport: @escaping (Report) -> Void) throws {
         self.onReport = onReport
         let machPort = IONotificationPortGetMachPort(port)
         var limits = mach_port_limits_t(mpl_qlimit: mach_port_msgcount_t(MACH_PORT_QLIMIT_MAX))
@@ -87,13 +87,19 @@ final class Device: Transport, @unchecked Sendable {
         var reference = [UInt64](repeating: 0, count: Int(kOSAsyncRef64Count))
         reference[Int(kIOAsyncCalloutFuncIndex)] = UInt64(UInt(bitPattern: unsafeBitCast(callback, to: UnsafeRawPointer.self)))
         reference[Int(kIOAsyncCalloutRefconIndex)] = UInt64(UInt(bitPattern: Unmanaged.passUnretained(self).toOpaque()))
-        let kr = IOConnectCallAsyncScalarMethod(connect, 1, machPort, &reference, UInt32(kOSAsyncRef64Count),
+        let kr = IOConnectCallAsyncScalarMethod(connect, selectorSubscribe, machPort, &reference, UInt32(kOSAsyncRef64Count),
                                                 nil, 0, nil, nil)
         guard kr == KERN_SUCCESS else {
             throw DeviceError(description: String(format: "subscribe: %#x", kr))
         }
     }
 }
+
+// These match EnsembleUserClient.cpp. EnsembleDriver.cpp opens that client for any type but the HAL's.
+private let clientType: UInt32 = 1
+private let selectorSend: UInt32 = 0
+private let selectorSubscribe: UInt32 = 1
+private let memoryMeters: UInt32 = 0
 
 // IOMessage.h defines it as iokit_common_msg(0x010), a macro that Swift does not import.
 private let kIOMessageServiceIsTerminated: UInt32 = 0xE000_0010
