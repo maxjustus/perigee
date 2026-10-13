@@ -21,6 +21,17 @@ The unit is a PCIe endpoint behind a Thunderbolt bridge. The FPGA exposes one
 memory BAR (BAR0). A PSoC microcontroller handles all device settings. The
 FPGA moves audio by DMA into host memory.
 
+The vendor updater (`Apogee Firmware Updater.app`) holds the FPGA and PSoC
+images, and they identify the parts:
+
+| Part | Evidence |
+|------|----------|
+| FPGA: Intel (Altera) Cyclone V GX 5CGXC3 | `E2FPGA.bin` holds 14,510,912 bits. The Cyclone V datasheet (CV-51002, table 63) lists this uncompressed .rbf size for the C3 only. The GX variants carry the PCIe hard IP. An Audiofader review of the unit also names a Cyclone V |
+| Microcontroller: Cypress PSoC 5LP, Arm Cortex-M3 | `EnsemblePSoC.cyacd` header: silicon ID 0x2E12F069. The application starts at flash address 0x10000 |
+| PSoC to FPGA link | The PSoC External Memory Interface, 8 bits wide, at 0x6080_0000 (8.6) |
+
+`scripts/psoc-firmware.py` disassembles the PSoC firmware.
+
 Two host components exist:
 
 | Component | Role |
@@ -385,7 +396,7 @@ Buffer layout (`Ensemble2AudioDevice::CopyMeterData`):
 | 0x7C | 4 * 2 | Headphone 1 L/R, Headphone 2 L/R (measured by routing a tone to destinations 15 and 16) |
 | 0x84 | 16 * 2 | Playback 1-16, before the mixers (measured with a tone per playback channel) |
 | 0xA4 | 8 * 2 | Mixer master outputs, 4 stereo mixers |
-| 0xB4 | n * 2 | DSP core meters, present if `numHostMeters > 88` |
+| 0xB4 | n * 2 | DSP core meters, present if `numHostMeters > 88`. The Ensemble FPGA reports 88 (8.6) |
 
 Ensemble reports 88 host meters, so the buffer is 4 + 88 * 2 = 0xB4
 bytes. The HAL thread polls byte 0 every 5 ms and copies the block when the
@@ -580,10 +591,10 @@ the value in `data[0]`. A command with two arguments sends `p1` and
 | 0xA0 | OpticalIsSubMix | 1 | bool | 1 only with a second linked unit |
 | 0xD0 | DSPCoreWriteCode | 2 | words in this chunk, 1 to 23 | p2 = start address. data = first-chunk flag, last-chunk flag, thread, total words, then the words |
 | 0xD1 | DSPCoreWriteCoefficients | 2 | as 0xD0 | as 0xD0 |
-| 0xD3 | DSPCoreRouting | 2 | input index in record order (5.10) | p2 = 0. data = DSP I/O channel, DSP I/O channel, 1 on or 0 off. The Ensemble HAL sends the same I/O channel twice |
-| 0xD4 | DSPCoreWriteStateInit | 2 | as 0xD0 | as 0xD0 |
+| 0xD3 | DSPCoreRouting | 2 | input index in record order (5.10) | p2 = 0. data = DSP input channel, DSP output channel, mode. Mode bit 0 sends the DSP output to the mixers. Bits 0 and 1 together also send it to the record channel (8.6). The Ensemble HAL sends mode 0 or 1, with the same channel twice |
+| 0xD4 | DSPCoreWriteStateInit | 2 | as 0xD0 | as 0xD0. Replaces all 256 state words of the thread (8.2) |
 | 0xD6 | DSPCoreErase | 2 | memory: 0 code, 1 coefficients, 2 state | p2 = start address. data = 1, 1, thread, word count |
-| 0xD7 | DSPCoreHaltResume | 2 | 0 halt, 1 resume | p2 = start address. data = 0, 0, thread, word count. Resume-all sends p1 = 1 and all other bytes 0 |
+| 0xD7 | DSPCoreHaltResume | 2 | 0 halt, 1 resume | Halt: p2 = start address, data = 0, 0, thread, word count. Resume clears every halt and ignores the other bytes |
 
 Section 8 describes the DSP core and its commands 0xD0 to 0xD7.
 
@@ -951,7 +962,7 @@ run on it. The HAL plugin holds the FX programs, links them into the core
 memory, and sends them with commands 0xD0 to 0xD7 (5.6). The unit answers
 a Get-all with one 0xD2 version report.
 
-Source: the arm64 slice of the HAL plugin, and tests on the unit (8.6).
+Source: the arm64 slice of the HAL plugin, and tests on the unit (8.7).
 Addresses in this section are arm64 addresses. `scripts/dsp-programs.cpp`
 prints the FX programs.
 
@@ -970,7 +981,7 @@ Terms:
 | Threads | 16 | `DSPCoreMemoryBlock` rejects thread 0x10 and higher. `Ensemble2Command::DSPCoreEraseAll` erases threads 0 to 15 |
 | Memories | Code (0), coefficients (1), state (2), per thread | Memory argument of 0xD6 |
 | Memory size | 256 words of 32 bits, per memory and thread | `DSPCoreMemoryBlock` rejects offsets 0x100 and higher |
-| DSP I/O channels | 16 | `DSPCoreResourceManager` allocates channels 0 to 15. The instruction fields are 6 bits |
+| DSP I/O channels | 16 | `DSPCoreResourceManager` allocates channels 0 to 15. The instruction fields are 6 bits. In the FPGA routing matrix, DSP input n is destination 0xC0 + n and DSP output n is source 0x70 + n (8.6) |
 | Racks | 30, one per input in record order (5.10) | `Ensemble2AudioDevice::DSPCoreNumberOfHardwareInputs` |
 | Cycle budget | `floor(125e6 / (16 * fs))` per thread and sample: 177 at 44.1 kHz, 162 at 48 kHz, 81 at 96 kHz | `DSPController::estimatedDSPCycleCount` @0x62238. The unit reports 162 at 48 kHz |
 
@@ -994,9 +1005,10 @@ offset in bits 13:6.
 5. Write the initial state (0xD4), if the fragment has state.
 6. Write the coefficients (0xD1).
 
-`FXFragment::load` sends no resume. The caller that resumes the core is
-unverified. `FXFragment::unload` halts the code range, erases it with 0xD6,
-and releases the three blocks.
+`FXFragment::load` sends no resume. `FXProcessor::load` sends it after it
+loads all fragments of an FX: `FXFragment::resumeAll` calls the device
+resume-all (vtable slot 0x28). `FXFragment::unload` halts the code range,
+erases it with 0xD6, and releases the three blocks.
 
 Each transfer goes out in chunks of at most 23 words. A coefficient change
 sends only the words from the first to the last changed coefficient
@@ -1006,10 +1018,16 @@ Coefficients go on the wire as IEEE 754 single-precision bit patterns.
 `FXFragment::setCoefficients` passes its `float` array to 0xD1 without
 conversion.
 
-Do not use 0xD4 to change single words while a program runs. A one-word
-write changed other state words in the thread, also while the thread was
-halted (8.6). The HAL uses 0xD4 only to fill the state block of a new
-fragment.
+A 0xD4 write goes through a 256-word staging buffer in the FPGA (8.6). The
+PSoC puts word i of the transfer at staging word i. After the last chunk,
+the FPGA copies the whole staging buffer into the state memory of the
+thread, rotated by the start address: `state[(start + j) mod 256] =
+staging[j]`. It ignores the count. So every 0xD4 write replaces all state
+words of the thread. A 255-word write from address 0 sets words 0 to 254
+as given. To change one word, write all 255 words again. The HAL writes
+only the zero-filled block of a new fragment, which must also overwrite the
+state of other fragments in the same thread. That last point follows from
+the rule and is not tested.
 
 ### 8.3 Instruction word
 
@@ -1019,7 +1037,7 @@ cycle budget do not run. Coefficient and state words are IEEE 754
 single-precision floats. The core has two result registers, r and x.
 
 The HAL relocation functions (`TransformInPlace_*`, @0x94084 to @0x943f8)
-give the address fields. The tests on the unit (8.6) give the other fields
+give the address fields. The tests on the unit (8.7) give the other fields
 and the opcodes. `scripts/dsp/isa.py` repeats the tests.
 
 Arithmetic instructions, opcodes 0x04 to 0x0A, 0x0C to 0x13, and 0x26 to
@@ -1031,7 +1049,7 @@ Arithmetic instructions, opcodes 0x04 to 0x0A, 0x0C to 0x13, and 0x26 to
 | 21:14 | Operand B: state offset |
 | 23:22 | A select: 0 coefficient, 1 state, 2 r, 3 x |
 | 25:24 | B select: 0 zero, 1 state, 2 r, 3 x |
-| 27:26 | k. A state operand B is a circular group of 2^k words |
+| 27:26 | k. A state operand, A or B, is a circular group of 2^k words |
 | 30 | Destination: 1 r, 0 x |
 | 31 | Also writes the result to offset 0 of the operand B group |
 
@@ -1053,6 +1071,9 @@ words for its largest k (`FXFragment::sizeMaxStateMode` @0x256e4 returns
 | 0x26 | max(A, B) |
 | 0x27 | min(A, B) |
 | 0x28 | max(\|A\|, \|B\|) |
+| 0x29 | min(\|A\|, \|B\|) |
+| 0x13 | \|B\| |
+| 0x2A | A |
 | 0x0C, then 0x0E | e^A |
 | 0x0F, then 0x11 | ln A |
 | 0x09, then 0x2B | B / A |
@@ -1061,20 +1082,28 @@ words for its largest k (`FXFragment::sizeMaxStateMode` @0x256e4 returns
 Both instructions of a pair take the same operands, as in the vendor
 programs. The first one leaves r and x unchanged. 0x0E, 0x11, or 0x2B alone
 acts on the product A × B of the previous instruction. After an add with
-B = zero, 0x0E gave e^0 = 1.
+B = zero, 0x0E gave e^0 = 1. The vendor programs do not use 0x13, 0x29, or
+0x2A.
+
+The pairs match the latencies of the Altera floating-point IP cores
+(UG-01058). With 16 threads, each instruction of a thread has 16 clocks.
+Single-precision ALTFP_MULT (5 to 11 clocks), ALTFP_ADD_SUB (7 to 14), and
+ALTFP_COMPARE (1 to 3) fit in one instruction. ALTFP_EXP (17), ALTFP_INV
+(20), and ALTFP_LOG (21, natural logarithm) do not, so they take two. The
+divisions then multiply by an inverse. This is an inference.
 
 Other instructions:
 
 | Opcode | Bits | Meaning |
 |--------|------|---------|
-| 0x01 | 13:6 | Jump to this address + the offset. Offset 2 skips one instruction |
+| 0x01 | 13:6 | Jump to this address + the offset, a signed 8-bit value. Offset 2 skips one instruction, and 0xFE jumps two back |
 | 0x01 | 23:21 | Condition on x, see below |
 | 0x02 | 13:6, 17:14, 20:18 | Store: state offset, thread, address mode |
 | 0x02 | 21 | Source: 0 r, 1 x |
 | 0x02 | 22, 28:23 | Bit 22 also sends the value to an audio output. Bits 28:23 hold the DSP I/O channel |
 | 0x0B | 11:6 | Read audio input: DSP I/O channel. The sample goes to r |
 | 0x0B | 28:21 | State offset. In ModernEQ (bit 30 set) the sample also goes there |
-| 0x14 | 13:6, 28:21 | Copy a state word: source offset, destination offset |
+| 0x14 | 13:6, 17:14, 28:21 | Copy a state word: source offset, source thread, destination offset |
 | 0x16 | 13:6, 28:21 | As 0x14, and also loads the value into x |
 | 0x15 | 13:6, 17:14, 20:18, 28:21 | Copy from state: offset, thread, address mode, destination offset. The linker writes 0x15 over an 0x0B when the input comes from another fragment. Not tested |
 | 0x17 | 13:6 | STALL until cycle n. The next instruction runs at cycle n + 1. The linker adds the code start to n and replaces a STALL at the end of a fragment with 0 |
@@ -1093,8 +1122,14 @@ Jump conditions, bits 23:21 of 0x01:
 | 111 | always |
 
 The vendor programs set bits 20:17 of 0x01 to 1111, and bits 16:14 to 1,
-2, or 3. In the tests, words with equal bits 23:21 jumped alike, whatever
-bits 16:14 and 27:24 held. A value of ±1e-30 counts as nonzero.
+2, or 3. With bits 16:14 = 2 to 5, the condition tests x. With 0, 1, 6, or
+7, condition 010 (x < 0) also jumped for x = 0.5, so these codes test
+another value. Bits 27:24 changed nothing. A value of ±1e-30 counts as
+nonzero.
+
+Opcodes 0x0D and 0x10 changed neither r nor x. Opcodes 0x38 to 0x3F gave
+very large values when r was not zero, and left r unchanged with a state
+operand A. The vendor programs use none of them.
 
 ### 8.4 FX programs
 
@@ -1167,7 +1202,53 @@ for each hop. `FXFragment::forbiddenStartAddressRanges` limits the start
 address of a fragment. The likely purpose is to keep each copy after the
 store that feeds it. This is unverified.
 
-### 8.6 Tests on the unit
+### 8.6 PSoC and FPGA side
+
+The PSoC executes the DSP commands. Its firmware dispatches the command
+byte at 0x16256 (`scripts/psoc-firmware.py`) and writes the FPGA through
+the External Memory Interface. FPGA byte address a is PSoC address
+0x6080_0000 + a. The PSoC writes a 32-bit word as four byte writes, low
+byte first (0x12610).
+
+| FPGA address | Function | PSoC code |
+|--------------|----------|-----------|
+| 0x0200 + d | Routing matrix: source of destination d. The PSoC also writes 8 to 0x0300 + d | 0x11C24 |
+| 0x1800 | Thread for code and coefficient writes | 0x13574 |
+| 0x1802 | Enable mask of the 8 halt slots | 0x132DC |
+| 0x1805, 0x1806 | Coefficient handshakes: the PSoC writes the thread, then waits for bit 5. 0x1805 comes before the words, 0x1806 after them | 0x136FC, 0x137C8 |
+| 0x180E | Cycle count, sent as report 0xD5 | 0x136E4 |
+| 0x180F | State copy: write 2 to start it. Bit 0 = busy | 0x135E8 |
+| 0x1810, 0x1811, 0x1812 | State copy: thread, start address, count. The FPGA ignores the count (8.2) | 0x135E8 |
+| 0x1820 + i, 0x1828 + i, 0x1830 + i | Halt slot i: first address, last address, thread | 0x132DC |
+| 0x1C00 + 4a | Code word a of the selected thread | 0x13574 |
+| 0x2000 + 4a | Coefficient word a of the selected thread | 0x13754 |
+| 0x2400 + 4j | State staging word j | 0x135E8 |
+
+A halt takes a free halt slot. If all 8 slots are in use, the PSoC drops
+the halt. A resume clears the mask and so ends every halt.
+
+0xD3 (0x1421C) sets three matrix entries for input r, with DSP input
+channel i = data[0], DSP output channel o = data[1], and mode m = data[2].
+The input source of r comes from a table (0x140E8).
+
+| Destination | Source |
+|-------------|--------|
+| 0xC0 + i (DSP input i) | Input r, if m bit 0 is set. Otherwise the PSoC leaves it |
+| 0x60 + r (mixer feed of r) | DSP output 0x70 + o, if m bit 0 is set. Otherwise input r |
+| 0x30 + r (record channel of r) | DSP output 0x70 + o, if m bits 0 and 1 are set. Otherwise input r |
+
+Mode 3 is the FX Rack "Print" mode: the record channel carries the FX
+output (8.7). The Ensemble HAL sends only mode 0 or 1, and the FX Rack
+plugin shows "Print is not available in version ..., please use DualPath
+Monitor".
+
+Meters: BAR0 register 0x1C reports 88 meters on this unit (4.4). For an
+input with active FX, `ElEnsDSPController::copyMeterData` @0x525b4 shows
+the input meter, which taps after the DSP, as the FX output level. It
+takes the FX input level from the DSP core meters, at the DSP input
+channel of the input. With 88 meters, the buffer holds no DSP core meters.
+
+### 8.7 Tests on the unit
 
 Measured with the open driver at 48 kHz. `scripts/dsp/dsp.py` sends the
 commands through `raw.send` of ensemble-control. Each load erased all
@@ -1199,12 +1280,20 @@ speaker output stayed muted.
   with c2 = 0 passes the dry input at 0.5.
 - STALL 159 lets two more instructions run, and STALL 160 does not. So
   cycles 0 to 161 run at 48 kHz.
-- A one-word 0xD4 write to s40 changed s39, s41, s100, s200, and s254,
-  and left s2, s8, and s15. Other one-word writes cleared most of a
-  circular group.
-- A halted thread sends exact zeros to its DSP I/O channels. Now and then
-  a resume-all after a code swap left the thread halted. A second
-  resume-all restarted it.
+- After full writes of two patterns, one-word 0xD4 writes to s40 and s100
+  left s8, s40, s100, and s200 at the values that `state[(start + j) mod
+  256] = staging[j]` predicts (`isa.py state`).
+- A program that writes 0.25 to DSP output 3, with 0xD3 data = 2, 3, m on
+  Analog 1: m = 1 put 0.25 in Mixer 1, m = 3 also on record channel 0,
+  and m = 0 and 2 left both dry (`isa.py routes`). MonoGain on the front
+  panel mic with m = 3 recorded c2 times the input, 3 samples late.
+- A loop with a backward jump (offset 0xFE) ran three times. 0x14 with
+  source thread 1 copied a word of thread 1. A state operand A with k = 3
+  stepped through its group (`isa.py extra`).
+- A halted thread sends exact zeros to its DSP I/O channels. Early in the
+  tests, a resume-all after a code swap left the thread halted a few
+  times, and a second resume-all restarted it. Later, 30 swaps, half of
+  them after an erase, never stayed halted.
 
 For the opcode tests, `scripts/dsp/isa.py` sends DSP I/O channel 0 to
 Analog 1 and channel 1 to Analog 2. Mixer 1 pans them hard left and hard
@@ -1216,18 +1305,17 @@ The input meters hold their peaks for 2 s (`meters/peakHold`), so a level
 decrease shows late. After the tests, 0xD3 with data[2] = 0 and an erase
 of all threads returned the inputs to dry.
 
-### 8.7 Open questions
+### 8.8 Open questions
 
+- Why a resume-all sometimes did not restart the thread. The PSoC has no
+  path that drops a resume.
+- What 0x0D, 0x10, and 0x38 to 0x3F do, and what bits 16:14 = 0, 1, 6,
+  or 7 of 0x01 test.
 - Bits 29 and 30 of 0x14. They changed nothing in the test.
-- Whether bits 27:26 also make a state operand A circular.
-- Why a one-word 0xD4 write changes other state words, and why a
-  resume-all sometimes does not restart the thread.
-- Whether the core can feed the record stream, as the FX Rack "Print"
-  mode needs.
-- Which caller in the vendor HAL resumes the core after a load.
-- The meaning of 0xD3 data[0] and data[1] when they differ.
-- Where the DSP meters land. The meter block holds 88 meters on this unit
-  (4.4).
+- Whether the FPGA sends DSP core meters when the host asks for more than
+  88 meters. The host must then enlarge the meter buffer.
+- The Cyclone V image itself. Project Mistral documents the Cyclone V
+  bitstream format, which can show how the core is built.
 
 ---
 
