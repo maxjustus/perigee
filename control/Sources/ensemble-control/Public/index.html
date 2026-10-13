@@ -71,6 +71,8 @@
   .strip { flex: none; width: 64px; scroll-snap-align: start; display: flex; flex-direction: column; align-items: center;
            gap: 6px; background: var(--card); border-radius: 6px; padding: 8px 4px; font-size: 11px; }
   .strip.off { opacity: .45; }
+  .strip.left { border-radius: 6px 0 0 6px; margin-right: -4px; box-shadow: inset 0 2px #4f8a6e; }
+  .strip.right { border-radius: 0 6px 6px 0; box-shadow: inset 0 2px #4f8a6e; }
   .hide-off .strip.off { display: none; }
   .strip .name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
   .strip .channel { display: flex; gap: 6px; height: clamp(140px, calc(100dvh - 330px), 480px); }
@@ -82,7 +84,7 @@
   .strip .buttons { display: flex; gap: 4px; width: 100%; }
   .strip .buttons:empty { display: none; }
   .strip .buttons button, .strip .on button { flex: 1; width: 100%; min-height: 30px; padding: 0; font-size: 12px; }
-  .strip .on { width: 100%; }
+  .strip .on { display: flex; gap: 4px; width: 100%; }
   .bank { display: grid; grid-template-columns: repeat(var(--count), 1fr); gap: 10px 3px; }
   .bank .cell { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; }
   .bank .meter { width: 100%; height: 90px; }
@@ -385,6 +387,19 @@ function renderMixer(parameter) {
       const strip = stripFor(number, Number(enable[1]));
       strip.querySelector(".on").append(toggle(parameter.path, "", "On"));
       watch(parameter.path, value => strip.classList.toggle("off", !value));
+    }
+    return;
+  }
+  const stereo = parameter.path.match(/^mixers\/channels\/(\d+)\/stereo$/);
+  if (stereo) {
+    for (const number of [1, 2, 3, 4]) {
+      const left = stripFor(number, Number(stereo[1]));
+      const right = stripFor(number, Number(stereo[1]) + 1);
+      left.querySelector(".on").append(toggle(parameter.path, "", "St"));
+      watch(parameter.path, value => {
+        left.classList.toggle("left", value);
+        right.classList.toggle("right", value);
+      });
     }
     return;
   }

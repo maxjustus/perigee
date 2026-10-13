@@ -563,7 +563,7 @@ the value in `data[0]`. A command with two arguments sends `p1` and
 | 0x34 | MixerChannelSolo | 2 | mixer | channel, 1 byte |
 | 0x35 | MixerChannelMute | 2 | mixer | channel, 1 byte |
 | 0x38 | MixerChannelIsVisible | 2 | channel | p2 = mixer, 1 byte. Gates the channel into that mixer: a hidden channel is not mixed. The report is type 1, one value per channel, 1 if any mixer has the channel visible. The vendor writes all mixers |
-| 0x39 | MixerChannelIsStereo | 2 | mixer | channel, 1 byte |
+| 0x39 | MixerChannelIsStereo | 2 | channel | p2 = mixer, 1 byte. A write to the even channel of a pair flags both channels. A write to the odd channel flags only itself. The report is type 1, one per channel, 1 if any mixer has the flag. The vendor writes the even channel in all mixers, then copies level, mute, solo, visibility, and solo safe to the partner (`Ensemble2MixerMatrix::_setMixerChannelIsStereo` @0x3421c). `Ensemble2Command::setMixerChannelIsStereo` @0x128c refuses channels 8 and 9. The effect on pan is not measured |
 | 0x3A | MixerChannelSoloSafe | 2 | channel | 1 byte |
 | 0x50 | FunctionalTestMode | 1 | mode | |
 | 0x51 | FunctionalTestResetAll | 1 | 0xAB | |

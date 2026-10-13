@@ -145,10 +145,17 @@ private let inputs = (0..<8).flatMap { channel in
     Parameter(path: "inputs/guitar/\(guitar + 1)/gain", command: 0x03, p1: UInt8(10 + guitar), kind: .int(0...45))
 }
 
-private let mixers: [Parameter] = channelEnables + preFaders + strips
+private let mixers: [Parameter] = channelEnables + stereoPairs + preFaders + strips
 
 private let channelEnables: [Parameter] = (0..<46).filter { $0 != 9 }.map { channel in
     Parameter(path: "mixers/channels/\(channel + 1)/enabled", command: 0x38, p1: UInt8(channel),
+              also: (1..<4).map { Target(p1: UInt8(channel), p2: UInt8($0)) }, wire: .block(bytes: 1),
+              reported: .set, kind: .bool)
+}
+
+// The unit flags both channels of a pair when the first one is written.
+private let stereoPairs: [Parameter] = stride(from: 0, to: 46, by: 2).filter { $0 != 8 }.map { channel in
+    Parameter(path: "mixers/channels/\(channel + 1)/stereo", command: 0x39, p1: UInt8(channel),
               also: (1..<4).map { Target(p1: UInt8(channel), p2: UInt8($0)) }, wire: .block(bytes: 1),
               reported: .set, kind: .bool)
 }

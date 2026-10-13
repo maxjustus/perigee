@@ -205,6 +205,21 @@ func makeController() -> (Controller, FakeTransport, Broadcasts) {
     #expect((changed["params"] as? [String: Any])?["mixers/channels/33/enabled"] as? Bool == true)
 }
 
+@Test func stereoWritesThePairInAllFourMixers() {
+    let (controller, transport, broadcasts) = makeController()
+    _ = controller.handle(#"{"jsonrpc":"2.0","id":1,"method":"set","params":{"mixers/channels/31/stereo":true}}"#)
+    #expect(transport.sent == (0..<4).map { [1, 0, word(2, 0x39, 30, $0), word(1, 1, 0, 0)] })
+    controller.receive(Report(type: 1, command: 0x39, p1: 30, p2: 0, data: [1]))
+    let changed = object(broadcasts.texts.last!)
+    #expect((changed["params"] as? [String: Any])?["mixers/channels/31/stereo"] as? Bool == true)
+}
+
+@Test func theFrontMicHasNoStereoPair() {
+    let (controller, transport, _) = makeController()
+    _ = controller.handle(#"{"jsonrpc":"2.0","id":1,"method":"set","params":{"mixers/channels/9/stereo":true}}"#)
+    #expect(transport.sent.isEmpty)
+}
+
 @Test func speakerSourceWritesTheRouteOfEachSpeakerSet() {
     let (controller, transport, _) = makeController()
     let set = #"{"jsonrpc":"2.0","id":1,"method":"set","params":{"outputs/speakerSource":"Mixer 1"}}"#
