@@ -205,10 +205,11 @@ def store(offset=0, io=0, out=True, from_x=False, mode=0):
     return 2 | offset << 6 | mode << 18 | int(from_x) << 21 | int(out) << 22 | io << 23
 
 
-def jump(offset, condition, selector=3):
+def jump(offset, condition, selector=3, idle=1):
     """Encodes opcode 0x01: jump by offset, a signed byte. Selectors 2 to 5 jump if x meets
-    condition. Selectors 0, 1, 6, and 7 always jump."""
-    return 1 | offset << 6 | selector << 14 | 0xF << 17 | condition << 21 | 1 << 24
+    condition. Selectors 0, 1, 6, and 7 always jump. The thread then waits idle cycles: after
+    the jump if bit 0 of selector is set, else when it does not jump."""
+    return 1 | offset << 6 | selector << 14 | 0xF << 17 | condition << 21 | idle << 24
 
 
 def copy(op, source, dest, thread=0, mode=0):
