@@ -2,49 +2,117 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#15171a">
 <title>Ensemble</title>
 <style>
-  :root { color-scheme: dark; font: 14px system-ui, sans-serif; }
-  body { margin: 0; padding: 16px; background: #15171a; color: #e6e6e6; }
-  header { display: flex; gap: 12px; align-items: baseline; margin-bottom: 16px; }
+  :root { color-scheme: dark; font: 14px/1.3 system-ui, sans-serif; --bg: #15171a; --card: #1f2226; --well: #2a2e33;
+          --line: #3a3f45; --dim: #9aa0a6; --accent: #6fcf97; --pad: max(16px, env(safe-area-inset-left)); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: #e6e6e6; -webkit-tap-highlight-color: transparent; }
+  header { position: sticky; top: 0; z-index: 2; background: var(--bg); border-bottom: 1px solid var(--well);
+           padding: max(10px, env(safe-area-inset-top)) var(--pad) 0; }
+  .title { display: flex; gap: 10px; align-items: baseline; }
   h1 { font-size: 18px; margin: 0; }
-  #status { color: #9aa0a6; }
-  #status.live { color: #6fcf97; }
-  main { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
-  section { background: #1f2226; border-radius: 8px; padding: 12px; }
-  h2 { font-size: 13px; margin: 0 0 8px; color: #9aa0a6; text-transform: uppercase; letter-spacing: .04em; }
-  label { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; align-items: center; margin: 6px 0; }
-  input[type=range] { grid-column: 1 / -1; width: 100%; }
+  #status { font-size: 12px; color: var(--dim); }
+  #status.live { color: var(--accent); }
+  nav { display: flex; overflow-x: auto; scrollbar-width: none; margin: 4px -12px 0; }
+  nav a { flex: none; padding: 10px 12px; color: var(--dim); text-decoration: none; border-bottom: 2px solid transparent; }
+  nav a.shown { color: #e6e6e6; border-color: var(--accent); }
+  main { padding: 12px var(--pad) max(16px, env(safe-area-inset-bottom)); }
+  .view:not(.shown) { display: none; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; align-items: start; }
+  section { background: var(--card); border-radius: 8px; padding: 10px 12px; }
+  h2 { font-size: 12px; margin: 0 0 4px; color: var(--dim); text-transform: uppercase; letter-spacing: .04em; }
+  .row { display: flex; flex-wrap: wrap; align-items: center; gap: 0 10px; min-height: 42px; padding: 4px 0;
+         border-top: 1px solid var(--well); }
+  h2 + .row { border-top: 0; }
+  .row .name { flex: 1; min-width: 0; }
   output { font-variant-numeric: tabular-nums; color: #c9d1d9; }
-  #meter-banks { margin-bottom: 12px; }
-  .bank { display: flex; gap: 2px; height: 90px; margin-bottom: 18px; }
-  .meter { flex: 1; position: relative; background: #2a2e33; border-radius: 2px; }
-  .fill { position: absolute; bottom: 0; width: 100%; background: #6fcf97; border-radius: 2px; }
+  .row output { min-width: 60px; text-align: right; }
+  button { font: inherit; color: inherit; background: var(--well); border: 1px solid var(--line); border-radius: 6px;
+           min-height: 34px; padding: 0 10px; touch-action: manipulation; }
+  button[aria-pressed=true] { background: #3d6b55; border-color: #4f8a6e; }
+  button.mute[aria-pressed=true] { background: #8a3b3b; border-color: #a64b4b; }
+  button.solo[aria-pressed=true] { background: #8a7a2b; border-color: #a69336; }
+  .switch { position: relative; width: 48px; height: 28px; min-height: 28px; border-radius: 14px; padding: 0; }
+  .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%;
+                   background: #c9d1d9; transition: left .12s; }
+  .switch[aria-pressed=true]::after { left: 23px; }
+  select { font: inherit; font-size: 16px; color: inherit; background: var(--well); border: 1px solid var(--line);
+           border-radius: 6px; min-height: 34px; max-width: 60%; }
+  .slider { position: relative; flex: 1 1 100%; height: 30px; touch-action: pan-y; cursor: ew-resize; outline: none; }
+  .slider::before { content: ""; position: absolute; left: 0; right: 0; top: 12px; height: 6px; border-radius: 3px;
+                    background: var(--well); }
+  .slider .thumb { position: absolute; top: 4px; left: calc(var(--at, 0) * (100% - 22px)); width: 22px; height: 22px;
+                   border-radius: 50%; background: #c9d1d9; }
+  .slider:focus-visible .thumb { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .slider.vertical { flex: none; width: 30px; height: 100%; touch-action: pan-x; cursor: ns-resize; }
+  .slider.vertical::before { left: 12px; right: auto; top: 0; bottom: 0; width: 6px; height: auto; }
+  .slider.vertical .thumb { top: auto; left: 0; bottom: calc(var(--at, 0) * (100% - 16px)); width: 30px; height: 16px;
+                            border-radius: 3px; background: linear-gradient(#d7dde3, #8f98a2); }
+  .slider .unity { position: absolute; left: 2px; right: 2px; height: 1px; background: var(--dim);
+                   bottom: calc(var(--unity) * (100% - 16px) + 8px); }
+  .meter { position: relative; overflow: hidden; background: var(--well); border-radius: 2px; }
+  .fill { position: absolute; bottom: 0; width: 100%; background: var(--accent); }
   .fill.hot { background: #f2c94c; }
   .fill.clip { background: #eb5757; }
-  .meter span { position: absolute; top: 100%; width: 100%; font-size: 8px; text-align: center;
-                color: #9aa0a6; overflow: hidden; white-space: nowrap; }
-  #mixers { margin-bottom: 12px; }
-  #mixer-tabs button { margin-left: 6px; background: #2a2e33; color: inherit; border: 1px solid #3a3f45;
-                       border-radius: 4px; padding: 2px 8px; }
-  #mixer-tabs button.shown { background: #3d6b55; }
-  .strips { display: none; gap: 4px; overflow-x: auto; padding-bottom: 6px; }
-  .strips.shown { display: flex; }
-  .strip { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 52px;
-           background: #262a2f; border-radius: 4px; padding: 6px 2px; font-size: 10px; }
-  .strip span { white-space: nowrap; color: #c9d1d9; }
-  .fader { writing-mode: vertical-lr; direction: rtl; height: 140px; width: 22px; margin: 0; }
-  .pan { width: 46px; margin: 0; }
-  .strip label.mute { display: flex; gap: 2px; margin: 0; }
-  select { background: #2a2e33; color: inherit; border: 1px solid #3a3f45; border-radius: 4px; }
+  .mixbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+  .segment { display: flex; }
+  .segment button { border-radius: 0; margin-left: -1px; }
+  .segment button:first-child { border-radius: 6px 0 0 6px; margin-left: 0; }
+  .segment button:last-child { border-radius: 0 6px 6px 0; }
+  .console { display: none; }
+  .console.shown { display: flex; }
+  .strips { display: flex; flex: 1; gap: 4px; overflow-x: auto; overscroll-behavior-x: contain;
+            scroll-snap-type: x proximity; padding-bottom: 8px; }
+  .masters { display: flex; gap: 4px; padding-left: 6px; margin-left: 2px; border-left: 1px solid var(--line); }
+  .strip { flex: none; width: 64px; scroll-snap-align: start; display: flex; flex-direction: column; align-items: center;
+           gap: 6px; background: var(--card); border-radius: 6px; padding: 8px 4px; font-size: 11px; }
+  .strip.off { opacity: .45; }
+  .hide-off .strip.off { display: none; }
+  .strip .name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+  .strip .channel { display: flex; gap: 6px; height: clamp(140px, calc(100dvh - 330px), 480px); }
+  .strip .channel .meter { width: 6px; }
+  .strip .pan { width: 100%; text-align: center; }
+  .strip .pan .slider { height: 26px; }
+  .strip .pan .slider .thumb { top: 4px; width: 18px; height: 18px; left: calc(var(--at, 0) * (100% - 18px)); }
+  .strip .pan .slider::before { top: 10px; }
+  .strip .buttons { display: flex; gap: 4px; width: 100%; }
+  .strip .buttons:empty { display: none; }
+  .strip .buttons button, .strip .on button { flex: 1; width: 100%; min-height: 30px; padding: 0; font-size: 12px; }
+  .strip .on { width: 100%; }
+  .bank { display: grid; grid-template-columns: repeat(var(--count), 1fr); gap: 10px 3px; }
+  .bank .cell { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; }
+  .bank .meter { width: 100%; height: 90px; }
+  .bank span { font-size: 9px; color: var(--dim); white-space: nowrap; }
+  #meters section + section { margin-top: 12px; }
+  @media (max-width: 700px) {
+    .bank.wide { grid-template-columns: repeat(15, 1fr); }
+    .masters .strip { width: 50px; }
+  }
 </style>
 </head>
 <body>
-<header><h1>Ensemble</h1><span id="status">connecting</span></header>
-<section id="meter-banks"></section>
-<section id="mixers"><h2>Mixers <span id="mixer-tabs"></span></h2></section>
-<main id="groups"></main>
+<header>
+  <div class="title"><h1>Ensemble</h1><span id="status">connecting</span></div>
+  <nav id="tabs"></nav>
+</header>
+<main>
+  <div class="view" id="mixer">
+    <div class="mixbar">
+      <div class="segment" id="mixer-tabs"></div>
+      <span id="mixer-options"></span>
+      <button id="hide-off" aria-pressed="false">Hide off</button>
+    </div>
+    <div id="consoles"></div>
+  </div>
+  <div class="view" id="meters"></div>
+  <div class="view cards" id="inputs"></div>
+  <div class="view cards" id="outputs"></div>
+  <div class="view cards" id="routing"></div>
+  <div class="view cards" id="device"></div>
+</main>
 <script>
 const controls = new Map();
 const pending = new Map();
@@ -64,167 +132,326 @@ function watch(path, update) {
   controls.set(path, [...(controls.get(path) ?? []), update]);
 }
 
-function group(path) {
-  const id = path.slice(0, path.lastIndexOf("/"));
-  let section = document.getElementById(id);
+const tabs = { mixer: "Mixer", meters: "Meters", inputs: "Inputs", outputs: "Outputs", routing: "Routing",
+               device: "Device" };
+
+for (const [id, name] of Object.entries(tabs)) {
+  document.getElementById("tabs").append(Object.assign(document.createElement("a"), { href: `#${id}`, textContent: name }));
+}
+
+function showTab() {
+  const tab = tabs[location.hash.slice(1)] ? location.hash.slice(1) : "mixer";
+  document.querySelectorAll(".view").forEach(view => view.classList.toggle("shown", view.id === tab));
+  document.querySelectorAll("nav a").forEach(link => link.classList.toggle("shown", link.hash === `#${tab}`));
+}
+
+window.onhashchange = showTab;
+showTab();
+
+function layout(parameters) {
+  const groups = new Map();
+  for (const parameter of parameters) {
+    if (parameter.path.startsWith("mixers/")) {
+      renderMixer(parameter);
+      continue;
+    }
+    const group = parameter.path.slice(0, parameter.path.lastIndexOf("/"));
+    groups.set(group, [...(groups.get(group) ?? []), parameter]);
+  }
+  for (const [group, list] of groups) {
+    const tab = { inputs: "inputs", outputs: "outputs", routing: "routing" }[group.split("/")[0]] ?? "device";
+    const numbered = group.match(/^(.*)\/(\d+)$/);
+    const siblings = numbered ? [...groups.keys()].filter(other => other.startsWith(`${numbered[1]}/`)).length : 0;
+    if (list.length === 1) {
+      addRow(card(tab, `${tab}/more`, "More"), `${title(group)} ${label(list[0]).toLowerCase()}`, list);
+    } else if (numbered && list.length <= 2 && siblings >= 3) {
+      addRow(card(tab, numbered[1], title(numbered[1])), numbered[2], list);
+    } else {
+      const section = card(tab, group, title(group));
+      for (const parameter of list) addRow(section, label(parameter), [parameter]);
+    }
+  }
+  const more = document.querySelectorAll("[id$='/more']");
+  more.forEach(section => section.parentElement.append(section));
+}
+
+const words = { spdif: "S/PDIF", frontMic: "Front mic", attenuation: "Volume", phantom: "48V" };
+
+function human(segment) {
+  if (words[segment]) return words[segment];
+  const spaced = segment.replace(/([a-z])([A-Z0-9])/g, "$1 $2");
+  return spaced[0].toUpperCase() + spaced.slice(1).toLowerCase();
+}
+
+function title(group) {
+  const rest = group.split("/").slice(1);
+  if (rest.length) return rest.map(human).join(" ");
+  return { outputs: "Speakers", routing: "Output sources" }[group] ?? human(group);
+}
+
+function label(parameter) {
+  return human(parameter.path.slice(parameter.path.lastIndexOf("/") + 1));
+}
+
+function card(tab, group, heading) {
+  let section = document.getElementById(`card-${group}`);
   if (!section) {
-    section = document.createElement("section");
-    section.id = id;
-    section.innerHTML = `<h2>${id.replaceAll("/", " · ")}</h2>`;
-    document.getElementById("groups").append(section);
+    section = Object.assign(document.createElement("section"), { id: `card-${group}` });
+    section.append(Object.assign(document.createElement("h2"), { textContent: heading }));
+    document.getElementById(tab).append(section);
   }
   return section;
 }
 
-function slider(path, min, max, format) {
-  const output = document.createElement("output");
-  const input = Object.assign(document.createElement("input"), { type: "range", min, max });
-  let queued = false;
-  input.oninput = () => {
-    output.value = format(input.value);
-    if (queued) return;
-    queued = true;
-    requestAnimationFrame(() => {
-      queued = false;
-      rpc("set", { [path]: Number(input.value) });
-    });
-  };
-  watch(path, value => {
-    if (document.activeElement !== input) input.value = value;
-    output.value = format(value);
-  });
-  return [output, input];
+function addRow(section, name, parameters) {
+  const row = Object.assign(document.createElement("div"), { className: "row" });
+  row.append(Object.assign(document.createElement("span"), { className: "name", textContent: name }));
+  for (const parameter of parameters) {
+    const text = parameters.length > 1 ? label(parameter) : name;
+    if (parameter.kind === "bool") {
+      const button = toggle(parameter.path, "switch");
+      button.setAttribute("aria-label", text);
+      row.append(button);
+    } else if (parameter.kind === "choice") {
+      const select = picker(parameter.path, parameter.choices);
+      select.setAttribute("aria-label", text);
+      row.append(select);
+    } else {
+      row.append(...slider(parameter.path, { ...parameter, label: text, format: format(parameter) }));
+    }
+  }
+  section.append(row);
 }
 
-function toggle(path) {
-  const input = Object.assign(document.createElement("input"), { type: "checkbox" });
-  input.onchange = () => rpc("set", { [path]: input.checked });
-  watch(path, value => { input.checked = value; });
-  return input;
+function format(parameter) {
+  const name = parameter.path.slice(parameter.path.lastIndexOf("/") + 1);
+  if (name === "attenuation") return v => v === 0 ? "0 dB" : `−${v} dB`;
+  if (name === "trim") return v => v === 0 ? "0.0 dB" : `−${(v / 10).toFixed(1)} dB`;
+  if (/gain$/i.test(name)) return v => `${v} dB`;
+  return v => `${v}`;
+}
+
+function toggle(path, className, text = "") {
+  const button = Object.assign(document.createElement("button"), { className, textContent: text });
+  button.setAttribute("aria-pressed", "false");
+  button.onclick = () => rpc("set", { [path]: button.getAttribute("aria-pressed") !== "true" });
+  watch(path, value => button.setAttribute("aria-pressed", String(value)));
+  return button;
 }
 
 function picker(path, choices) {
-  const input = document.createElement("select");
-  input.append(...choices.map(choice => new Option(choice, choice)));
-  input.onchange = () => rpc("set", { [path]: input.value });
-  watch(path, value => { input.value = value; });
-  return input;
+  const select = document.createElement("select");
+  select.append(...choices.map(choice => new Option(choice, choice)));
+  select.onchange = () => rpc("set", { [path]: select.value });
+  watch(path, value => { select.value = value; });
+  return select;
 }
 
-function render(parameter) {
+// A tap must never jump a level, so a slider moves only by a relative drag.
+function slider(path, { min, max, label, format, vertical = false, home = null, unity = null, step = 1 }) {
+  const element = Object.assign(document.createElement("div"), { className: vertical ? "slider vertical" : "slider",
+                                                                 tabIndex: 0 });
+  const thumb = Object.assign(document.createElement("div"), { className: "thumb" });
+  const output = document.createElement("output");
+  element.setAttribute("role", "slider");
+  element.setAttribute("aria-label", label);
+  element.setAttribute("aria-orientation", vertical ? "vertical" : "horizontal");
+  element.setAttribute("aria-valuemin", min);
+  element.setAttribute("aria-valuemax", max);
+  if (unity !== null) {
+    const mark = Object.assign(document.createElement("div"), { className: "unity" });
+    mark.style.setProperty("--unity", (unity - min) / (max - min));
+    element.append(mark);
+  }
+  element.append(thumb);
+  let value = min, drag = null, lastTap = 0, queued = false;
+
+  const place = next => {
+    value = Math.round(Math.min(max, Math.max(min, next)));
+    element.style.setProperty("--at", (value - min) / (max - min));
+    element.setAttribute("aria-valuenow", value);
+    element.setAttribute("aria-valuetext", format(value));
+    output.value = format(value);
+  };
+  const change = next => {
+    const before = value;
+    place(next);
+    if (value === before || queued) return;
+    queued = true;
+    requestAnimationFrame(() => {
+      queued = false;
+      rpc("set", { [path]: value });
+    });
+  };
+  const position = event => vertical ? -event.clientY : event.clientX;
+
+  element.onpointerdown = event => {
+    element.setPointerCapture(event.pointerId);
+    drag = { start: position(event), from: value, moved: false,
+             span: vertical ? element.clientHeight : element.clientWidth };
+  };
+  element.onpointermove = event => {
+    if (!drag) return;
+    const moved = position(event) - drag.start;
+    if (Math.abs(moved) > 3) drag.moved = true;
+    if (drag.moved) change(drag.from + moved / drag.span * (max - min));
+  };
+  element.onpointerup = event => {
+    if (drag && !drag.moved && home !== null) {
+      if (event.timeStamp - lastTap < 350) change(home);
+      lastTap = event.timeStamp;
+    }
+    drag = null;
+  };
+  element.onpointercancel = () => {
+    if (drag) change(drag.from);
+    drag = null;
+  };
+  element.onkeydown = event => {
+    const steps = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1, PageUp: 10, PageDown: -10 }[event.key];
+    if (!steps) return;
+    event.preventDefault();
+    change(value + steps * step);
+  };
+  watch(path, next => { if (!drag) place(next); });
+  place(min);
+  return [output, element];
+}
+
+const formatFader = v => v === 0 ? "−∞" : `${v > 600 ? "+" : ""}${((v - 600) / 10).toFixed(1)}`;
+const formatPan = v => v === 64 ? "C" : v < 64 ? `L${64 - v}` : `R${v - 64}`;
+
+const meterNames = {
+  inputs: ["Inputs", [...[1, 2, 3, 4, 5, 6, 7, 8].map(n => `A${n}`), "MicL", "MicR", "G1", "G2", "SPL", "SPR",
+                      ...Array.from({ length: 16 }, (_, i) => `O${i + 1}`)]],
+  outputs: ["Outputs", [...Array.from({ length: 10 }, (_, i) => `L${i + 1}`), "G1", "G2", "SPL", "SPR",
+                        ...Array.from({ length: 16 }, (_, i) => `O${i + 1}`)]],
+  outputGroup: ["Headphones", ["1L", "1R", "2L", "2R"]],
+  group2: ["Playback", Array.from({ length: 16 }, (_, i) => `${i + 1}`)],
+  mixers: ["Mixers", [1, 2, 3, 4].flatMap(n => [`${n}L`, `${n}R`])],
+};
+const channelNames = [...[1, 2, 3, 4, 5, 6, 7, 8].map(n => `A${n}`), "Mic L", "Mic R", "Gtr 1", "Gtr 2",
+                      "SPDIF L", "SPDIF R", ...Array.from({ length: 16 }, (_, i) => `Opt ${i + 1}`),
+                      ...Array.from({ length: 16 }, (_, i) => `Play ${i + 1}`), "Master L", "Master R"];
+const levels = [];
+
+function meter(key, index) {
+  const element = Object.assign(document.createElement("div"), { className: "meter" });
+  const fill = Object.assign(document.createElement("div"), { className: "fill" });
+  element.append(fill);
+  levels.push({ key, index, fill });
+  return element;
+}
+
+for (const [key, [heading, names]] of Object.entries(meterNames)) {
+  const section = document.createElement("section");
+  const bank = Object.assign(document.createElement("div"), { className: names.length > 16 ? "bank wide" : "bank" });
+  bank.style.setProperty("--count", names.length);
+  names.forEach((name, index) => {
+    const cell = Object.assign(document.createElement("div"), { className: "cell", title: name });
+    cell.append(meter(key, index), Object.assign(document.createElement("span"), { textContent: name }));
+    bank.append(cell);
+  });
+  section.append(Object.assign(document.createElement("h2"), { textContent: heading }), bank);
+  document.getElementById("meters").append(section);
+}
+
+function showMeters(meters) {
+  for (const { key, index, fill } of levels) {
+    const db = 20 * Math.log10(Math.max(meters[key][index], 1) / 16384);
+    fill.style.height = `${Math.min(100, Math.max(0, (db + 60) / 60 * 100))}%`;
+    fill.className = db > -1 ? "fill clip" : db > -6 ? "fill hot" : "fill";
+  }
+}
+
+function renderMixer(parameter) {
   const enable = parameter.path.match(/^mixers\/channels\/(\d+)\/enabled$/);
   if (enable) {
     for (const number of [1, 2, 3, 4]) {
-      const label = Object.assign(document.createElement("label"), { className: "mute" });
-      label.append(toggle(parameter.path), "On");
-      stripFor(number, Number(enable[1])).append(label);
+      const strip = stripFor(number, Number(enable[1]));
+      strip.querySelector(".on").append(toggle(parameter.path, "", "On"));
+      watch(parameter.path, value => strip.classList.toggle("off", !value));
     }
     return;
   }
-  const strip = parameter.path.match(/^mixers\/(\d+)\/channels\/(\d+)\/(\w+)$/);
-  if (strip) return renderStrip(parameter, Number(strip[1]), Number(strip[2]), strip[3]);
-  const name = parameter.path.slice(parameter.path.lastIndexOf("/") + 1);
-  const label = document.createElement("label");
-  label.append(name);
-  if (parameter.kind === "bool") {
-    label.append(toggle(parameter.path));
-  } else if (parameter.kind === "choice") {
-    label.append(picker(parameter.path, parameter.choices));
-  } else {
-    const format = name === "attenuation" ? v => `-${v} dB`
-      : name === "trim" ? v => `-${(v / 10).toFixed(1)} dB`
-      : /gain$/i.test(name) ? v => `${v} dB` : v => `${v}`;
-    label.append(...slider(parameter.path, parameter.min, parameter.max, format));
+  const preFader = parameter.path.match(/^mixers\/(\d+)\/preFader$/);
+  if (preFader) {
+    const button = toggle(parameter.path, "", "Pre-fader");
+    button.dataset.mixer = preFader[1];
+    button.hidden = Number(preFader[1]) !== selectedMixer;
+    document.getElementById("mixer-options").append(button);
+    return;
   }
-  group(parameter.path).append(label);
+  const [, number, channel, control] = parameter.path.match(/^mixers\/(\d+)\/channels\/(\d+)\/(\w+)$/);
+  const strip = stripFor(Number(number), Number(channel));
+  const name = channelNames[channel - 1];
+  if (control === "fader") {
+    const [output, element] = slider(parameter.path, { ...parameter, label: `${name} fader`, format: formatFader,
+                                                       vertical: true, home: 600, unity: 600, step: 10 });
+    strip.querySelector(".value").append(output);
+    strip.querySelector(".channel").prepend(element);
+  } else if (control === "pan") {
+    const [output, element] = slider(parameter.path, { ...parameter, label: `${name} pan`, format: formatPan,
+                                                       home: 64 });
+    strip.querySelector(".pan").append(element, output);
+  } else {
+    const [className, text] = { mute: ["mute", "M"], solo: ["solo", "S"], soloSafe: ["", "SS"] }[control];
+    strip.querySelector(control === "soloSafe" ? ".safe" : ".buttons").append(toggle(parameter.path, className, text));
+  }
 }
 
-const formatFader = v => Number(v) === 0 ? "-∞" : ((v - 600) / 10).toFixed(1);
-const formatPan = v => Number(v) === 64 ? "C" : v < 64 ? `L${64 - v}` : `R${v - 64}`;
+let selectedMixer = Number(localStorage.getItem("mixer")) || 1;
 
-function mixer(number) {
-  let strips = document.getElementById(`mixer-${number}`);
-  if (!strips) {
+function consoleFor(number) {
+  let console = document.getElementById(`mixer-${number}`);
+  if (!console) {
     const tab = Object.assign(document.createElement("button"), { textContent: `Mix ${number}` });
+    tab.dataset.mixer = number;
     tab.onclick = () => showMixer(number);
     document.getElementById("mixer-tabs").append(tab);
-    strips = Object.assign(document.createElement("div"), { id: `mixer-${number}`, className: "strips" });
-    document.getElementById("mixers").append(strips);
-    if (number === 1) showMixer(1);
+    console = Object.assign(document.createElement("div"), { id: `mixer-${number}`, className: "console" });
+    console.innerHTML = `<div class="strips"></div><div class="masters"></div>`;
+    document.getElementById("consoles").append(console);
+    showMixer(selectedMixer);
   }
-  return strips;
+  return console;
 }
 
 function showMixer(number) {
-  document.querySelectorAll(".strips").forEach(s => s.classList.toggle("shown", s.id === `mixer-${number}`));
-  document.querySelectorAll("#mixer-tabs button").forEach((b, i) => b.classList.toggle("shown", i + 1 === number));
+  selectedMixer = number;
+  localStorage.setItem("mixer", number);
+  document.querySelectorAll(".console").forEach(console => console.classList.toggle("shown", console.id === `mixer-${number}`));
+  document.querySelectorAll("#mixer-tabs button").forEach(tab =>
+    tab.setAttribute("aria-pressed", String(Number(tab.dataset.mixer) === number)));
+  document.querySelectorAll("#mixer-options button").forEach(button => {
+    button.hidden = Number(button.dataset.mixer) !== number;
+  });
 }
 
 function stripFor(number, channel) {
   let strip = document.getElementById(`mixer-${number}-${channel}`);
   if (!strip) {
     strip = Object.assign(document.createElement("div"), { id: `mixer-${number}-${channel}`, className: "strip" });
-    strip.append(Object.assign(document.createElement("span"), { textContent: channelNames[channel - 1] }));
-    mixer(number).append(strip);
+    strip.innerHTML = `<span class="name"></span><div class="on"></div><output class="value"></output>
+      <div class="channel"></div><div class="pan"></div><div class="buttons"></div><div class="buttons safe"></div>`;
+    const name = channelNames[channel - 1];
+    Object.assign(strip.querySelector(".name"), { textContent: name, title: name });
+    const source = channel <= 30 ? ["inputs", channel - 1] : channel <= 46 ? ["group2", channel - 31]
+      : ["mixers", 2 * (number - 1) + channel - 47];
+    strip.querySelector(".channel").append(meter(...source));
+    consoleFor(number).querySelector(channel > 46 ? ".masters" : ".strips").append(strip);
   }
   return strip;
 }
 
-function renderStrip(parameter, number, channel, control) {
-  const strip = stripFor(number, channel);
-  if (control === "fader") {
-    const [output, input] = slider(parameter.path, parameter.min, parameter.max, formatFader);
-    input.className = "fader";
-    strip.append(output, input);
-  } else if (control === "pan") {
-    const [output, input] = slider(parameter.path, parameter.min, parameter.max, formatPan);
-    input.className = "pan";
-    strip.append(input, output);
-  } else {
-    const label = Object.assign(document.createElement("label"), { className: "mute" });
-    label.append(toggle(parameter.path), { mute: "M", solo: "S", soloSafe: "SS" }[control]);
-    strip.append(label);
-  }
-}
-
-const meterNames = {
-  inputs: [...[1, 2, 3, 4, 5, 6, 7, 8].map(n => `A${n}`), "Mic L", "Mic R", "Gtr 1", "Gtr 2",
-           "SPDIF L", "SPDIF R", ...Array.from({ length: 16 }, (_, i) => `Opt ${i + 1}`)],
-  outputs: [...Array.from({ length: 10 }, (_, i) => `Line ${i + 1}`), "Gtr Out 1", "Gtr Out 2",
-            "SPDIF L", "SPDIF R", ...Array.from({ length: 16 }, (_, i) => `Opt ${i + 1}`)],
-  outputGroup: ["HP1 L", "HP1 R", "HP2 L", "HP2 R"],
-  group2: Array.from({ length: 16 }, (_, i) => `Play ${i + 1}`),
-  mixers: [1, 2, 3, 4].flatMap(n => [`Mix ${n} L`, `Mix ${n} R`]),
+const hideOff = document.getElementById("hide-off");
+const setHideOff = on => {
+  hideOff.setAttribute("aria-pressed", String(on));
+  document.getElementById("consoles").classList.toggle("hide-off", on);
+  localStorage.setItem("hideOff", on);
 };
-const channelNames = [...meterNames.inputs, ...Array.from({ length: 16 }, (_, i) => `Play ${i + 1}`),
-                      "Master L", "Master R"];
-const meterFills = {};
-
-for (const [key, names] of Object.entries(meterNames)) {
-  const bank = document.createElement("div");
-  bank.className = "bank";
-  meterFills[key] = names.map(name => {
-    const meter = document.createElement("div");
-    meter.className = "meter";
-    meter.title = name;
-    const fill = document.createElement("div");
-    fill.className = "fill";
-    meter.append(fill, Object.assign(document.createElement("span"), { textContent: name }));
-    bank.append(meter);
-    return fill;
-  });
-  document.getElementById("meter-banks").append(bank);
-}
-
-function showMeters(meters) {
-  for (const [key, fills] of Object.entries(meterFills)) {
-    meters[key].forEach((value, i) => {
-      const db = 20 * Math.log10(Math.max(value, 1) / 16384);
-      fills[i].style.height = `${Math.min(100, Math.max(0, (db + 60) / 60 * 100))}%`;
-      fills[i].className = db > -1 ? "fill clip" : db > -6 ? "fill hot" : "fill";
-    });
-  }
-}
+hideOff.onclick = () => setHideOff(hideOff.getAttribute("aria-pressed") !== "true");
+setHideOff(localStorage.getItem("hideOff") === "true");
 
 function connect() {
   const status = document.getElementById("status");
@@ -244,7 +471,7 @@ function connect() {
   socket.onopen = async () => {
     status.textContent = "connected";
     status.className = "live";
-    if (controls.size === 0) (await rpc("describe")).forEach(render);
+    if (controls.size === 0) layout(await rpc("describe"));
     for (const [path, value] of Object.entries(await rpc("get"))) show(path, value);
   };
   socket.onclose = () => {
