@@ -421,8 +421,8 @@ async def resume(core):
         print(f"{label:36} 10 runs: thread 0 halted {halted[0]}, thread 1 halted {halted[1]}", flush=True)
 
 
-async def main(test):
-    async with session({**MIXER, **SETTINGS.get(test.__name__, {})}) as core:
+async def main(test, settings):
+    async with session({**MIXER, **settings.get(test.__name__, {})}) as core:
         await core.load([0], coefs(0.5), STATE)
         await core.route(0, io=0)
         await core.route(1, io=1)
@@ -434,4 +434,4 @@ if __name__ == "__main__":
                                       stall, extra, unknown, writes, routes, state, monitor, resume)}
     if len(sys.argv) != 2 or sys.argv[1] not in tests:
         sys.exit(__doc__)
-    asyncio.run(main(tests[sys.argv[1]]))
+    asyncio.run(main(tests[sys.argv[1]], SETTINGS))

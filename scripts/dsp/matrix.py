@@ -13,8 +13,8 @@ import sys
 
 import numpy as np
 
-from dsp import Src, block, gain, ins, message, play, record, remember, session, store
-from isa import MIXER, STATE, coefs, program
+from dsp import Src, block, gain, ins, message, play, record, remember, store
+from isa import main, program
 
 MUTE_HEADPHONES = {"outputs/headphone1/mute": True, "outputs/headphone2/mute": True}
 SETTINGS = {"speakers": {**MUTE_HEADPHONES, "outputs/mainMode": "2 Speaker Sets",
@@ -152,16 +152,8 @@ async def show(core, label):
     print(f"{label:36} meters at or above 1024: {lit}", flush=True)
 
 
-async def main(test):
-    async with session({**MIXER, **SETTINGS.get(test.__name__, {})}) as core:
-        await core.load([0], coefs(0.5), STATE)
-        await core.route(0, io=0)
-        await core.route(1, io=1)
-        await test(core)
-
-
 if __name__ == "__main__":
     tests = {"playback": playback, "record": record_route, "speakers": speakers, "taps": taps}
     if len(sys.argv) != 2 or sys.argv[1] not in tests:
         sys.exit(__doc__)
-    asyncio.run(main(tests[sys.argv[1]]))
+    asyncio.run(main(tests[sys.argv[1]], SETTINGS))

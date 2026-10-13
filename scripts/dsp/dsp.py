@@ -127,7 +127,7 @@ class Core:
         await self.call("raw.send", {"words": words})
 
     async def notifications(self, method, seconds):
-        found = [r for r in self.reports if method == "report"]
+        found = list(self.reports) if method == "report" else []
         self.reports.clear()
         loop = asyncio.get_running_loop()
         end = loop.time() + seconds
@@ -146,10 +146,6 @@ class Core:
     async def query(self, command, seconds=4.0):
         await self.send(get(command))
         return [r["data"] for r in await self.notifications("report", seconds) if r["command"] == command]
-
-    async def input_peaks(self, seconds=1.0):
-        frames = await self.notifications("meters", seconds)
-        return [max(f["inputs"][i] for f in frames) for i in range(30)]
 
     async def erase_all(self):
         for thread in range(THREADS):
@@ -276,22 +272,14 @@ def tool(name):
 
 def gain(dry, wet, lags=range(-8, 9)):
     """Fits wet = gain * dry delayed by lag. Returns (lag, gain, residual rms)."""
-    n = min(len(dry), len(wet)) - 2 * max(map(abs, lags))
     edge = max(map(abs, lags))
+    n = min(len(dry), len(wet)) - 2 * edge
     fits = []
     for lag in lags:
         x, y = dry[edge:edge + n], wet[edge + lag:edge + lag + n]
         g = x @ y / (x @ x)
         fits.append((lag, g, float(np.sqrt(np.mean((y - g * x) ** 2)))))
     return min(fits, key=lambda fit: fit[2])
-
-
-def response(dry, wet, taps=range(-4, 12)):
-    """Fits wet as an FIR filter of dry. Returns the taps."""
-    edge = max(map(abs, taps))
-    n = min(len(dry), len(wet)) - 2 * edge
-    x = np.stack([dry[edge - k:edge - k + n] for k in taps], axis=1)
-    return np.linalg.lstsq(x, wet[edge:edge + n], rcond=None)[0]
 
 
 async def main(command):

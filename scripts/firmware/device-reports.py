@@ -132,12 +132,12 @@ async def read_device(save_dir=None):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dry-run", action="store_true", help="print the query plan and exit")
-    parser.add_argument("--save", type=str, default=None, help="directory for the settings snapshot")
+    parser.add_argument("--save", type=Path, help="directory for the settings snapshot")
     args = parser.parse_args()
     if args.dry_run:
         print(json.dumps(plan(), indent=2))
         return 0
-    result = asyncio.run(read_device(Path(args.save) if args.save else None))
+    result = asyncio.run(read_device(args.save))
     print(json.dumps(result, indent=2))
     return 0
 
