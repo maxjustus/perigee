@@ -28,7 +28,7 @@ images, and they identify the parts:
 |------|----------|
 | FPGA: Intel (Altera) Cyclone V GX 5CGXC3 | `E2FPGA.bin` holds 14,510,912 bits. The Cyclone V datasheet (CV-51002, table 63) lists this uncompressed .rbf size for the C3 only. The GX variants carry the PCIe hard IP. An Audiofader review of the unit also names a Cyclone V |
 | Microcontroller: Cypress PSoC 5LP, Arm Cortex-M3 | `EnsemblePSoC.cyacd` header: silicon ID 0x2E12F069. The application starts at flash address 0x10000 |
-| PSoC to FPGA link | The PSoC External Memory Interface, 8 bits wide, at 0x6080_0000 (8.6) |
+| PSoC to FPGA link | The PSoC External Memory Interface, 8 bits wide, at 0x6080_0000 (5.13) |
 
 `scripts/psoc-firmware.py` disassembles the PSoC firmware.
 
@@ -538,6 +538,7 @@ the value in `data[0]`. A command with two arguments sends `p1` and
 | 0x06 | PhaseInverse | 1 | channel | bool |
 | 0x07 | GroupID (input pair link) | 1 | channel 0-7, 10-11 | 0 = off, pair index + 1 = linked. The vendor writes both channels of the pair (`AEgp` setter @0x90e91) |
 | 0x08 | HighPassFilter | 1 | channel | bool |
+| 0x09 | InputRouting (record pair routing) | 1 | record pair (0..16) | source code (5.9). The vendor HAL never sends it |
 | 0x0A | InsertEnable | 1 | 0 = Analog 1, 1 = Analog 2 | bool |
 | 0x0D | AnalogOutputReferenceLevel | 1 | channel | level |
 | 0x0E | AnalogOutputTrim | 1 | channel | trim |
@@ -569,12 +570,12 @@ the value in `data[0]`. A command with two arguments sends `p1` and
 | 0x2B | WordClockInputTermination | 1 | bool | |
 | 0x2C | ResetRouting | 1 | bool | |
 | 0x2D | ExtraADCDelay | 2 | | 6 bytes |
-| 0x32 | MixerChannelFaderLevel | 2 | mixer | channel, 2 bytes |
-| 0x33 | MixerChannelPan | 2 | mixer | channel, 1 byte |
-| 0x34 | MixerChannelSolo | 2 | mixer | channel, 1 byte |
-| 0x35 | MixerChannelMute | 2 | mixer | channel, 1 byte |
+| 0x32 | MixerChannelFaderLevel | 2 | channel | p2 = mixer, 2 bytes |
+| 0x33 | MixerChannelPan | 2 | channel | p2 = mixer, 1 byte |
+| 0x34 | MixerChannelSolo | 2 | channel | p2 = 0, 1 byte |
+| 0x35 | MixerChannelMute | 2 | channel | p2 = mixer, 1 byte |
 | 0x38 | MixerChannelIsVisible | 2 | channel | p2 = mixer, 1 byte. Gates the channel into that mixer: a hidden channel is not mixed. The report is type 1, one value per channel, 1 if any mixer has the channel visible. The vendor writes all mixers |
-| 0x39 | MixerChannelIsStereo | 2 | channel | p2 = mixer, 1 byte. A write to the even channel of a pair flags both channels. A write to the odd channel flags only itself. The report is type 1, one per channel, 1 if any mixer has the flag. The vendor writes the even channel in all mixers, then copies level, mute, solo, visibility, and solo safe to the partner (`Ensemble2MixerMatrix::_setMixerChannelIsStereo` @0x3421c). `Ensemble2Command::setMixerChannelIsStereo` @0x128c refuses channels 8 and 9. The effect on pan is not measured |
+| 0x39 | MixerChannelIsStereo | 2 | channel | p2 = mixer, 1 byte. A write to the even channel of a pair flags both channels. A write to the odd channel flags only itself. The report is type 1, one per channel, 1 if any mixer has the flag. The vendor writes the even channel in all mixers, then copies level, mute, solo, visibility, and solo safe to the partner (`Ensemble2MixerMatrix::_setMixerChannelIsStereo` @0x3421c). `Ensemble2Command::setMixerChannelIsStereo` @0x128c refuses channels 8 and 9. The PSoC then sets the pan of both channels to 64 in all mixers (0x168AA) |
 | 0x3A | MixerChannelSoloSafe | 2 | channel | 1 byte |
 | 0x50 | FunctionalTestMode | 1 | mode | |
 | 0x51 | FunctionalTestResetAll | 1 | 0xAB | |
@@ -584,14 +585,14 @@ the value in `data[0]`. A command with two arguments sends `p1` and
 | 0x63 | RestartPSocFirmware | 1 | reset type | |
 | 0x66 | MultiUnitSettings | 2 | | 2 bytes |
 | 0x90 | MixerIsPreFader | 2 | mixer 0-3, p2 0 | 1 byte. Reported as type 1. Mixers 2-4 tap their inputs before (1) or after (0) the Mixer 1 faders |
-| 0x91 | DAWMixerFaderLevel | 2 | mixer | channel, 2 bytes big-endian |
-| 0x92 | DAWMixerPan | 2 | mixer | channel, 1 byte |
-| 0x93 | DAWMixerMute | 2 | mixer | channel, 1 byte (inverted) |
+| 0x91 | DAWMixerFaderLevel | 2 | channel (0..29) | p2 = DAW mixer, 2 bytes big-endian |
+| 0x92 | DAWMixerPan | 2 | channel (0..29) | p2 = DAW mixer, 1 byte |
+| 0x93 | DAWMixerMute | 2 | channel (0..29) | p2 = DAW mixer, 1 byte (inverted) |
 | 0x94 | DAWMixerRouting | 1 | bool | 0x80 |
 | 0xA0 | OpticalIsSubMix | 1 | bool | 1 only with a second linked unit |
 | 0xD0 | DSPCoreWriteCode | 2 | words in this chunk, 1 to 23 | p2 = start address. data = first-chunk flag, last-chunk flag, thread, total words, then the words |
 | 0xD1 | DSPCoreWriteCoefficients | 2 | as 0xD0 | as 0xD0 |
-| 0xD3 | DSPCoreRouting | 2 | input index in record order (5.10) | p2 = 0. data = DSP input channel, DSP output channel, mode. Mode bit 0 sends the DSP output to the mixers. Bits 0 and 1 together also send it to the record channel (8.6). The Ensemble HAL sends mode 0 or 1, with the same channel twice |
+| 0xD3 | DSPCoreRouting | 2 | input index in record order (5.11) | p2 = 0. data = DSP input channel, DSP output channel, mode. Mode bit 0 sends the DSP output to the mixers. Bits 0 and 1 together also send it to the record channel (8.6). The Ensemble HAL sends mode 0 or 1, with the same channel twice |
 | 0xD4 | DSPCoreWriteStateInit | 2 | as 0xD0 | as 0xD0. Replaces all 256 state words of the thread (8.2) |
 | 0xD6 | DSPCoreErase | 2 | memory: 0 code, 1 coefficients, 2 state | p2 = start address. data = 1, 1, thread, word count |
 | 0xD7 | DSPCoreHaltResume | 2 | 0 halt, 1 resume | Halt: p2 = start address, data = 0, 0, thread, word count. Resume clears every halt and ignores the other bytes |
@@ -617,6 +618,93 @@ mixer meters:
 DAW fader level: `uint16 = (clamp(dB) + offset) * scale`, byte-swapped.
 The constants are in the HAL at `setDAWMixerFaderLevel`, unverified here.
 
+#### PSoC handlers
+
+Source: the PSoC firmware (`scripts/psoc-firmware.py`). Addresses in this
+part are PSoC flash addresses. "FPGA a" is the FPGA byte address on the
+PSoC bus (5.13). "Matrix d ← s" is a routing matrix entry (5.10).
+
+The host parser (0x153F8) builds one message per record. The handlers read
+p1 at message offset 9, p2 at offset 10, and data from offset 11. A type-1
+record puts its value in data[0] and sets p2 = 0. So every command accepts
+type 1 and type 2 alike. For a type-2 record with len > 99, the parser
+copies no data, calls the dispatcher, and stops.
+
+The dispatcher (0x16228) switches on the command byte. Each message has a
+source:
+
+| Source | Origin |
+|--------|--------|
+| 0 | Front panel and firmware events, through 0x16FBC |
+| 1 | Host |
+| 2 | Replay of the saved settings at power-up (0x20B78 reads the EEPROM at 0x4000_8000, 0x20D18 replays it) |
+
+The PSoC keeps a settings table (`0x21738`): 60 entries of command, value
+size, p1 count, p2 count, default, and a volatile flag. Its initializer is at
+flash 0x25EBC (RAM 0x1FFF_8BEC). After a handler, the dispatcher copies data
+into the table (0x20918), unless the handler stored the value itself or the
+source is 2. The table has entries for 0x01 to 0x0A, 0x0D to 0x16, 0x19,
+0x1A, 0x1C, 0x1D, 0x20 to 0x29, 0x2A, 0x2B, 0x2D, 0x32 to 0x35, 0x38 to
+0x3A, 0x40, 0x42, 0x43, 0x52, 0x53, 0x61, 0x64, 0x66, 0x90 to 0x94, 0xA0,
+0xD2, and 0xD5.
+
+- A change from source 0 marks a report (5.7). A host write does not.
+- A change from source 0 or 1 starts an EEPROM save, except for volatile
+  entries and for 0x23. Volatile: 0x19, 0x27, 0x28, 0x2D, 0x40, 0x42, 0x43,
+  0x52, 0x53, 0x61, 0x64, 0x66, 0x91 to 0x94, 0xD2, 0xD5.
+- At power-up, the PSoC replays each saved setting through the dispatcher.
+  So 0x09 and 0x15 routes survive a power cycle. 0xD3 routes do not.
+- The display code (0x19738) also acts on 0x0F, 0x10, 0x12 to 0x14, 0x19,
+  0x21 to 0x23, 0x25, 0x28 to 0x2A, 0x50, 0x51, 0x60, 0x63, and 0x64, for
+  sources 1 and 2.
+
+| ID | Handler | Checks | Action and hardware |
+|----|---------|--------|---------------------|
+| 0x01 | 0x14810 | p1 ≤ 7, else only stored | Sets the preamp path over SPI (0x108BC). FPGA 0x0B bit p1 = type is not +4dBu. FPGA 0x08 bit p1 (p1 ≤ 3) = Instrument. FPGA 0x0A bit 4 = any phantom power on. A type change from source 0 or 1 also sets 0x07 of p1 to 0 |
+| 0x02 | 0x17368 | p1 ≤ 7: gain ≤ 75. p1 8: gain ≤ 40 | Analog 1-8: preamp SPI, if the type is Mic. Front Mic: I2C device 0x18 (0x12F44). In a group (0x07), the PSoC applies the same change to each channel of the group (0x17020) |
+| 0x03 | 0x172EC | p1 ≤ 3: gain ≤ 65. p1 10, 11: gain ≤ 45 | Analog 1-4: preamp SPI, if the type is Instrument. Guitar 1-2: a 3-byte I2C write (0x126D4). Groups as 0x02 |
+| 0x04 | 0x1463C | p1 ≤ 7 | FPGA 0x0D bit p1 |
+| 0x05 | 0x14698 | p1 ≤ 7 | Preamp SPI. FPGA 0x0A bit 4 = any channel has phantom power and type Mic |
+| 0x06 | 0x145E0 | p1 ≤ 7 | FPGA 0x07 bit p1 |
+| 0x07 | 0x161DC | none | Also stores the value for the partner channel p1 XOR 1. No hardware access |
+| 0x08 | 0x1478C | p1 ≤ 7 | Preamp SPI, if the type is Mic or Instrument |
+| 0x09 | 0x14058 | p1 ≤ 16. No check on data[0] | Matrix 0x30 + 2 p1 + i ← data[0] + i, for i = 0, 1. Pair 15 always gets 0x60 (Mixer 1) and pair 16 always 0x66 (FX Send) |
+| 0x0A | 0x16C2E | p1 ≤ 1 | FPGA 0x08 bit 6 (Analog 1) or bit 7 (Analog 2) |
+| 0x0D | 0x14B48 | p1 ≤ 9 | p1 0, 1: FPGA 0x08 bit 4, 5. p1 2 to 9: FPGA 0x0C bit p1 − 2. 1 = -10dBV |
+| 0x0E | 0x14D28 | p1 ≤ 9. Value clamped to 120 | value / 5 goes to an I2C volume chip (0x1138C). value mod 5 goes to FPGA 0x8B + p1 |
+| 0x0F | 0x13B90, 0x14C80 | none | Stores the mode, applies the routes of destinations 0 to 3 again, and sets the volume chips |
+| 0x10 | 0x13BDC | none | Stores the mask and applies the speaker routes again. An inactive set gets matrix control 0x18 (5.10) |
+| 0x11 | 0x14B98 | Value clamped to 64. No check on p1 | I2C volume chips. Steps of the chips: 2 × attenuation, + 30 for dim, 255 for mute (0x14DF8) |
+| 0x12, 0x13 | 0x14BD8, 0x14C2C | No check on p1 | as 0x11. A p1 above 2 writes past the RAM table at 0x1FFF_910C |
+| 0x14 | 0x13C48 | p1 ≤ 2 | Applies the routes of the monitor output again, through the mono summer (5.10) |
+| 0x15 | 0x13DFC | p1 ≤ 16. No check on data[0] | Writes the matrix (5.10) |
+| 0x16 | 0x16D1E | none | FPGA 0x09 bit 0 (p1 0) or bit 1 (p1 ≠ 0) = value is 0 (Thru) |
+| 0x1A | 0x11D24 | none | FPGA 0x28: port 0 bits 0 and 2, port ≠ 0 bits 1 and 3, set for value 1 (S/PDIF) |
+| 0x1C | 0x14EF8 | p1 ≤ 1 | I2C volume chip, if 0x1D of p1 is 0 |
+| 0x1D | 0x14EF8 | p1 ≤ 1 | On: the guitar output attenuation follows the 0x03 gain of channel 10 + p1. Off: it takes the 0x1C value |
+| 0x27 | 0x16EB6 | none | Starts or stops a display timer. No FPGA access |
+| 0x29 | 0x1455C | index > 5 gives 44.1 kHz | Index 0 to 5: 44.1, 48, 88.2, 96, 176.4, 192 kHz (0x21670). FPGA 0x0E = rate code (5.13), FPGA 0x37 = ADC delay, converter set-up over I2C (0x10490). With an external clock, report 0x42 = 0 |
+| 0x2A | 0x1459C | none | FPGA 0x0F = value. Value 0 also sets reports 0x42 = 1 and 0x64 = 1. Other values set both to 0 |
+| 0x2B | 0x16EF8 | none | FPGA 0x09 bit 2 = value is 0 |
+| 0x2C | 0x139C8, 0x13AE0 | none | data[0] = 0: resets the output routes (5.10). data[0] ≠ 0: resets the record routes |
+| 0x2D | 0x153A4 | none | Stores 6 delay bytes, one per rate. FPGA 0x37 ← the byte of the current rate. 88.2 and 96 kHz both use byte 3 |
+| 0x32 | 0x17854 | none | Mixer gain of p1 in mixer p2 (FPGA 0x1000, 5.13). A stereo even channel also sets p1 + 1 |
+| 0x33, 0x35 | 0x179EC, 0x177E8 | none | as 0x32 |
+| 0x34, 0x3A | 0x17930, 0x178E4 | none | Solo and solo safe. They change the gains of all mixers |
+| 0x38 | 0x167BC | none | Hidden (0) also clears 0x34 and 0x3A of p1 |
+| 0x39 | 0x168AA | p1 even | A change sets the flag of p1 + 1 and the pan of both channels to 64 in all 4 mixers. It also copies 0x38, 0x3A, 0x34, and the 0x35 and 0x32 of each mixer to p1 + 1 (0x15E18) |
+| 0x51 | 0x16F1A | data[0] = 0xAB | Resets all settings to their defaults (0x205CC) and saves them |
+| 0x60 to 0x63 | 0x17FB4, 0x18198, 0x18098, 0x18344 | | Firmware update through FPGA 0x2D to 0x34 and the buffer at 0x0C00. 0x63 data 1 restarts the PSoC. Not analyzed further |
+| 0x66 | 0x16722 | none | data[0] = 0 clears 0x34 of channel 46. data[0] and data[1] ≠ 0: output routes of destinations 0 to 6, 15, and 16 replace codes 0x60 to 0x67 with 0x10 to 0x17 |
+| 0x90 | 0x16AB4 | p1 = 0 ignored | Recomputes the mixer gains on a change |
+| 0x91 to 0x93 | 0x18638 | none | DAW mixer p2, channel p1. FPGA 0x1400 + 0x100 p2 (5.13) |
+| 0x94 | 0x140C0, 0x187EC | data[0] = 0 means 0x80 | DAW mixer p1 passes playback code data[0] at unity. Output routes that use that playback code switch to DAW mixer output 0x68 + 2 p1 |
+| 0xD0 to 0xD7 | 0x13574 to 0x1421C | none | Section 8.6 |
+
+The dispatcher has no case for 0x0B, 0x0C, 0x17 to 0x19, 0x1B, 0x1E to
+0x26, 0x28, 0x50, 0x64, 0xA0, 0xD2, and 0xD5. The PSoC only stores these
+values, if the settings table has them. It ignores 0x1E and 0x1F.
+
 ### 5.7 Reports from the PSoC
 
 `Ensemble2AudioDevice::packetFromHardwareArrived` switches on the command
@@ -632,17 +720,51 @@ value. Extra report IDs:
 | 0x44 | Get-all complete. data[0] = 1 |
 | 0x52, 0x53 | Functional test result (not decoded) |
 | 0x64 | PLL clock lock |
+| 0xD2 | DSP core version, 7 bytes |
+| 0xD5 | DSP cycle count per thread and sample, data[0]. See 8.1 |
 
 With Word Clock selected and no signal, the unit reports 0x42 = 0 and
 0x64 = 0, and the audio DMA stops. With Internal, both report 1.
-| 0xD2 | DSP core version, 7 bytes |
-| 0xD5 | DSP cycle count per thread and sample, data[0]. See 8.1 |
 
 A Get-all request (type 4) returns one report per property.
 
 The PSoC does not echo a set command. A front-panel change, for example
 the volume encoder, produces a report. A host that sends a set command
 must update its own copy of the state.
+
+#### PSoC side
+
+Source: the PSoC firmware. The PSoC sends the stored value of a setting
+(5.6) as a report. The record is type 1 if the value is 1 byte and the
+setting has no p2. Else it is type 2 with p2 and len = value size
+(0x15A10).
+
+The report table holds 28 IDs (0x21854, initializer at flash 0x2609C):
+0x01 to 0x08, 0x0A, 0x10 to 0x14, 0x16, 0x19, 0x27 to 0x29, 0x40, 0x42,
+0x43, 0x52, 0x53, 0x61, 0x64, 0xD2, and 0xD5. Each ID has a bit mask of
+pending p1 values. The sender (0x2153C) sends each pending value with
+p2 = 0.
+
+- Get (type 3, 0x208E0) marks (command, p1) as pending. The PSoC ignores
+  p2, and a Get of an ID that is not in the report table.
+- A change from source 0 (5.6) marks a report only for these 28 IDs. So a
+  front-panel change of a route or a mixer value sends no report.
+- Get-all (type 4 with bytes 1 to 3 zero) makes 0x15668 send, in order:
+  0x40 with p1 0 to 3, 0xD2, and 0x41 (0x15C50). Then each setting that
+  is not volatile, for each p1 and p2. Then 0x44 as type 2 with data =
+  1 and a RAM byte (0x1FFF_9148, meaning unverified). Last, it marks 0x42
+  and 0x64 as pending.
+- Get-all covers 0x01 to 0x0A, 0x0D to 0x16, 0x1A, 0x1C, 0x1D, 0x20 to
+  0x26, 0x29 to 0x2B, 0x32 to 0x35, 0x38 to 0x3A, 0x90, and 0xA0.
+
+The main loop (0x15F58) makes these reports without a request:
+
+| ID | Value | Source |
+|----|-------|--------|
+| 0x64 | 1 if FPGA 0x02 bit 6 is 0 | 0x16026, only with an external clock source |
+| 0x42 | 1 if 0x64 is 1 and the measured rate (FPGA 0x18) is within 5 % of the set rate | 0x16072, only with an external clock source |
+| 0xD5 | FPGA 0x180E, when it changes | 0x16118 |
+| 0x43 | 1 when the PSoC enters its run state. The front-panel code also sets 0 or 1 through 0x16FBC | 0x15FDE |
 
 ### 5.8 Enum values
 
@@ -767,7 +889,86 @@ The DMA output ring therefore carries software playback channels, not
 physical outputs. The PSoC routing matrix assigns each playback pair to a
 physical destination.
 
-### 5.10 Input channel order (Ensemble)
+### 5.10 Routing matrix
+
+Source: the PSoC firmware. The FPGA routing matrix has 256 destinations.
+Each destination takes one source. The PSoC writes the source of
+destination d to FPGA 0x0200 + d and a control byte to FPGA 0x0300 + d
+(5.13). The control byte is 8 for each route. Outputs of an inactive speaker
+set get 0x18. The meaning of the control bits is unverified. Source numbers
+are the codes of 5.9.
+
+| Source | Signal | Evidence |
+|--------|--------|----------|
+| 0x00 to 0x07 | Analog 1-8 | Input table at RAM 0x1FFF_8290 (0x140E8) |
+| 0x08, 0x09 | Front panel mic | as above |
+| 0x0A, 0x0B | Guitar 1-2 | as above |
+| 0x10 to 0x1F | Optical 1-16 | as above |
+| 0x20 + k | Mono sum of monitor bus k, the same value on L and R | 0x13DFC |
+| 0x30 to 0x53 | Playback 1-36 | 5.9 |
+| 0x54, 0x55 | S/PDIF coax in | Input table |
+| 0x60 to 0x67 | Mixer 1 L/R, Mixer 2, Mixer 3, FX Send | 5.9 |
+| 0x68 + 2m, 0x69 + 2m | DAW mixer m (0 to 3), L/R | 0x13DA4 |
+| 0x70 to 0x7F | DSP outputs 0 to 15 | 0x14188, 8.6 |
+| 0x90 to 0xAF | Unknown. Start-up routes them to destinations 0xE0 to 0xFF | 0x13860 |
+
+| Destination | Signal | Written by |
+|-------------|--------|------------|
+| 0x00 to 0x09 | Line out 1-10 | 0x15 with p1 0 to 4. Table at RAM 0x1FFF_829C maps p1 to the destination |
+| 0x0A, 0x0B | Guitar out 1-2 | 0x15 with p1 5 |
+| 0x0C, 0x0D | Headphone 1 | 0x15 with p1 15 |
+| 0x0E, 0x0F | Headphone 2 | 0x15 with p1 16 |
+| 0x10 to 0x1F | Optical out 1-16 | 0x15 with p1 7 to 14 |
+| 0x20 + 2k, 0x21 + 2k | Mono summer input of monitor bus k. k 0 to 2 = speaker destinations 0 to 2, k 3 and 4 = Headphone 1 and 2 | 0x15, if 0x14 is on |
+| 0x30 to 0x51 | Record channel r = d − 0x30 (5.11) | 0x09, 0xD3 |
+| 0x52, 0x53 | S/PDIF coax out | 0x15 with p1 6 |
+| 0x60 to 0x7D | Mixer feed and host input meter of input r = d − 0x60 | 0xD3, start-up (0x13860) |
+| 0x80 to 0x8F | Playback 1-16. Probably the mixer channels 30 to 45 (inferred) | 0x2C, start-up |
+| 0x90 to 0x99 | Front-panel input meters 0 to 9: Analog 1-8, Guitar 1-2 (inferred) | Start-up (0x14020) |
+| 0x9A to 0xA9 | Front-panel output meters 10 to 25: Line out 1-10, Guitar out 1-2, Headphone 1 and 2 (inferred) | 0x15 (0x13D10) |
+| 0xB0 to 0xB7 | Unknown. 0x2C routes the mixer outputs 0x60 to 0x67 to them | 0x2C |
+| 0xC0 to 0xCF | DSP inputs 0 to 15 | 0xD3 |
+| 0xE0 to 0xFF | Unknown. Start-up routes sources 0x90 to 0xAF to them | Start-up |
+
+The meter rows are inferred from counts: the display code reads 10 input
+meters and 16 output meters from FPGA 0x0040 (0x19208). The source of each
+front-panel meter is the source of its input or output.
+
+0x15 (0x13DFC) writes these entries for p1 = d and code c:
+
+1. With 0x66 data[0] and data[1] not 0, and d ≤ 6 or d ≥ 15, codes
+   0x60 to 0x67 become 0x10 to 0x17.
+2. If DAW mixer m passes playback code c (0x94), c becomes 0x68 + 2m.
+3. The output pair o comes from the table at RAM 0x1FFF_829C. The meter
+   pair is 0x9A + 2d for d ≤ 5, 0xA6 for d 15, and 0xA8 for d 16.
+4. If monitor bus k of d sums to mono (0x14), the matrix gets 0x20 + 2k
+   + i ← c + i. The output and meter entries get 0x20 + k. Else the
+   matrix gets o + i ← c + i and meter + i ← c + i.
+5. In "2 Speaker Sets" and "3 Speaker Sets" modes, a speaker destination
+   that is not in the 0x10 mask gets control byte 0x18.
+
+The matrix commands check few arguments:
+
+- 0x15 and 0x09 accept any source code. So 0x15 with code 0x70 + o sends
+  DSP outputs o and o + 1 to an output pair. 0x09 with 0x70 + o records
+  them. Not tested on the unit.
+- 0xD3 checks nothing and computes each index modulo 256 (8.6). It is the
+  only command that writes destinations 0xC0 to 0xCF.
+- No command writes destinations 0x80 to 0x8F, 0xB0 to 0xB7, or 0xE0 to
+  0xFF with a host-chosen source.
+
+Default routes:
+
+- 0x2C with data[0] = 0 uses the table at RAM 0x1FFF_8280. Playback 1-12
+  go to Line out 1-10 and Guitar out. Playback 13-14 go to S/PDIF, 15-30
+  to Optical, and 1-2 to both headphones. It also sets 0xB0 + i ← 0x60 + i
+  and 0x80 + i ← 0x30 + i.
+- 0x2C with data[0] ≠ 0 uses the table at RAM 0x1FFF_8268. Each input goes
+  to its record pair. Mixer 1 goes to record pair 15, FX Send to pair 16.
+- Start-up (0x13860) sets 0x60 + r ← input r and the input meter taps. It
+  also sets 0x80 + i ← 0x30 + i and 0xE0 + i ← 0x90 + i.
+
+### 5.11 Input channel order (Ensemble)
 
 From `Ensemble2AudioDevice::createChannelName(isInput = true, index)`:
 
@@ -788,7 +989,7 @@ The record ring holds 34 channels in this order. Channels 30 and 31 carry
 Mixer 1. With Analog 1 in Mixer 2, 3, or 4 only, channels 30 to 33 stayed
 silent.
 
-### 5.11 Custom CoreAudio properties (Apogee Control API)
+### 5.12 Custom CoreAudio properties (Apogee Control API)
 
 Apogee Control and Maestro talk to the HAL plugin through custom
 `AudioObjectPropertySelector` codes. A replacement plugin must answer the
@@ -862,6 +1063,49 @@ Property data travels as CFPropertyList-encoded CFData
 (`_readDataFromCFPropertyList`, `_writeDataToCFPropertyList`). Values are
 32-bit integers or CFStrings. The apps also read plain properties such as
 `kAudioDevicePropertyClockSource` with the IDs in section 5.8.
+
+### 5.13 FPGA registers on the PSoC bus
+
+Source: the PSoC firmware. The PSoC reaches the FPGA through its External
+Memory Interface, 8 bits wide: FPGA byte address a is PSoC address
+0x6080_0000 + a. The PSoC keeps a RAM copy of the control registers 0x08
+to 0x0D (0x1190C) and writes the whole byte on each change. Multi-byte
+values are little-endian. "Unverified" marks a meaning that the code does
+not settle.
+
+| Address | Access | Function | PSoC code |
+|---------|--------|----------|-----------|
+| 0x0000 | R | 0xAB when the FPGA is ready. The PSoC polls it at start-up | 0x11754 |
+| 0x0002 | R | Status. Bit 6 = PLL not locked (report 0x64). Bits 5:3 + 1 = hardware revision (report 0x40, p1 2). The event handler reads bit 0 | 0x11B4C, 0x1FD84 |
+| 0x0003 | W | 0xA2 after the PSoC writes host messages. Likely the host doorbell, unverified | 0x11D98 |
+| 0x0004 | R | Read once at start-up. A nonzero value changes the start state. Meaning unknown | 0x17540 |
+| 0x0005, 0x0006 | R | FPGA firmware version for report 0x40, p1 1 | 0x17404 |
+| 0x0007 | W | Bit n: phase invert on Analog n + 1 | 0x11C98 |
+| 0x0008 | W | Bits 3:0: Instrument on Analog 1-4. Bits 5:4: -10dBV on Line out 1-2. Bits 7:6: insert on Analog 1-2 | 0x1190C |
+| 0x0009 | W | Bits 1:0: guitar out Thru. Bit 2: word clock termination off. Bit 3: set by the guitar gain code, meaning unknown. Bits 7:6: sample-rate set-up | 0x1190C |
+| 0x000A | W | Bits 3:2: sample-rate set-up. Bit 4: phantom power supply | 0x1190C |
+| 0x000B | W | Bit n: Analog n + 1 is not +4dBu | 0x1198C |
+| 0x000C | W | Bit n: Line out n + 3 is -10dBV | 0x11A10 |
+| 0x000D | W | Bit n: soft limit on Analog n + 1 | 0x11A94 |
+| 0x000E | W | Sample rate: 0 = 44.1, 1 = 48, 2 = 88.2, 3 = 96, 4 = 176.4, 5 = 192 kHz | 0x11860 |
+| 0x000F | W | Clock source, the 0x2A value (5.8) | 0x118E4 |
+| 0x0011 to 0x0018 | R | Unit ID for report 0x41, read from 0x0018 down to 0x0011. The overlap with 0x0018 is unexplained | 0x11B74 |
+| 0x0018 to 0x001B | R | 32-bit period count of the external clock. The PSoC converts it to a sample rate | 0x12150 |
+| 0x001C, 0x0020, 0x0024 | R, RW, W | Event flags, event enable, and event clear, bits 0 to 5. Meaning of the bits unverified | 0x116F8, 0x1167C, 0x11614 |
+| 0x0028 | W | Optical port format, 2 bits per port (5.6, 0x1A) | 0x11D24 |
+| 0x002D | W | 1 after start-up, 0 before a firmware update. Meaning unverified | 0x1F8FC, 0x17FB4 |
+| 0x002E to 0x0034 | RW | Flash writes for the firmware update | 0x12334 to 0x12570 |
+| 0x0035 | R | The start-up code reads bit 1 after 0x0000 reads 0xAB | 0x11754 |
+| 0x0037 | W | ADC delay of the current sample rate (0x2D) | 0x153A4 |
+| 0x0040 + 2m | R | Front-panel meter m, 16 bits. m 0 to 9: inputs. m 10 to 25: outputs. Bit 15: over | 0x19208 |
+| 0x0080 | W | 3 resets the front-panel meter state, unverified | 0x12130 |
+| 0x008B + n | W | Fine trim of Line out n + 1, 0 to 4 steps (0x0E) | 0x14D28 |
+| 0x0200 + d | W | Routing matrix: source of destination d (5.10) | 0x11C24 |
+| 0x0300 + d | W | Routing matrix: control byte of destination d | 0x11C5C |
+| 0x0400 to 0x0BF3 | RW | Message slots and indices, the same bytes as BAR0 0x400 to 0xBF3 (2.5) | 0x11DB0 to 0x11F68 |
+| 0x0C00 | RW | Data buffer of the firmware update | 0x12444 |
+| 0x1000 + 0x100 m + 0x80 s + 2c | W | 16-bit gain of channel c (0 to 63) into side s (0 L, 1 R) of mixer m. m 0 to 3: Mixer 1 to 4. m 4 to 7: DAW mixers 1 to 4. The gain format is in 0x18534 | 0x11BE4 |
+| 0x1800 to 0x27FF | | DSP core (8.6) | |
 
 ---
 
@@ -982,7 +1226,7 @@ Terms:
 | Memories | Code (0), coefficients (1), state (2), per thread | Memory argument of 0xD6 |
 | Memory size | 256 words of 32 bits, per memory and thread | `DSPCoreMemoryBlock` rejects offsets 0x100 and higher |
 | DSP I/O channels | 16 | `DSPCoreResourceManager` allocates channels 0 to 15. The instruction fields are 6 bits. In the FPGA routing matrix, DSP input n is destination 0xC0 + n and DSP output n is source 0x70 + n (8.6) |
-| Racks | 30, one per input in record order (5.10) | `Ensemble2AudioDevice::DSPCoreNumberOfHardwareInputs` |
+| Racks | 30, one per input in record order (5.11) | `Ensemble2AudioDevice::DSPCoreNumberOfHardwareInputs` |
 | Cycle budget | `floor(125e6 / (16 * fs))` per thread and sample: 177 at 44.1 kHz, 162 at 48 kHz, 81 at 96 kHz | `DSPController::estimatedDSPCycleCount` @0x62238. The unit reports 162 at 48 kHz |
 
 Report 0xD5 replaces the estimate.
@@ -1208,7 +1452,8 @@ The PSoC executes the DSP commands. Its firmware dispatches the command
 byte at 0x16256 (`scripts/psoc-firmware.py`) and writes the FPGA through
 the External Memory Interface. FPGA byte address a is PSoC address
 0x6080_0000 + a. The PSoC writes a 32-bit word as four byte writes, low
-byte first (0x12610).
+byte first (0x12610). Section 5.13 lists the FPGA registers outside the
+DSP core.
 
 | FPGA address | Function | PSoC code |
 |--------------|----------|-----------|
@@ -1216,6 +1461,7 @@ byte first (0x12610).
 | 0x1800 | Thread for code and coefficient writes | 0x13574 |
 | 0x1802 | Enable mask of the 8 halt slots | 0x132DC |
 | 0x1805, 0x1806 | Coefficient handshakes: the PSoC writes the thread, then waits for bit 5. 0x1805 comes before the words, 0x1806 after them | 0x136FC, 0x137C8 |
+| 0x1807 to 0x180C | DSP core version bytes for report 0xD2 | 0x17404 |
 | 0x180E | Cycle count, sent as report 0xD5 | 0x136E4 |
 | 0x180F | State copy: write 2 to start it. Bit 0 = busy | 0x135E8 |
 | 0x1810, 0x1811, 0x1812 | State copy: thread, start address, count. The FPGA ignores the count (8.2) | 0x135E8 |
@@ -1237,6 +1483,24 @@ The input source of r comes from a table (0x140E8).
 | 0x60 + r (mixer feed of r) | DSP output 0x70 + o, if m bit 0 is set. Otherwise input r |
 | 0x30 + r (record channel of r) | DSP output 0x70 + o, if m bits 0 and 1 are set. Otherwise input r |
 
+The PSoC checks none of the four bytes, and it computes each index in 8
+bits. DSP input i is destination (data[0] + 0xC0) mod 256. The DSP output
+source is (data[1] + 0x70) mod 256. The input source of r is Analog 1
+(0x00) for r ≥ 30. The PSoC writes the entries in table order, so a
+later entry wins. Thus 0xD3 can put any source s on DSP input n. Send
+p1 = 0x60 + n and data = n, (s − 0x70) mod 256, 1:
+
+| Order | Entry |
+|-------|-------|
+| 1 | 0xC0 + n ← Analog 1 |
+| 2 | 0x60 + p1 = 0xC0 + n ← s |
+| 3 | 0x30 + p1 = 0x90 + n ← Analog 1. This is front-panel meter tap n (5.10) |
+
+For example, s = 0x60 puts Mixer 1 L on DSP input n, and s = 0x30 puts
+Playback 1 there. This follows from the code and is not tested on the
+unit. With s = 0x60 and the DSP output in Mixer 1, the signal loops back.
+Mode 0 with the same p1 sets DSP input n to Analog 1 again.
+
 Mode 3 is the FX Rack "Print" mode: the record channel carries the FX
 output (8.7). The Ensemble HAL sends only mode 0 or 1, and the FX Rack
 plugin shows "Print is not available in version ..., please use DualPath
@@ -1254,7 +1518,7 @@ Measured with the open driver at 48 kHz. `scripts/dsp/dsp.py` sends the
 commands through `raw.send` of ensemble-control. Each load erased all
 threads, followed 8.2 in thread 0 at address 0 with DSP I/O channel 0, and
 sent a resume-all. The record stream gave the reference: channel 8 is the
-dry front panel mic, and channels 30 and 31 are Mixer 1 (5.10). The
+dry front panel mic, and channels 30 and 31 are Mixer 1 (5.11). The
 speaker output stayed muted.
 
 - A Get of 0xD5 returns 162.
