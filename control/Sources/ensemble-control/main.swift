@@ -14,7 +14,9 @@ do {
         exit(0)
     }
     let server = Server()
-    let controller = Controller(transport: device) { server.broadcast($0) }
+    let presets = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        .appendingPathComponent("ensemble-control/presets.json")
+    let controller = Controller(transport: device, presets: presets) { server.broadcast($0) }
     try device.subscribe { controller.receive($0) }
     let page = try Data(contentsOf: Bundle.module.url(forResource: "index", withExtension: "html",
                                                       subdirectory: "Public")!)

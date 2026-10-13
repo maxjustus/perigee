@@ -14,6 +14,7 @@ struct RPCError: Error {
 
 public final class Controller: @unchecked Sendable {
     private let transport: Transport
+    private let presetsFile: URL
     private let retryDelay: TimeInterval
     private let broadcast: @Sendable (String) -> Void
     private let byPath = Dictionary(uniqueKeysWithValues: parameters.map { ($0.path, $0) })
@@ -24,9 +25,10 @@ public final class Controller: @unchecked Sendable {
     private let lock = NSCondition()
     private var values: [String: Int] = [:]
 
-    public init(transport: Transport, retryDelay: TimeInterval = 0.01,
+    public init(transport: Transport, presets: URL, retryDelay: TimeInterval = 0.01,
                 broadcast: @escaping @Sendable (String) -> Void) {
         self.transport = transport
+        self.presetsFile = presets
         self.retryDelay = retryDelay
         self.broadcast = broadcast
     }
@@ -104,9 +106,7 @@ public final class Controller: @unchecked Sendable {
         case "describe":
             return parameters.map(describe)
         case "get":
-            return lock.withLock {
-                Dictionary(uniqueKeysWithValues: values.map { ($0.key, json($0.value, byPath[$0.key]!.kind)) })
-            }
+            return snapshot()
         case "set":
             guard let changes = params as? [String: Any] else {
                 throw RPCError.invalidParams("set takes an object of path: value")
@@ -117,6 +117,33 @@ public final class Controller: @unchecked Sendable {
                 }
                 return (parameter, try encodeValue(value, parameter))
             })
+            return true
+        case "presets.list":
+            return try readPresets().keys.sorted()
+        case "presets.save":
+            var presets = try readPresets()
+            presets[try presetName(method, params)] = snapshot().filter { !byPath[$0.key]!.perSpeakerSet }
+            try writePresets(presets)
+            return true
+        case "presets.load":
+            let name = try presetName(method, params)
+            guard let preset = try readPresets()[name] else {
+                throw RPCError.invalidParams("unknown preset \(name)")
+            }
+            var skipped: [String] = []
+            let changes = preset.compactMap { path, value -> (Parameter, Int)? in
+                guard let parameter = byPath[path], let wire = try? encodeValue(value, parameter) else {
+                    skipped.append(path)
+                    return nil
+                }
+                return (parameter, wire)
+            }
+            try apply(lock.withLock { changes.filter { values[$0.0.path] != $0.1 } })
+            return ["skipped": skipped.sorted()]
+        case "presets.delete":
+            var presets = try readPresets()
+            presets[try presetName(method, params)] = nil
+            try writePresets(presets)
             return true
         case "raw.send":
             guard let items = (params as? [String: Any])?["words"] as? [Any],
@@ -129,6 +156,12 @@ public final class Controller: @unchecked Sendable {
             return true
         default:
             throw RPCError(code: -32601, message: "unknown method \(method)")
+        }
+    }
+
+    private func snapshot() -> [String: Any] {
+        lock.withLock {
+            Dictionary(uniqueKeysWithValues: values.map { ($0.key, json($0.value, byPath[$0.key]!.kind)) })
         }
     }
 
@@ -167,6 +200,33 @@ public final class Controller: @unchecked Sendable {
                 }
             }
         }
+    }
+
+    private func presetName(_ method: String, _ params: Any?) throws -> String {
+        guard let name = (params as? [String: Any])?["name"] as? String, !name.isEmpty else {
+            throw RPCError.invalidParams("\(method) takes name: a nonempty string")
+        }
+        return name
+    }
+
+    private func readPresets() throws -> [String: [String: Any]] {
+        guard FileManager.default.fileExists(atPath: presetsFile.path) else {
+            return [:]
+        }
+        guard let presets = try JSONSerialization.jsonObject(with: Data(contentsOf: presetsFile))
+            as? [String: [String: Any]]
+        else {
+            throw RPCError(code: -32000, message: "\(presetsFile.path) is not an object of presets")
+        }
+        return presets
+    }
+
+    private func writePresets(_ presets: [String: [String: Any]]) throws {
+        try FileManager.default.createDirectory(at: presetsFile.deletingLastPathComponent(),
+                                                withIntermediateDirectories: true)
+        try JSONSerialization.data(withJSONObject: presets, options: [.prettyPrinted, .sortedKeys])
+            .write(to: presetsFile, options: .atomic)
+        broadcast(notification("presets", ["names": presets.keys.sorted()]))
     }
 
     // The dext empties its outbox every 10 ms, so 100 attempts wait about 1 s.

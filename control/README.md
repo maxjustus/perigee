@@ -36,6 +36,10 @@ runs it and sends no reply.
 | `get` | none | Object of path: value, for every value reported so far |
 | `set` | Object of path: value | `true` after the commands are queued |
 | `raw.send` | `{words: [...]}`, 3 to 30 unsigned 32-bit integers | `true` |
+| `presets.list` | none | List of preset names, sorted |
+| `presets.save` | `{name}` | `true` |
+| `presets.load` | `{name}` | `{skipped: [...]}` |
+| `presets.delete` | `{name}` | `true` |
 
 `kind` is `bool`, `int`, or `choice`. Only an `int` has `min` and `max`.
 Only a `choice` has `choices`. In `set`, a `bool` value must be a JSON
@@ -68,7 +72,15 @@ header `1, 0`. Records follow, 4 bytes to a word, low byte first.
 
 An error reply to -32700 or -32600 has `"id": null`.
 
-The server sends four notifications:
+A preset holds the `get` result of the time of `presets.save`, without
+`outputs/speakerSource`. A save with the name of a preset replaces it.
+The service keeps all presets in
+`~/Library/Application Support/ensemble-control/presets.json`.
+`presets.load` sets each saved value that differs from the reported
+value, as one `set`. It skips each path that the service does not know
+or that has an invalid value, and returns these paths in `skipped`.
+
+The server sends five notifications:
 
 - `changed`: object of path: new value. The dext reports every sent set
   command and every front-panel change, so all clients get each change once.
@@ -76,6 +88,7 @@ The server sends four notifications:
   `{type, command, p1, p2, data}`. `type` 1 is a set record: `p2` is 0
   and `data` holds one byte. `type` 2 is a block record with up to 100
   bytes of `data`.
+- `presets`: `{names}`, the sorted preset names after a save or a delete.
 - `restarted`: the PSoC restarted, with empty params. The PSoC replays
   its saved settings, and `changed` notifications follow from the
   Get-all that the dext sends. The restart removes the DSP routes (0xD3).

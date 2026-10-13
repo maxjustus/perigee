@@ -41,11 +41,22 @@ func word(_ b0: UInt32, _ b1: UInt32, _ b2: UInt32, _ b3: UInt32) -> UInt32 {
     b0 | b1 << 8 | b2 << 16 | b3 << 24
 }
 
-func makeController() -> (Controller, FakeTransport, Broadcasts) {
+func makeController(presets: URL = temporaryPresets()) -> (Controller, FakeTransport, Broadcasts) {
     let transport = FakeTransport()
     let broadcasts = Broadcasts()
-    let controller = Controller(transport: transport, retryDelay: 0) { broadcasts.texts.append($0) }
+    let controller = Controller(transport: transport, presets: presets, retryDelay: 0) {
+        broadcasts.texts.append($0)
+    }
     return (controller, transport, broadcasts)
+}
+
+func temporaryPresets() -> URL {
+    FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        .appendingPathComponent("presets.json")
+}
+
+func call(_ controller: Controller, _ method: String, _ params: String) -> [String: Any] {
+    object(controller.handle(#"{"jsonrpc":"2.0","id":1,"method":""# + method + #"","params":"# + params + "}")!)
 }
 
 @Test func parameterPathsAreUnique() {
@@ -351,6 +362,57 @@ func makeController() -> (Controller, FakeTransport, Broadcasts) {
     let params = object(broadcasts.texts.last!)["params"] as? [String: Any]
     #expect(params?["outputs/speakerSource"] as? String == "Mixer 2")
     #expect(params?["routing/line1-2"] as? String == "Mixer 2")
+}
+
+@Test func savedPresetsAreListedAndBroadcastByName() {
+    let (controller, _, broadcasts) = makeController()
+    _ = call(controller, "presets.save", #"{"name":"Tracking"}"#)
+    _ = call(controller, "presets.save", #"{"name":"Mix"}"#)
+    #expect(call(controller, "presets.list", "null")["result"] as? [String] == ["Mix", "Tracking"])
+    let presets = object(broadcasts.texts.last!)
+    #expect(presets["method"] as? String == "presets")
+    #expect((presets["params"] as? [String: Any])?["names"] as? [String] == ["Mix", "Tracking"])
+}
+
+@Test func loadSendsTheSavedValuesThatDiffer() {
+    let (controller, transport, _) = makeController()
+    controller.receive(Report(type: 1, command: 0x11, p1: 2, p2: 0, data: [47]))
+    controller.receive(Report(type: 1, command: 0x12, p1: 2, p2: 0, data: [1]))
+    _ = call(controller, "presets.save", #"{"name":"A"}"#)
+    controller.receive(Report(type: 1, command: 0x11, p1: 2, p2: 0, data: [10]))
+    let result = call(controller, "presets.load", #"{"name":"A"}"#)["result"] as? [String: Any]
+    #expect(result?["skipped"] as? [String] == [])
+    #expect(transport.sent == [[1, 0, word(1, 0x11, 2, 47)]])
+}
+
+@Test func loadSkipsAndReportsPathsThatItCannotSet() throws {
+    let presets = temporaryPresets()
+    try FileManager.default.createDirectory(at: presets.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try Data(#"{"A":{"nope":1,"routing/line1-2":127,"outputs/speaker/mute":true}}"#.utf8).write(to: presets)
+    let (controller, transport, _) = makeController(presets: presets)
+    let result = call(controller, "presets.load", #"{"name":"A"}"#)["result"] as? [String: Any]
+    #expect(result?["skipped"] as? [String] == ["nope", "routing/line1-2"])
+    #expect(transport.sent == [[1, 0, 0x0102_1201]])
+}
+
+@Test func aPresetLeavesOutTheSpeakerSourceAlias() throws {
+    let presets = temporaryPresets()
+    let (controller, _, _) = makeController(presets: presets)
+    controller.receive(Report(type: 1, command: 0x15, p1: 0, p2: 0, data: [0x60]))
+    _ = call(controller, "presets.save", #"{"name":"A"}"#)
+    let saved = try JSONSerialization.jsonObject(with: Data(contentsOf: presets)) as? [String: [String: String]]
+    #expect(saved == ["A": ["routing/line1-2": "Mixer 1"]])
+}
+
+@Test func deletedAndUnknownPresetsCannotBeLoaded() {
+    let (controller, _, _) = makeController()
+    _ = call(controller, "presets.save", #"{"name":"A"}"#)
+    _ = call(controller, "presets.delete", #"{"name":"A"}"#)
+    #expect(call(controller, "presets.list", "null")["result"] as? [String] == [])
+    let error = call(controller, "presets.load", #"{"name":"A"}"#)["error"] as? [String: Any]
+    #expect(error?["code"] as? Int == -32602)
+    let unnamed = call(controller, "presets.save", #"{"name":""}"#)["error"] as? [String: Any]
+    #expect(unnamed?["code"] as? Int == -32602)
 }
 
 @Test func reportDecodesFromAsyncArguments() {
