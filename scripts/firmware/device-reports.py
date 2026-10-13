@@ -11,12 +11,11 @@ import argparse
 import asyncio
 import json
 from pathlib import Path
+import runpy
 import sys
 import time
 
-import websockets
-
-URL = "ws://127.0.0.1:8738"
+RPC = runpy.run_path(str(Path(__file__).parents[1] / "rpc.py"))
 # front-panel-resources.py crc8 over the vendor EnsembleResourceData.bin
 VENDOR_RESOURCE_CRC8 = 0x1B
 
@@ -63,59 +62,13 @@ def decode_resource(report):
     return {"version": data[1], "crc8": data[2], "matches_vendor": data[2] == VENDOR_RESOURCE_CRC8}
 
 
-class Client:
-    """A JSON-RPC client. Unmatched replies and reports queue for later reads."""
-
-    def __init__(self, ws):
-        self.ws = ws
-        self.id = 0
-        self.reports = []
-
-    async def send(self, words):
-        word2 = words[2] if len(words) > 2 else None
-        if words[0:2] != [1, 0] or word2 not in ALLOWED:
-            raise ValueError(f"words are outside the allowlist: {words}")
-        await self.call("raw.send", {"words": words})
-        await asyncio.sleep(0.02)
-
-    async def call(self, method, params=None):
-        self.id += 1
-        await self.ws.send(json.dumps(
-            {"jsonrpc": "2.0", "id": self.id, "method": method, "params": params}))
-        while True:
-            reply = json.loads(await self.ws.recv())
-            if reply.get("id") == self.id:
-                if "error" in reply:
-                    raise RuntimeError(reply["error"])
-                return reply["result"]
-            if reply.get("method") == "report":
-                self.reports.append(reply["params"])
-
-    async def collect(self, command, seconds=4.0):
-        found = [r for r in self.reports if r["command"] == command]
-        self.reports = [r for r in self.reports if r["command"] != command]
-        deadline = time.monotonic() + seconds
-        while True:
-            left = deadline - time.monotonic()
-            if left <= 0:
-                return found
-            try:
-                note = json.loads(await asyncio.wait_for(self.ws.recv(), left))
-            except asyncio.TimeoutError:
-                return found
-            if note.get("method") == "report" and note["params"]["command"] == command:
-                found.append(note["params"])
-            elif note.get("method") == "report":
-                self.reports.append(note["params"])
-
-
 async def read_device(save_dir=None):
-    client = Client(await websockets.connect(URL, max_size=None))
+    client = await RPC["Client"].connect()
     try:
         result = {"timestamp": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "reports": {}}
         for name, cmd, p1, p2 in QUERIES:
             await client.send(get_words(cmd, p1, p2))
-            found = await client.collect(cmd)
+            found = [r for r in await client.notifications("report", 4.0) if r["command"] == cmd]
             result["reports"][name] = found[0] if len(found) == 1 else found
         if save_dir:
             snapshot = {"describe": await client.call("describe"),
