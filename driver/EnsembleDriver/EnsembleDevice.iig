@@ -10,6 +10,8 @@
 
 using namespace AudioDriverKit;
 
+class EnsembleUserClient;
+
 class EnsembleDevice: public IOUserAudioDevice
 {
 public:
@@ -26,6 +28,7 @@ public:
     void VolumeChanged(float decibels) LOCALONLY;
     void ClockSourceChanged(uint64_t source) LOCALONLY;
     void Send(const Ensemble::Message & message) LOCALONLY;
+    void SetListener(EnsembleUserClient * listener) LOCALONLY;
 
     virtual kern_return_t StartIO(IOUserAudioStartStopFlags in_flags) final LOCALONLY;
     virtual kern_return_t StopIO(IOUserAudioStartStopFlags in_flags) final LOCALONLY;

@@ -40,6 +40,11 @@ prints its channels, rate, and safety offsets, and runs 5 s of IO with
 silent output. Expect 34 inputs, 36 outputs, about 48000 frames/s, and
 0 overloads.
 
+`driver/build/ensemblectl getall` opens the driver's user client, sends a
+Get-all, and prints every PSoC report for 2 s. `ensemblectl set <command>
+<p1> <value>` sends one type-1 command, for example `set 0x12 2 1` to mute
+the speaker output.
+
 ## Return the device to the vendor driver
 
 1. Run `<app>/Contents/MacOS/EnsembleHost deactivate`.

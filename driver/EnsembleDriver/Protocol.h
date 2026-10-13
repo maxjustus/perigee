@@ -32,6 +32,20 @@ struct Report {
     uint8_t data[kMaxReportData];
 };
 
+constexpr uint32_t kReportArguments = 1 + (kMaxReportData + 7) / 8;
+
+inline void pack(const Report & report, uint64_t args[kReportArguments])
+{
+    args[0] = report.type | uint64_t(report.command) << 8 | uint64_t(report.p1) << 16 |
+              uint64_t(report.p2) << 24 | uint64_t(report.length) << 32;
+    for (uint32_t i = 1; i < kReportArguments; i++) {
+        args[i] = 0;
+    }
+    for (uint32_t i = 0; i < report.length; i++) {
+        args[1 + i / 8] |= uint64_t(report.data[i]) << (8 * (i % 8));
+    }
+}
+
 struct Message {
     uint32_t words[kSlotWords];
     uint32_t count;

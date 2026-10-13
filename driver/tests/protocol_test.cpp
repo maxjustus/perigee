@@ -90,8 +90,19 @@ static void rate_index_matches_the_psoc_table()
     CHECK(kSampleRates[3] == 96000.0);
 }
 
+static void report_packs_into_async_arguments()
+{
+    Report r = {2, 0x41, 1, 0, 3, {0xaa, 0xbb, 0xcc}};
+    uint64_t args[kReportArguments] = {};
+    pack(r, args);
+    CHECK(args[0] == (2ull | 0x41ull << 8 | 1ull << 16 | 0ull << 24 | 3ull << 32));
+    CHECK(args[1] == 0xccbbaa);
+    CHECK(args[kReportArguments - 1] == 0);
+}
+
 int main()
 {
+    report_packs_into_async_arguments();
     rate_index_matches_the_psoc_table();
     type1_record_carries_one_value();
     type2_record_spans_words_by_its_length();

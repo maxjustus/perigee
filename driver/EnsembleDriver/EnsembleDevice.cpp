@@ -5,6 +5,7 @@
 
 #include "EnsembleClockSource.h"
 #include "EnsembleDevice.h"
+#include "EnsembleUserClient.h"
 #include "EnsembleVolume.h"
 #include "Bar0.h"
 #include "Controls.h"
@@ -42,6 +43,7 @@ struct EnsembleDevice_IVars {
     Outbox outbox;
     OSSharedPtr<EnsembleVolume> volume;
     OSSharedPtr<EnsembleClockSource> clock_source;
+    OSSharedPtr<EnsembleUserClient> listener;
     uint8_t monitors[kMonitorOutputs];
     uint8_t monitors_known;
     int requested_volume;
@@ -71,6 +73,7 @@ bool EnsembleDevice::init(IOUserAudioDriver * in_driver,
 void EnsembleDevice::free()
 {
     if (ivars != nullptr) {
+        ivars->listener.reset();
         ivars->clock_source.reset();
         ivars->volume.reset();
         ivars->mailbox_action.reset();
@@ -297,6 +300,14 @@ void EnsembleDevice::VolumeChanged(float in_decibels)
     });
 }
 
+void EnsembleDevice::SetListener(EnsembleUserClient * listener)
+{
+    auto retained = OSSharedPtr(listener, OSRetain);
+    ivars->queue->DispatchAsync(^{
+        ivars->listener = retained;
+    });
+}
+
 void EnsembleDevice::Send(const Message & message)
 {
     ivars->queue->DispatchAsync(^{
@@ -446,6 +457,9 @@ void IMPL(EnsembleDevice, MailboxTimerOccurred)
     }
     ivars->outbox.flush(mailbox);
     while (mailbox.receive([&](const Report & report) {
+        if (ivars->listener.get() != nullptr) {
+            ivars->listener->Report(report);
+        }
         if (report.command == kCommandSampleRate && report.data[0] < kSampleRateCount) {
             const double rate = kSampleRates[report.data[0]];
             if (rate != GetSampleRate()) {

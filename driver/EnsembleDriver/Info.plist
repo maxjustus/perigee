@@ -46,6 +46,13 @@
 				<key>IOUserClass</key>
 				<string>IOUserAudioDriverUserClient</string>
 			</dict>
+			<key>EnsembleUserClientProperties</key>
+			<dict>
+				<key>IOClass</key>
+				<string>IOUserUserClient</string>
+				<key>IOUserClass</key>
+				<string>EnsembleUserClient</string>
+			</dict>
 			<key>IOUserClass</key>
 			<string>EnsembleDriver</string>
 			<key>IOUserServerName</key>

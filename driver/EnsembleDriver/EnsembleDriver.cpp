@@ -118,6 +118,25 @@ kern_return_t IMPL(EnsembleDriver, Start)
     return RegisterService();
 }
 
+kern_return_t IMPL(EnsembleDriver, NewUserClient)
+{
+    if (type == kIOUserAudioDriverUserClientType) {
+        return NewUserClient(type, user_client, SUPERDISPATCH);
+    }
+    IOService * service = nullptr;
+    kern_return_t ret = Create(this, "EnsembleUserClientProperties", &service);
+    if (ret != kIOReturnSuccess) {
+        return ret;
+    }
+    *user_client = OSDynamicCast(IOUserClient, service);
+    return *user_client != nullptr ? kIOReturnSuccess : kIOReturnError;
+}
+
+EnsembleDevice * EnsembleDriver::Device()
+{
+    return ivars->device.get();
+}
+
 kern_return_t IMPL(EnsembleDriver, Stop)
 {
     if (ivars->device.get() != nullptr) {

@@ -6,6 +6,8 @@
 
 using namespace AudioDriverKit;
 
+class EnsembleDevice;
+
 class EnsembleDriver: public IOUserAudioDriver
 {
 public:
@@ -13,6 +15,9 @@ public:
     virtual void free() override;
     virtual kern_return_t Start(IOService * provider) override;
     virtual kern_return_t Stop(IOService * provider) override;
+    virtual kern_return_t NewUserClient(uint32_t type, IOUserClient ** user_client) override;
+
+    EnsembleDevice * Device() LOCALONLY;
 };
 
 #endif
