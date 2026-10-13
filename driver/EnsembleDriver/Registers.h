@@ -61,6 +61,12 @@ inline uint32_t meterBufferBytes(uint32_t meters)
     return 4 + 2 * meters;
 }
 
+// An MSI can be lost, so the wrap count comes from the time between MSIs.
+inline uint64_t wrapsIn(uint64_t elapsed_ns, double rate)
+{
+    return uint64_t(double(elapsed_ns) * rate / 1e9 / kRingFrames + 0.5);
+}
+
 inline uint32_t depthFor(double rate)
 {
     return rate <= 48000.0 ? 2 : rate <= 96000.0 ? 8 : kMaxDepth;

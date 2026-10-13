@@ -36,6 +36,8 @@ struct EnsembleDevice_IVars {
     OSSharedPtr<IOInterruptDispatchSource> wrap;
     OSSharedPtr<OSAction> wrap_action;
     uint64_t sample_time;
+    uint64_t wrap_time;
+    mach_timebase_info_data_t timebase;
     OSSharedPtr<EnsemblePsoc> psoc;
     double reported_rate;
     OSSharedPtr<EnsembleVolume> volume;
@@ -59,6 +61,7 @@ bool EnsembleDevice::init(IOUserAudioDriver * in_driver,
     }
     ivars->driver = OSSharedPtr(in_driver, OSRetain);
     ivars->queue = GetWorkQueue();
+    mach_timebase_info(&ivars->timebase);
     ivars->psoc = OSSharedPtr(OSTypeAlloc(EnsemblePsoc), OSNoRetain);
     return ivars->psoc.get() != nullptr && ivars->psoc->init();
 }
@@ -388,7 +391,8 @@ kern_return_t EnsembleDevice::StartIO(IOUserAudioStartStopFlags in_flags)
         ivars->sample_time = 0;
         regs.write(kSampleDepth, depthFor(GetSampleRate()) - 1);
         regs.write(kGeneral, regs.read(kGeneral) | kGeneralAudioArmAndRun);
-        UpdateCurrentZeroTimestamp(0, mach_absolute_time());
+        ivars->wrap_time = mach_absolute_time();
+        UpdateCurrentZeroTimestamp(0, ivars->wrap_time);
         regs.write(kInterrupt, regs.read(kInterrupt) | kInterruptWrap);
     });
     return ret;
@@ -408,7 +412,13 @@ kern_return_t EnsembleDevice::StopIO(IOUserAudioStartStopFlags in_flags)
 
 void IMPL(EnsembleDevice, WrapOccurred)
 {
-    ivars->sample_time += count * kRingFrames;
+    const uint64_t elapsed = (time - ivars->wrap_time) * ivars->timebase.numer / ivars->timebase.denom;
+    const uint64_t wraps = wrapsIn(elapsed, GetSampleRate());
+    if (wraps == 0) {
+        return;
+    }
+    ivars->sample_time += wraps * kRingFrames;
+    ivars->wrap_time = time;
     UpdateCurrentZeroTimestamp(ivars->sample_time, time);
 }
 
