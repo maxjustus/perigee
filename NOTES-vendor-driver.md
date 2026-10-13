@@ -1324,10 +1324,28 @@ words for its largest k (`FXFragment::sizeMaxStateMode` @0x256e4 returns
 | 0x0A, then 0x2B | A / B |
 
 Both instructions of a pair take the same operands, as in the vendor
-programs. The first one leaves r and x unchanged. 0x0E, 0x11, or 0x2B alone
-acts on the product A × B of the previous instruction. After an add with
-B = zero, 0x0E gave e^0 = 1. The vendor programs do not use 0x13, 0x29, or
-0x2A.
+programs. The first one leaves r and x unchanged. A second stage (0x0E,
+0x11, or 0x2B) uses the operands of the instruction just before it. Any
+instruction can come first, and the first stage only selects the operand.
+For A = 0.5 and B = b, the previous instruction gives these results
+(`isa.py units`):
+
+| Previous instruction | 0x0E | 0x11 | 0x2B |
+|----------------------|------|------|------|
+| 0x0C | e^A | ln B | A / B |
+| 0x0F | e^B | ln A | A / B |
+| 0x09 | e^B | ln B | B / A |
+| 0x06, 0x0A, 0x0D, 0x10 | e^B | ln B | A / B |
+| 0x07 | e^−B | ln −B | −A / B |
+| 0x08 | e^B | ln B | −A / B |
+
+So 0x0D and 0x10 give the same results as any instruction with the same B.
+In the opcode map, they are the B forms of 0x0C and 0x0F, as 0x0A is the B
+form of 0x09. This is an inference. With one more instruction between the
+two stages, the second stage used the operands of that instruction. The
+earlier statement that a second stage alone acts on the product A × B came
+from a previous instruction with A = 1. The vendor programs do not use
+0x13, 0x29, or 0x2A.
 
 The pairs match the latencies of the Altera floating-point IP cores
 (UG-01058). With 16 threads, each instruction of a thread has 16 clocks.
@@ -1341,15 +1359,17 @@ Other instructions:
 | Opcode | Bits | Meaning |
 |--------|------|---------|
 | 0x01 | 13:6 | Jump to this address + the offset, a signed 8-bit value. Offset 2 skips one instruction, and 0xFE jumps two back |
+| 0x01 | 16:14 | 2 to 5: jump if x meets the condition. 0, 1, 6, and 7: always jump |
 | 0x01 | 23:21 | Condition on x, see below |
 | 0x02 | 13:6, 17:14, 20:18 | Store: state offset, thread, address mode |
 | 0x02 | 21 | Source: 0 r, 1 x |
 | 0x02 | 22, 28:23 | Bit 22 also sends the value to an audio output. Bits 28:23 hold the DSP I/O channel |
 | 0x0B | 11:6 | Read audio input: DSP I/O channel. The sample goes to r |
 | 0x0B | 28:21 | State offset. In ModernEQ (bit 30 set) the sample also goes there |
-| 0x14 | 13:6, 17:14, 28:21 | Copy a state word: source offset, source thread, destination offset |
-| 0x16 | 13:6, 28:21 | As 0x14, and also loads the value into x |
-| 0x15 | 13:6, 17:14, 20:18, 28:21 | Copy from state: offset, thread, address mode, destination offset. The linker writes 0x15 over an 0x0B when the input comes from another fragment. Not tested |
+| 0x14 | 13:6, 17:14, 20:18, 28:21 | Copy a state word: source offset, source thread, address mode, destination offset. Mode m makes the source a circular group of 2^m words. Modes 0 to 3 gave periods of 1, 2, 4, and 8 samples. The destination stays fixed |
+| 0x14 | 31:29 | Changed nothing, with sources in thread 0 and thread 1 |
+| 0x16 | 13:6, 17:14, 28:21 | As 0x14, and also loads the value into x. Bits 31:29 changed nothing |
+| 0x15 | 13:6, 17:14, 20:18, 28:21 | As 0x14, and also loads the value into r. The linker writes 0x15 over an 0x0B when the input comes from another fragment |
 | 0x17 | 13:6 | STALL until cycle n. The next instruction runs at cycle n + 1. The linker adds the code start to n and replaces a STALL at the end of a fragment with 0 |
 
 Jump conditions, bits 23:21 of 0x01:
@@ -1367,13 +1387,18 @@ Jump conditions, bits 23:21 of 0x01:
 
 The vendor programs set bits 20:17 of 0x01 to 1111, and bits 16:14 to 1,
 2, or 3. With bits 16:14 = 2 to 5, the condition tests x. With 0, 1, 6, or
-7, condition 010 (x < 0) also jumped for x = 0.5, so these codes test
-another value. Bits 27:24 changed nothing. A value of ±1e-30 counts as
-nonzero.
+7, the jump always goes to the relative target, even with condition 110
+(`isa.py selectors`). The vendor programs use 1 only with condition 111.
+Bits 27:24 changed nothing. In the vendor conditional jumps, they hold
+values from 0 to 0xD. A value of ±1e-30 counts as nonzero.
 
-Opcodes 0x0D and 0x10 changed neither r nor x. Opcodes 0x38 to 0x3F gave
-very large values when r was not zero, and left r unchanged with a state
-operand A. The vendor programs use none of them.
+Opcodes 0x00, 0x03, 0x18 to 0x25, and 0x2C to 0x3F changed neither r nor
+x. The test put them after 0x0D and after 0x10, with destination r and
+with destination x (`isa.py unknown`). So none of them gives a square root
+or another unit result. 0x38 to 0x3F also left r unchanged with raw
+integer words as operand A, so they convert no integers. The large values
+of an earlier 0x38 test did not repeat. The vendor programs use none of
+these opcodes.
 
 ### 8.4 FX programs
 
@@ -1554,6 +1579,15 @@ speaker output stayed muted.
 - A loop with a backward jump (offset 0xFE) ran three times. 0x14 with
   source thread 1 copied a word of thread 1. A state operand A with k = 3
   stepped through its group (`isa.py extra`).
+- A second stage used the operands of the instruction just before it, and
+  not those of its first stage (`isa.py units`).
+- Jump selectors 0, 1, 6, and 7 always jumped to the relative target
+  (`isa.py selectors`).
+- 0x14 and 0x15 with address mode m read a group of 2^m words, and 0x15
+  also loaded r (`isa.py modes`). Bits 31:29 of 0x14 and 0x16 changed
+  neither the copy, x, r, nor a word of thread 1 (`isa.py copybits`).
+- The opcodes without a known function changed neither r nor x
+  (`isa.py unknown`).
 - A halted thread sends exact zeros to its DSP I/O channels. Early in the
   tests, a resume-all after a code swap left the thread halted a few
   times, and a second resume-all restarted it. Later, 30 swaps, half of
@@ -1563,7 +1597,8 @@ For the opcode tests, `scripts/dsp/isa.py` sends DSP I/O channel 0 to
 Analog 1 and channel 1 to Analog 2. Mixer 1 pans them hard left and hard
 right. The left channel carries 0.25 b, where b steps through a circular
 group of eight state words. The right channel carries the result. Each
-capture gives eight points.
+capture gives eight points. Tests with unbounded results limit r to ±10
+before the 0.1 scale, so the right channel stays within full scale.
 
 The input meters hold their peaks for 2 s (`meters/peakHold`), so a level
 decrease shows late. After the tests, 0xD3 with data[2] = 0 and an erase
@@ -1573,9 +1608,12 @@ of all threads returned the inputs to dry.
 
 - Why a resume-all sometimes did not restart the thread. The PSoC has no
   path that drops a resume.
-- What 0x0D, 0x10, and 0x38 to 0x3F do, and what bits 16:14 = 0, 1, 6,
-  or 7 of 0x01 test.
-- Bits 29 and 30 of 0x14. They changed nothing in the test.
+- What bits 27:24 of a conditional jump do. The vendor programs set them,
+  but they changed nothing in the tests.
+- Whether the opcodes without a known function write state words or DSP
+  I/O channels. The tests read only r and x.
+- Whether a store (0x02) with address mode m writes a group of 2^m words,
+  as 0x14 reads one. This is not tested.
 - Whether the FPGA sends DSP core meters when the host asks for more than
   88 meters. The host must then enlarge the meter buffer.
 - The Cyclone V image itself. Project Mistral documents the Cyclone V
