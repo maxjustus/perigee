@@ -7,6 +7,7 @@ final class FakeTransport: Transport, @unchecked Sendable {
     var sent: [[UInt32]] = []
     var full = 0
     var attempts = 0
+    var echo: ((Report) -> Void)?
     func send(_ words: [UInt32]) throws -> Bool {
         attempts += 1
         guard full == 0 else {
@@ -14,8 +15,18 @@ final class FakeTransport: Transport, @unchecked Sendable {
             return false
         }
         sent.append(words)
+        echo?(report(words))
         return true
     }
+}
+
+// The dext reports each message that it sends to the PSoC.
+func report(_ words: [UInt32]) -> Report {
+    let bytes = words.dropFirst(2).flatMap { word in (0..<4).map { UInt8(truncatingIfNeeded: word >> (8 * $0)) } }
+    if bytes[0] == 1 {
+        return Report(type: 1, command: bytes[1], p1: bytes[2], p2: 0, data: [bytes[3]])
+    }
+    return Report(type: 2, command: bytes[1], p1: bytes[2], p2: bytes[3], data: Array(bytes[5..<5 + Int(bytes[4])]))
 }
 
 final class Broadcasts: @unchecked Sendable {
@@ -296,6 +307,23 @@ func makeController() -> (Controller, FakeTransport, Broadcasts) {
     controller.receive(Report(type: 2, command: 0x35, p1: 30, p2: 0, data: [1]))
     _ = controller.handle(#"{"jsonrpc":"2.0","id":1,"method":"set","params":{"mixers/channels/31/stereo":true}}"#)
     #expect(transport.sent.contains([1, 0, word(2, 0x35, 31, 0), word(1, 1, 0, 0)]))
+}
+
+@Test func setWritesStereoFlagsBeforeTheControlsThatTheyLink() {
+    let (controller, transport, _) = makeController()
+    transport.echo = { controller.receive($0) }
+    _ = controller.handle(#"{"jsonrpc":"2.0","id":1,"method":"set","params":"#
+        + #"{"mixers/1/channels/31/fader":700,"mixers/channels/31/stereo":true}}"#)
+    #expect(Array(transport.sent.suffix(2)) == [[1, 0, word(2, 0x32, 30, 0), word(2, 0x02, 0xBC, 0)],
+                                                [1, 0, word(2, 0x32, 31, 0), word(2, 0x02, 0xBC, 0)]])
+}
+
+@Test func setStopsWhenAStereoFlagIsNotReported() {
+    let (controller, transport, _) = makeController()
+    let response = controller.handle(#"{"jsonrpc":"2.0","id":1,"method":"set","params":"#
+        + #"{"mixers/1/channels/31/fader":700,"mixers/channels/31/stereo":true}}"#)
+    #expect((object(response!)["error"] as? [String: Any])?["code"] as? Int == -32000)
+    #expect(transport.sent == (0..<4).map { [1, 0, word(2, 0x39, 30, $0), word(1, 1, 0, 0)] })
 }
 
 @Test func theFrontMicHasNoStereoPair() {

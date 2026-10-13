@@ -50,6 +50,10 @@ change. `get` and `changed` show the new value after the dext reports the
 sent command. If the user client fails partway through a `set`, the
 earlier commands stay sent.
 
+Stereo links and speaker sets read `outputs/mainMode` and the stereo
+flags from the reported values. Thus `set` sends these paths first. It
+waits up to 1 s for their reports, and then it sends the other paths.
+
 `raw.send` sends the words to the PSoC unchanged. Words 0 and 1 are the
 header `1, 0`. Records follow, 4 bytes to a word, low byte first.
 `EnsembleModel/Wire.swift` encodes set and block records.
@@ -60,7 +64,7 @@ header `1, 0`. Records follow, 4 bytes to a word, low byte first.
 | -32600 | The message is not an object with `"jsonrpc": "2.0"` and a string `method` |
 | -32601 | The method is unknown |
 | -32602 | A param, path, or value is not valid |
-| -32000 | The user client failed, or the driver outbox stayed full for 1 s. `message` holds the error |
+| -32000 | The user client failed, the driver outbox stayed full for 1 s, or a mode or stereo report did not arrive in 1 s. `message` holds the error |
 
 An error reply to -32700 or -32600 has `"id": null`.
 

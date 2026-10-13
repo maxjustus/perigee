@@ -21,7 +21,7 @@ public final class Controller: @unchecked Sendable {
         keys(parameter).map { (key: $0, parameter: parameter) }
     }, by: \.key).mapValues { $0.map(\.parameter) }
     private let leadsByStereo = Dictionary(grouping: parameters.filter { $0.pair?.leads == true }) { $0.pair!.stereo }
-    private let lock = NSLock()
+    private let lock = NSCondition()
     private var values: [String: Int] = [:]
 
     public init(transport: Transport, retryDelay: TimeInterval = 0.01,
@@ -83,6 +83,7 @@ public final class Controller: @unchecked Sendable {
                     changes[parameter.path] = json(value, parameter.kind)
                 }
             }
+            lock.broadcast()
             return changes
         }
         if !changes.isEmpty {
@@ -110,16 +111,12 @@ public final class Controller: @unchecked Sendable {
             guard let changes = params as? [String: Any] else {
                 throw RPCError.invalidParams("set takes an object of path: value")
             }
-            let messages = try changes.flatMap { path, value in
+            try apply(changes.map { path, value in
                 guard let parameter = byPath[path] else {
                     throw RPCError.invalidParams("unknown path \(path)")
                 }
-                let wire = try encodeValue(value, parameter)
-                return lock.withLock { writes(parameter, wire) }.flatMap { parameter, value in
-                    sendTargets(parameter).map { message(parameter, $0, value) }
-                }
-            }
-            try messages.forEach(send)
+                return (parameter, try encodeValue(value, parameter))
+            })
             return true
         case "raw.send":
             guard let items = (params as? [String: Any])?["words"] as? [Any],
@@ -132,6 +129,43 @@ public final class Controller: @unchecked Sendable {
             return true
         default:
             throw RPCError(code: -32601, message: "unknown method \(method)")
+        }
+    }
+
+    // Stereo links and speaker sets read these values from the cache, so their
+    // reports must arrive before the other writes.
+    private func apply(_ changes: [(Parameter, Int)]) throws {
+        let isFirst = { (change: (Parameter, Int)) in
+            self.leadsByStereo[change.0.path] != nil || change.0.path == "outputs/mainMode"
+        }
+        let first = changes.filter(isFirst)
+        let rest = changes.filter { !isFirst($0) }
+        try send(first)
+        if !first.isEmpty && !rest.isEmpty {
+            try awaitReports(first)
+        }
+        try send(rest)
+    }
+
+    private func send(_ changes: [(Parameter, Int)]) throws {
+        let messages = changes.flatMap { parameter, value in
+            lock.withLock { writes(parameter, value) }.flatMap { parameter, value in
+                sendTargets(parameter).map { message(parameter, $0, value) }
+            }
+        }
+        try messages.forEach(send)
+    }
+
+    // The dext reports a message when it empties the outbox, so the wait has
+    // the same bound as a send.
+    private func awaitReports(_ changes: [(Parameter, Int)]) throws {
+        let deadline = Date(timeIntervalSinceNow: 100 * retryDelay)
+        try lock.withLock {
+            while let (parameter, _) = changes.first(where: { values[$0.0.path] != $0.1 }) {
+                if !lock.wait(until: deadline) {
+                    throw RPCError(code: -32000, message: "no report for \(parameter.path)")
+                }
+            }
         }
     }
 
