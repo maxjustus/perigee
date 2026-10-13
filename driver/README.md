@@ -12,22 +12,15 @@ records the design.
 
 ## Build and install
 
-First install, or after a reboot when the vendor kext owns the device:
+`make install` in the repository root builds, activates, and switches the
+Ensemble to the dext. `README.md` describes it. `driver/build.sh` only
+builds. It prints the path of the app.
 
-1. Run `driver/build.sh`. It prints the path of the app.
-2. Run `<app>/Contents/MacOS/EnsembleHost activate`.
-3. If the system asks, approve the driver in System Settings > General >
-   Login Items & Extensions.
-4. Replug the Thunderbolt cable.
-
-IOKit compares drivers only when the device appears, so the first install
-needs a replug.
-
-## Reload a new build
-
-Run `driver/reload.sh`. It builds, activates the new build, unloads the
-vendor kext for this boot, and stops the old dext. The new build then takes
-the device without a replug. The script uses sudo.
+The dext personality uses the vendor kext's `IOMatchCategory` with a higher
+`IOProbeScore`. IOKit compares drivers only when it matches the device. At
+boot the vendor kext matches before the dext is in the catalog.
+`scripts/rematch.sh` reloads the vendor kext, and the reload starts a new
+match that the dext wins.
 
 ## Test
 
@@ -54,9 +47,4 @@ the speaker output.
 
 ## Return the device to the vendor driver
 
-1. Run `<app>/Contents/MacOS/EnsembleHost deactivate`.
-2. Replug the Thunderbolt cable.
-3. Run `scripts/vendor-hal.sh on`.
-
-The dext personality uses the vendor kext's `IOMatchCategory` with a higher
-`IOProbeScore`. While the dext is active, the vendor kext does not attach.
+Run `make uninstall` in the repository root.

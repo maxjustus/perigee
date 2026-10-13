@@ -6,13 +6,15 @@ user client.
 
 ## Run
 
-    control/run.sh
+`make install` in the repository root installs the service as the launch
+agent `dev.ensemble.control`. `make service` builds a release binary and
+signs it ad hoc with `com.apple.developer.driverkit.userclient-access`. The
+signature needs SIP disabled, like the dext build. To run a new build:
 
-The script builds a release binary, signs it ad hoc with
-`com.apple.developer.driverkit.userclient-access`, and runs it in a loop.
+    make service && launchctl kickstart -k gui/$(id -u)/dev.ensemble.control
+
 The service exits when `EnsembleDriver` leaves the IORegistry, for example
-on `driver/reload.sh`, and the loop starts it again after 2 s. The
-signature needs SIP disabled, like the dext build. The dext accepts one
+on a dext reload. launchd starts it again within 10 s. The dext accepts one
 subscriber: `driver/build/ensemblectl` takes the report stream from a
 running service.
 
