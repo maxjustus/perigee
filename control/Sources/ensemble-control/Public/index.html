@@ -29,6 +29,9 @@
          border-top: 1px solid var(--well); }
   h2 + .row { border-top: 0; }
   .row .name { flex: 1; min-width: 0; }
+  .help { width: 22px; min-height: 22px; margin-left: 6px; padding: 0; border-radius: 50%; font-size: 12px;
+          color: var(--dim); }
+  .tip { flex-basis: 100%; margin: 0 0 6px; font-size: 12px; color: var(--dim); }
   output { font-variant-numeric: tabular-nums; color: #c9d1d9; }
   .row output { min-width: 60px; text-align: right; }
   button { font: inherit; color: inherit; background: var(--well); border: 1px solid var(--line); border-radius: 6px;
@@ -241,6 +244,22 @@ function card(tab, group, heading) {
   return section;
 }
 
+const tips = {
+  wordClockTermination: "Puts a 75 Ω load on the word clock input. Turn on if this unit is the last device on " +
+    "the word clock cable. Turn off if a T-connector passes the clock on to another device.",
+  lockHome: "Keeps the front panel display on its home screen.",
+  matchUnityGain: "Sets the guitar output level to the guitar input level, for re-amping.",
+  softLimit: "Rounds off peaks in the analog stage before the A/D converter, to prevent clipping.",
+  phase: "Inverts the polarity of this input.",
+  highPass: "Cuts low-frequency rumble. Applies only when the type is Mic or Instrument.",
+  link: "A gain change on one channel of the pair also changes the other channel.",
+  insert: "Sends this input through the rear Insert Send and Return jacks.",
+  enabled: "Lets this channel into all four mixers. An off channel is not mixed.",
+  stereo: "Links this channel and the next as a stereo pair in all four mixers.",
+  soloSafe: "Keeps this channel audible when other channels are soloed.",
+  preFader: "Mixers 2-4 take their inputs before the Mix 1 faders, not after them.",
+};
+
 function addRow(section, name, parameters) {
   const row = Object.assign(document.createElement("div"), { className: "row" });
   row.append(Object.assign(document.createElement("span"), { className: "name", textContent: name }));
@@ -258,8 +277,23 @@ function addRow(section, name, parameters) {
       row.append(...slider(parameter.path, { ...parameter, label: text, format: format(parameter) }));
     }
   }
+  const tip = parameters.length === 1 && tips[parameters[0].path.split("/").pop()];
+  if (tip) addTip(row, name, tip);
   section.append(row);
   return row;
+}
+
+function addTip(row, name, tip) {
+  const text = Object.assign(document.createElement("p"), { className: "tip", textContent: tip, hidden: true });
+  const help = Object.assign(document.createElement("button"), { className: "help", textContent: "?" });
+  help.setAttribute("aria-label", `About ${name}`);
+  help.setAttribute("aria-expanded", "false");
+  help.onclick = () => {
+    text.hidden = !text.hidden;
+    help.setAttribute("aria-expanded", String(!text.hidden));
+  };
+  row.querySelector(".name").append(help);
+  row.append(text);
 }
 
 function format(parameter) {
@@ -272,6 +306,8 @@ function format(parameter) {
 
 function toggle(path, className, text = "") {
   const button = Object.assign(document.createElement("button"), { className, textContent: text });
+  const tip = tips[path.split("/").pop()];
+  if (text && tip) button.title = tip;
   button.setAttribute("aria-pressed", "false");
   button.onclick = () => rpc("set", { [path]: button.getAttribute("aria-pressed") !== "true" });
   watch(path, value => button.setAttribute("aria-pressed", String(value)));
