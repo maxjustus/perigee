@@ -1,6 +1,6 @@
 """Decodes DSP core opcodes on the unit. NOTES-vendor-driver.md 8.3 lists the results.
 
-Usage: python3 scripts/dsp/isa.py sweep|pairs|units|jumps|selectors|copies|modes|copybits|stall|extra|unknown|routes|state
+Usage: python3 scripts/dsp/isa.py sweep|pairs|units|jumps|selectors|copies|modes|copybits|stall|extra|unknown|routes|state|monitor
 
 The tests run in thread 0. DSP I/O channel 0 feeds Analog 1, panned hard
 left in Mixer 1, and channel 1 feeds Analog 2, panned hard right. Record
@@ -16,7 +16,7 @@ import sys
 
 import numpy as np
 
-from dsp import Src, block, copy, f32, ins, jump, record, session, store
+from dsp import Src, block, copy, f32, gain, ins, jump, message, record, session, store
 
 B_VALUES = [-2.0, -0.75, -0.1, 0.0, 0.1, 0.5, 1.0, 3.0]
 SCALE, REF = 0.1, 0.25
@@ -26,6 +26,8 @@ STATE = [0.0] * 8 + B_VALUES + [0.0] * (255 - 16)
 MIXER = {"mixers/1/channels/1/mute": False, "mixers/1/channels/1/pan": 0,
          "mixers/1/channels/2/mute": False, "mixers/1/channels/2/pan": 127,
          **{f"mixers/{m}/channels/{c}/mute": True for m in (2, 3, 4) for c in (1, 2)}}
+# The monitor test sends raw 0x15 messages to Headphone 1 and ends them with Mixer 2.
+SETTINGS = {"monitor": {"outputs/headphone1/mute": True, "routing/headphone1": "Mixer 2"}}
 # Tests with unbounded results put LIMIT and -LIMIT in c4 and c5 and end the body with CLAMP,
 # so the right channel stays within full scale.
 LIMIT = 10.0
@@ -261,6 +263,23 @@ async def routes(core):
     await core.send(block(0xD3, 0, 0, [2, 3, 0]))
 
 
+async def monitor(core):
+    """0xD3 with p1 = 0x60 puts Mixer 1 L on DSP input 0 (8.6). 0x15 puts DSP outputs 0 and 1 on Headphone 1."""
+    code = program([ins(0x0B, a=0)])
+    for label, words in (("Analog 1", None), ("Mixer 1 L", block(0xD3, 0x60, 0, [0, 0x60 - 0x70 & 0xFF, 1]))):
+        if words:
+            await core.send(words)
+        left, right = await run(core, code)
+        _, g, rms = gain(left, right)
+        print(f"DSP input 0 = {label}: right = {g / SCALE:+.4f} x left, residual {rms:.5f}", flush=True)
+    for label, code in (("DSP outputs 0-1", 0x70), ("Mixer 2", 0x62)):
+        await core.send(message([1, 0x15, 15, code]))
+        await core.notifications("meters", 3.0)
+        frames = await core.notifications("meters", 1.0)
+        print(f"Headphone 1 = {label}: peaks", [max(f["outputGroup"][i] for f in frames) for i in (0, 1)], flush=True)
+    await core.route(0, io=0)
+
+
 async def state(core):
     """A 0xD4 write copies the whole staging buffer: state[(start + j) % 256] = staging[j]."""
     p1 = [0.01 * (i % 50) + 0.005 for i in range(255)]
@@ -281,7 +300,7 @@ async def state(core):
 
 
 async def main(test):
-    async with session(MIXER) as core:
+    async with session({**MIXER, **SETTINGS.get(test.__name__, {})}) as core:
         await core.load([0], coefs(0.5), STATE)
         await core.route(0, io=0)
         await core.route(1, io=1)
@@ -290,7 +309,7 @@ async def main(test):
 
 if __name__ == "__main__":
     tests = {f.__name__: f for f in (sweep, pairs, units, jumps, selectors, copies, modes, copybits, stall, extra,
-                                      unknown, routes, state)}
+                                      unknown, routes, state, monitor)}
     if len(sys.argv) != 2 or sys.argv[1] not in tests:
         sys.exit(__doc__)
     asyncio.run(main(tests[sys.argv[1]]))
