@@ -396,18 +396,20 @@ function slider(path, { min, max, label, format, vertical = false, home = null, 
 const formatFader = v => v === 0 ? "−∞" : `${v > 600 ? "+" : ""}${((v - 600) / 10).toFixed(1)}`;
 const formatPan = v => v === 64 ? "C" : v < 64 ? `L${64 - v}` : `R${v - 64}`;
 
+// Each mixer input and playback channel has a strip name and a short meter label.
+const inputNames = [...[1, 2, 3, 4, 5, 6, 7, 8].map(n => [`A${n}`, `A${n}`]), ["Mic L", "MicL"], ["Mic R", "MicR"],
+                    ["Gtr 1", "G1"], ["Gtr 2", "G2"], ["SPDIF L", "SPL"], ["SPDIF R", "SPR"],
+                    ...Array.from({ length: 16 }, (_, i) => [`Opt ${i + 1}`, `O${i + 1}`])];
+const playbackNames = Array.from({ length: 16 }, (_, i) => [`Play ${i + 1}`, `${i + 1}`]);
+const channelNames = [...inputNames, ...playbackNames].map(([name]) => name).concat("Master L", "Master R");
 const meterNames = {
-  inputs: ["Inputs", [...[1, 2, 3, 4, 5, 6, 7, 8].map(n => `A${n}`), "MicL", "MicR", "G1", "G2", "SPL", "SPR",
-                      ...Array.from({ length: 16 }, (_, i) => `O${i + 1}`)]],
+  inputs: ["Inputs", inputNames.map(([, label]) => label)],
   outputs: ["Outputs", [...Array.from({ length: 10 }, (_, i) => `L${i + 1}`), "G1", "G2", "SPL", "SPR",
                         ...Array.from({ length: 16 }, (_, i) => `O${i + 1}`)]],
   headphones: ["Headphones", ["1L", "1R", "2L", "2R"]],
-  playback: ["Playback", Array.from({ length: 16 }, (_, i) => `${i + 1}`)],
+  playback: ["Playback", playbackNames.map(([, label]) => label)],
   mixers: ["Mixers", [1, 2, 3, 4].flatMap(n => [`${n}L`, `${n}R`])],
 };
-const channelNames = [...[1, 2, 3, 4, 5, 6, 7, 8].map(n => `A${n}`), "Mic L", "Mic R", "Gtr 1", "Gtr 2",
-                      "SPDIF L", "SPDIF R", ...Array.from({ length: 16 }, (_, i) => `Opt ${i + 1}`),
-                      ...Array.from({ length: 16 }, (_, i) => `Play ${i + 1}`), "Master L", "Master R"];
 const levels = [];
 
 function meter(key, index) {
