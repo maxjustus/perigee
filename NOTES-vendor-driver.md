@@ -483,6 +483,11 @@ without any register access.
 From `Ensemble2Command::*` and `ApogeeTBTCommand::*` in the HAL plugin.
 "p1" and "p2" are packet offsets 10 and 11. "data" starts at offset 13.
 
+A type-1 command with one argument sends it in `data[0]` with `p1 = 0`
+(`_sendCommand(cmd, value)`). For such a command, the p1 column below names
+the value in `data[0]`. A command with two arguments sends `p1` and
+`data[0]` (`_sendCommand(cmd, p1, value)`).
+
 | ID | Name | Type | p1 | p2 / data |
 |----|------|------|----|-----------|
 | 0x01 | AnalogInputType | 1 | channel (0..11) | type |
@@ -498,7 +503,7 @@ From `Ensemble2Command::*` and `ApogeeTBTCommand::*` in the HAL plugin.
 | 0x0E | AnalogOutputTrim | 1 | channel | trim |
 | 0x0F | MainOutputMode | 1 | mode | |
 | 0x10 | ActiveSpeakerSet | 1 | set | |
-| 0x11 | OutputAttenuation | 1 | monitor output | attenuation |
+| 0x11 | OutputAttenuation | 1 | monitor output | attenuation, 0 to 64 |
 | 0x12 | OutputMute | 1 | monitor output | bool |
 | 0x13 | OutputDim | 1 | monitor output | bool |
 | 0x14 | OutputSumToMono | 1 | monitor output | bool |
