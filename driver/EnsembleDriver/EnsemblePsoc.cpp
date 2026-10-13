@@ -22,9 +22,7 @@ struct EnsemblePsoc_IVars {
     OSSharedPtr<OSAction> action;
     uint64_t period;
     OSSharedPtr<OSArray> listeners;
-    uint8_t monitors[kMonitorOutputs];
-    uint8_t monitors_known;
-    int requested_attenuation;
+    Monitors monitors;
 };
 
 bool EnsemblePsoc::init()
@@ -37,7 +35,6 @@ bool EnsemblePsoc::init()
         return false;
     }
     ivars->listeners = OSSharedPtr(OSArray::withCapacity(2), OSNoRetain);
-    ivars->requested_attenuation = -1;
     return ivars->listeners.get() != nullptr;
 }
 
@@ -104,7 +101,7 @@ void EnsemblePsoc::Send(const Message & message)
 void EnsemblePsoc::SetMonitorAttenuation(uint8_t attenuation)
 {
     ivars->queue->DispatchAsync(^{
-        ivars->requested_attenuation = attenuation;
+        ivars->monitors.request(attenuation);
     });
 }
 
@@ -136,28 +133,16 @@ void IMPL(EnsemblePsoc, PollOccurred)
     if (mailbox.serviceEvents()) {
         ivars->outbox.push(getAll());
     }
-    if (ivars->requested_attenuation >= 0 && ivars->monitors_known == (1 << kMonitorOutputs) - 1) {
-        uint8_t next[kMonitorOutputs];
-        for (uint8_t i = 0; i < kMonitorOutputs; i++) {
-            next[i] = ivars->monitors[i];
-        }
-        follow(next, uint8_t(ivars->requested_attenuation));
-        for (uint8_t i = 0; i < kMonitorOutputs; i++) {
-            if (next[i] != ivars->monitors[i] &&
-                ivars->outbox.push(set(kCommandOutputAttenuation, i, next[i]))) {
-                ivars->monitors[i] = next[i];
-            }
-        }
-        ivars->requested_attenuation = -1;
-    }
+    ivars->monitors.apply([&](uint8_t output, uint8_t value) {
+        return ivars->outbox.push(set(kCommandOutputAttenuation, output, value));
+    });
     auto handle = [&](const Report & report) {
         OSArray * listeners = ivars->listeners.get();
         for (uint32_t i = 0; i < listeners->getCount(); i++) {
             OSDynamicCast(EnsembleUserClient, listeners->getObject(i))->Report(report);
         }
         if (report.command == kCommandOutputAttenuation && report.p1 < kMonitorOutputs) {
-            ivars->monitors[report.p1] = report.data[0];
-            ivars->monitors_known |= 1 << report.p1;
+            ivars->monitors.report(report.p1, report.data[0]);
         }
         ivars->device->Reported(report);
     };
