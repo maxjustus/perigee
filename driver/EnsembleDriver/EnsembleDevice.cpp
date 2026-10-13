@@ -27,6 +27,8 @@ struct Ring {
 struct EnsembleDevice_IVars {
     OSSharedPtr<IOUserAudioDriver> driver;
     OSSharedPtr<IODispatchQueue> queue;
+    // A user client can hold this device after EnsembleDriver stops. This
+    // reference keeps the PCI device of bar0 and of the PSoC mailbox alive.
     OSSharedPtr<IOPCIDevice> pci;
     Bar0 bar0;
     Ring output;
