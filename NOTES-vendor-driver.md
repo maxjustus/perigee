@@ -258,6 +258,30 @@ back from sleep.
 `startHardware(depth)` writes `SAMPLEDEPTH = depth - 1`. The init path
 writes 0x1F (depth 32). Values above 64 are rejected.
 
+### 3.4.1 Latency and safety offset
+
+The HAL plugin reports these values in frames. The IO buffer size does not
+change them. The stream latency is 0 in both directions
+(`_streamGetPropertyData` @0x4623d).
+
+| Sample rate | Safety offset | Device latency in | Device latency out |
+|-------------|---------------|-------------------|--------------------|
+| <= 48000 | 3 | 13 (2 + 11) | 43 (2 + 41) |
+| <= 96000 | 12 | 19 (8 + 11) | 22 (8 + 14) |
+| > 96000 | 48 | 45 (32 + 13) | 43 (32 + 11) |
+
+- The safety offset is the same for input and output
+  (`Ensemble2AudioSystem::_getSafetyOffset` @0x45a2e).
+- The device latency is the burst depth plus a unit term
+  (`_getLatencyOffset` @0x459c6,
+  `Ensemble2AudioDevice::_getUnitSpecificLatencyOffset` @0x95dc8). The
+  unit term is probably the converter delay.
+- The input latency also adds an "extra ADC delay" per rate. It aligns
+  several units to the slowest one (`adjustForMaxSystemDelay` @0x61892)
+  and is 0 for one unit. The plugin sends it as command 0x2D,
+  `ExtraADCDelay`, 6 bytes.
+- No FPGA register feeds a latency value.
+
 ### 3.5 Start and stop
 
 `startHardware(depth)` (via command gate):

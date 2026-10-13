@@ -39,6 +39,12 @@ func channels(_ device: AudioObjectID, _ scope: AudioObjectPropertyScope) -> Int
     return buffers.reduce(0) { $0 + Int($1.mNumberChannels) }
 }
 
+func latency(_ device: AudioObjectID, _ scope: AudioObjectPropertyScope) -> UInt32 {
+    let stream: AudioObjectID = get(device, kAudioDevicePropertyStreams, scope, 0)
+    return get(device, kAudioDevicePropertyLatency, scope, UInt32(0))
+        + get(stream, kAudioStreamPropertyLatency, kAudioObjectPropertyScopeGlobal, UInt32(0))
+}
+
 func findEnsemble() -> AudioObjectID? {
     var addr = address(kAudioHardwarePropertyDevices)
     var size: UInt32 = 0
@@ -65,6 +71,7 @@ print("inputs \(channels(device, kAudioObjectPropertyScopeInput)) outputs \(chan
 print("rate \(get(device, kAudioDevicePropertyNominalSampleRate, kAudioObjectPropertyScopeGlobal, Float64(0)))")
 print("safety offset in \(get(device, kAudioDevicePropertySafetyOffset, kAudioObjectPropertyScopeInput, UInt32(0)))"
     + " out \(get(device, kAudioDevicePropertySafetyOffset, kAudioObjectPropertyScopeOutput, UInt32(0)))")
+print("latency in \(latency(device, kAudioObjectPropertyScopeInput)) out \(latency(device, kAudioObjectPropertyScopeOutput))")
 
 final class Stats {
     var first: AudioTimeStamp?

@@ -13,7 +13,6 @@
 
 using namespace Ensemble;
 
-constexpr uint32_t kSafetyOffset = 64;
 constexpr uint32_t kMeterHz = 30;
 constexpr uint64_t kReportedRateChange = 0x1000;
 constexpr double kInitialRate = 48000.0;
@@ -208,8 +207,7 @@ kern_return_t EnsembleDevice::Attach(IOPCIDevice * pci, uint8_t bar0)
     SetAvailableSampleRates(kSampleRates, kSampleRateCount);
     SetSampleRate(kInitialRate);
     SetTransportType(IOUserAudioTransportType::Thunderbolt);
-    SetOutputSafetyOffset(kSafetyOffset);
-    SetInputSafetyOffset(kSafetyOffset);
+    setLatency(kInitialRate);
     AddStream(ivars->output.stream.get());
     AddStream(ivars->input.stream.get());
     nameChannels(IOUserAudioObjectPropertyScope::Input, true, kInputChannels);
@@ -246,6 +244,15 @@ kern_return_t EnsembleDevice::Attach(IOPCIDevice * pci, uint8_t bar0)
         return ret;
     }
     return ivars->psoc->Start(this, pci, bar0, ivars->queue.get());
+}
+
+void EnsembleDevice::setLatency(double rate)
+{
+    const Latency latency = latencyFor(rate);
+    SetOutputSafetyOffset(latency.safety);
+    SetInputSafetyOffset(latency.safety);
+    ivars->output.stream->SetLatency(latency.output);
+    ivars->input.stream->SetLatency(latency.input);
 }
 
 kern_return_t EnsembleDevice::startMeters()
@@ -447,6 +454,7 @@ kern_return_t EnsembleDevice::applyRate(double rate)
     if (ret != kIOReturnSuccess) {
         return ret;
     }
+    setLatency(rate);
     ivars->output.stream->DeviceSampleRateChanged(rate);
     return ivars->input.stream->DeviceSampleRateChanged(rate);
 }

@@ -72,6 +72,26 @@ inline uint32_t depthFor(double rate)
     return rate <= 48000.0 ? 2 : rate <= 96000.0 ? 8 : kMaxDepth;
 }
 
+struct Latency {
+    uint32_t safety;
+    uint32_t input;
+    uint32_t output;
+};
+
+// The vendor HAL values, in frames. Its device latency is one DMA burst
+// plus a converter delay. AudioDriverKit has no device latency, so the
+// dext reports it as stream latency. CoreAudio adds the two.
+inline Latency latencyFor(double rate)
+{
+    if (rate <= 48000.0) {
+        return {3, 13, 43};
+    }
+    if (rate <= 96000.0) {
+        return {12, 19, 22};
+    }
+    return {48, 45, 43};
+}
+
 }
 
 #endif

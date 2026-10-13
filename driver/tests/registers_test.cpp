@@ -43,12 +43,23 @@ static void wraps_count_ring_periods_not_interrupts()
     CHECK(wrapsIn(85333333, 192000.0) == 1);
 }
 
+static void latency_matches_the_vendor_hal()
+{
+    const Latency single = latencyFor(48000.0);
+    CHECK(single.safety == 3 && single.input == 13 && single.output == 43);
+    const Latency twice = latencyFor(88200.0);
+    CHECK(twice.safety == 12 && twice.input == 19 && twice.output == 22);
+    const Latency quad = latencyFor(192000.0);
+    CHECK(quad.safety == 48 && quad.input == 45 && quad.output == 43);
+}
+
 int main()
 {
     meter_timer_divides_the_core_clock_constant();
     meter_buffer_holds_the_sequence_byte_and_every_meter();
     depth_follows_the_vendor_rate_bands();
     wraps_count_ring_periods_not_interrupts();
+    latency_matches_the_vendor_hal();
     if (failures == 0) {
         std::printf("ok\n");
     }

@@ -38,6 +38,7 @@ public:
 
 private:
     kern_return_t applyRate(double rate) LOCALONLY;
+    void setLatency(double rate) LOCALONLY;
     kern_return_t startMeters() LOCALONLY;
     kern_return_t addVolume() LOCALONLY;
     kern_return_t addClockSource() LOCALONLY;
