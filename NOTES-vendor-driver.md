@@ -495,25 +495,25 @@ the value in `data[0]`. A command with two arguments sends `p1` and
 
 | ID | Name | Type | p1 | p2 / data |
 |----|------|------|----|-----------|
-| 0x01 | AnalogInputType | 1 | channel (0..11) | type |
-| 0x02 | MicGain | 1 | channel (0..11) | gain |
-| 0x03 | InstrumentGain | 1 | channel | gain |
+| 0x01 | AnalogInputType | 1 | channel (0..11) | type. Analog 1-4: +4dBu, -10dBV, Mic, Instrument. Analog 5-8: no Instrument. Front Mic: Mic only. Guitar 1-2: Instrument only |
+| 0x02 | MicGain | 1 | channel 0-7, 8 = Front Mic | dB, 1 per step. 0-75, Front Mic 0-40 (`_setGainForChannel` @0x8e7e6) |
+| 0x03 | InstrumentGain | 1 | channel 0-3, 10-11 = Guitar 1-2 | dB, 1 per step. 0-65, Guitar 0-45 |
 | 0x04 | SoftLimit | 1 | channel | mode |
 | 0x05 | PhantomPower | 1 | channel | bool |
 | 0x06 | PhaseInverse | 1 | channel | bool |
-| 0x07 | GroupID | 1 | channel | group |
+| 0x07 | GroupID (input pair link) | 1 | channel 0-7, 10-11 | 0 = off, pair index + 1 = linked. The vendor writes both channels of the pair (`AEgp` setter @0x90e91) |
 | 0x08 | HighPassFilter | 1 | channel | bool |
 | 0x0A | InsertEnable | 1 | 0 = Analog 1, 1 = Analog 2 | bool |
 | 0x0D | AnalogOutputReferenceLevel | 1 | channel | level |
 | 0x0E | AnalogOutputTrim | 1 | channel | trim |
 | 0x0F | MainOutputMode | 1 | mode | |
-| 0x10 | ActiveSpeakerSet | 1 | set | |
+| 0x10 | ActiveSpeakerSet | 1 | bitmask: 1 = A, 2 = B, 4 = C | |
 | 0x11 | OutputAttenuation | 1 | monitor output | attenuation, 0 to 64 |
 | 0x12 | OutputMute | 1 | monitor output | bool |
 | 0x13 | OutputDim | 1 | monitor output | bool |
 | 0x14 | OutputSumToMono | 1 | monitor output | bool |
 | 0x15 | OutputRouting / OutputPairRouting | 1 | destination | source |
-| 0x16 | FrontGuitarOutputMode | 1 | channel | mode |
+| 0x16 | FrontGuitarOutputMode | 1 | channel | 0 = Thru, 1 = From Software |
 | 0x19 | TalkbackMicOn | 1 | bool | |
 | 0x1A | OpticalPortFormat | 1 | port | format |
 | 0x1C | FrontGuitarOutputAttenuation | 1 | channel | value |
@@ -560,14 +560,18 @@ the value in `data[0]`. A command with two arguments sends `p1` and
 | 0xD7 | DSPCoreHaltResume | 2 | | 4 bytes |
 
 Mixer channels are 0 to 47. Channels 0 to 29 follow the input meter
-order, 30 and 31 carry Playback 1 and 2, and channel 46 is the mixer
-master. Measured with a tone on Playback 1 and 2 and the mixer meters:
+order, 30 to 45 carry Playback 1 to 16, and 46 and 47 are the mixer
+master L and R. The vendor HAL never writes channel 9, the second half of
+the front panel mic. Measured with a tone per playback channel and the
+mixer meters:
 
 - `MixerChannelFaderLevel` is 2 bytes, big-endian, 0.1 dB per step.
-  600 is 0 dB and 720 is +12 dB, the maximum. 0 closes the channel.
+  600 is 0 dB and 720 is +12 dB, the unit's maximum. The vendor HAL never
+  sends more than 660 (+6 dB). 0 closes the channel.
 - `MixerChannelPan` is 0 to 127, center 64. It works as balance: the near
   side stays at 0 dB.
-- `MixerChannelSolo` arrives as type 1 without a mixer index.
+- `MixerChannelSolo` and `MixerChannelSoloSafe` exist on Mixer 1 only.
+  Solo arrives as type 1 without a mixer index.
 
 DAW fader level: `uint16 = (clamp(dB) + offset) * scale`, byte-swapped.
 The constants are in the HAL at `setDAWMixerFaderLevel`, unverified here.
