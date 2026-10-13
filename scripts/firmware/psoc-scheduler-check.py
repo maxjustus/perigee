@@ -6,6 +6,7 @@ Only counter reads and EEPROM row writes use substitutes. No device access.
 
 import hashlib
 from pathlib import Path
+import runpy
 
 from unicorn import UC_ARCH_ARM, UC_HOOK_CODE, UC_MODE_MCLASS, UC_MODE_THUMB, Uc
 from unicorn.arm_const import (
@@ -17,6 +18,8 @@ from unicorn.arm_const import (
     UC_ARM_REG_R3,
     UC_ARM_REG_SP,
 )
+
+crc8 = runpy.run_path(str(Path(__file__).with_name("front-panel-resources.py")))["crc8"]
 
 
 def main():
@@ -251,15 +254,6 @@ class Firmware:
         message[11] = value
         self.uc.mem_write(0x20006000, bytes(message))
         self.call(0x20918, 0x20006000, 1)
-
-
-def crc8(data):
-    crc = 0
-    for byte in data:
-        crc ^= byte
-        for _ in range(8):
-            crc = ((crc << 1) ^ (7 if crc & 0x80 else 0)) & 255
-    return crc
 
 
 if __name__ == "__main__":

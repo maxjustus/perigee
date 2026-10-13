@@ -1,4 +1,4 @@
-"""Decode Ensemble format-3 resources offline. Requires Pillow."""
+"""Decode Ensemble format-3 resources offline. The image output requires Pillow."""
 
 import argparse
 import hashlib
@@ -6,12 +6,12 @@ import struct
 from collections import namedtuple
 from pathlib import Path
 
-from PIL import Image, ImageDraw
-
 Asset = namedtuple("Asset", "kind width height frames offset")
 
 
 def main():
+    from PIL import Image, ImageDraw
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("resource", type=Path)
     parser.add_argument("output", type=Path)
@@ -95,6 +95,8 @@ def crc8(data):
 
 
 def render(blob, asset, frame):
+    from PIL import Image
+
     if not 0 <= frame < asset.frames:
         raise ValueError("Frame index is outside the resource")
     size = asset.width * asset.height * 2
