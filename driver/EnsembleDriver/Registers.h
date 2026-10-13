@@ -8,6 +8,9 @@ namespace Ensemble {
 constexpr uint64_t kID = 0x00;
 constexpr uint64_t kGeneral = 0x0C;
 constexpr uint64_t kInterrupt = 0x14;
+constexpr uint64_t kNumHostMeters = 0x1C;
+constexpr uint64_t kMeterTimer = 0x20;
+constexpr uint64_t kMeterAddressLow = 0x24;
 constexpr uint64_t kInputBufferSize = 0x2C;
 constexpr uint64_t kInputAddressLow = 0x30;
 constexpr uint64_t kOutputBufferSize = 0x40;
@@ -36,6 +39,9 @@ constexpr uint32_t kHandshakeValue = 0xABCD1234;
 
 constexpr uint32_t kGeneralAudioArmAndRun = 0x05A00000;
 constexpr uint32_t kGeneralAudioRun = 0x04800000;
+constexpr uint32_t kGeneralMeterArmAndRun = 0x28000000;
+constexpr uint32_t kGeneralMeterRun = 0x20000000;
+constexpr uint32_t kGeneralFastClock = 0x40000000;
 constexpr uint32_t kGeneralMailboxReset = 0x20;
 constexpr uint32_t kGeneralDoorbell = 0x40;
 constexpr uint32_t kInterruptWrap = 0x01000000;
@@ -44,6 +50,16 @@ constexpr uint32_t kRingFrames = 0x4000;
 constexpr uint32_t kOutputChannels = 36;
 constexpr uint32_t kInputChannels = 34;
 constexpr uint32_t kMaxDepth = 32;
+
+inline uint32_t meterTimer(uint32_t hz, uint32_t general)
+{
+    return ((general & kGeneralFastClock) ? 244140u : 122070u) / hz - 1;
+}
+
+inline uint32_t meterBufferBytes(uint32_t meters)
+{
+    return 4 + 2 * meters;
+}
 
 inline uint32_t depthFor(double rate)
 {

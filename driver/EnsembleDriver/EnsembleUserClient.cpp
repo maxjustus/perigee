@@ -7,6 +7,8 @@
 
 using namespace Ensemble;
 
+constexpr uint64_t kMemoryMeters = 0;
+
 enum Selector : uint64_t {
     kSelectorSend = 0,
     kSelectorSubscribe = 1,
@@ -87,6 +89,18 @@ kern_return_t EnsembleUserClient::ExternalMethod(uint64_t selector,
     default:
         return super::ExternalMethod(selector, arguments, dispatch, target, reference);
     }
+}
+
+kern_return_t IMPL(EnsembleUserClient, CopyClientMemoryForType)
+{
+    IOMemoryDescriptor * meters = ivars->device->Meters();
+    if (type != kMemoryMeters || meters == nullptr) {
+        return kIOReturnBadArgument;
+    }
+    meters->retain();
+    *memory = meters;
+    *options = kIOUserClientMemoryReadOnly;
+    return kIOReturnSuccess;
 }
 
 void EnsembleUserClient::Report(const Ensemble::Report & report)

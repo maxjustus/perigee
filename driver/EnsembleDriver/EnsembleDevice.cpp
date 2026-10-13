@@ -16,6 +16,7 @@ using namespace Ensemble;
 
 constexpr uint32_t kSafetyOffset = 64;
 constexpr uint64_t kMailboxPeriodNs = 10000000;
+constexpr uint32_t kMeterHz = 30;
 constexpr uint64_t kReportedRateChange = 0x1000;
 constexpr double kInitialRate = 48000.0;
 
@@ -32,6 +33,8 @@ struct EnsembleDevice_IVars {
     Bar0 bar0;
     Ring output;
     Ring input;
+    OSSharedPtr<IOBufferMemoryDescriptor> meters;
+    OSSharedPtr<IODMACommand> meter_dma;
     OSSharedPtr<IOInterruptDispatchSource> wrap;
     OSSharedPtr<OSAction> wrap_action;
     uint64_t sample_time;
@@ -80,6 +83,8 @@ void EnsembleDevice::free()
         ivars->mailbox_timer.reset();
         ivars->wrap_action.reset();
         ivars->wrap.reset();
+        ivars->meter_dma.reset();
+        ivars->meters.reset();
         ivars->input = {};
         ivars->output = {};
         ivars->pci.reset();
@@ -105,8 +110,40 @@ static IOUserAudioStreamBasicDescription format(uint32_t channels, double rate)
     };
 }
 
-// The FPGA takes one base address per ring, so the IOMMU must map each ring
-// as one segment.
+// The FPGA takes one base address per buffer, so the IOMMU must map each
+// buffer as one segment.
+static kern_return_t mapForDMA(const Bar0 & bar0, IOBufferMemoryDescriptor * buffer, uint64_t bytes,
+                               uint64_t address_low, OSSharedPtr<IODMACommand> * dma)
+{
+    IODMACommandSpecification spec = {};
+    spec.maxAddressBits = 64;
+    IODMACommand * command = nullptr;
+    kern_return_t ret = IODMACommand::Create(bar0.pci, kIODMACommandCreateNoOptions, &spec, &command);
+    if (ret != kIOReturnSuccess) {
+        return ret;
+    }
+    *dma = OSSharedPtr(command, OSNoRetain);
+    uint64_t flags = 0;
+    uint32_t count = 32;
+    IOAddressSegment segments[32] = {};
+    ret = command->PrepareForDMA(kIODMACommandPrepareForDMANoOptions, buffer, 0, bytes, &flags, &count,
+                                 segments);
+    if (ret != kIOReturnSuccess) {
+        return ret;
+    }
+    if (count != 1 || segments[0].length != bytes) {
+        return kIOReturnNoResources;
+    }
+    const uint64_t iova = segments[0].address;
+    bar0.write(address_low, uint32_t(iova));
+    bar0.write(address_low + 4, uint32_t(iova >> 32));
+    if (bar0.read(address_low) != uint32_t(iova) ||
+        bar0.read(address_low + 4) != uint32_t(iova >> 32)) {
+        return kIOReturnIOError;
+    }
+    return kIOReturnSuccess;
+}
+
 static kern_return_t makeRing(IOUserAudioDriver * driver, const Bar0 & bar0,
                               IOUserAudioStreamDirection direction, uint32_t channels,
                               uint64_t address_low, Ring * ring)
@@ -119,33 +156,9 @@ static kern_return_t makeRing(IOUserAudioDriver * driver, const Bar0 & bar0,
     }
     ring->buffer = OSSharedPtr(buffer, OSNoRetain);
     ring->buffer->SetLength(bytes);
-
-    IODMACommandSpecification spec = {};
-    spec.maxAddressBits = 64;
-    IODMACommand * dma = nullptr;
-    ret = IODMACommand::Create(bar0.pci, kIODMACommandCreateNoOptions, &spec, &dma);
+    ret = mapForDMA(bar0, buffer, bytes, address_low, &ring->dma);
     if (ret != kIOReturnSuccess) {
         return ret;
-    }
-    ring->dma = OSSharedPtr(dma, OSNoRetain);
-    uint64_t flags = 0;
-    uint32_t count = 32;
-    IOAddressSegment segments[32] = {};
-    ret = ring->dma->PrepareForDMA(kIODMACommandPrepareForDMANoOptions, ring->buffer.get(), 0,
-                                   bytes, &flags, &count, segments);
-    if (ret != kIOReturnSuccess) {
-        return ret;
-    }
-    if (count != 1 || segments[0].length != bytes) {
-        return kIOReturnNoResources;
-    }
-
-    const uint64_t iova = segments[0].address;
-    bar0.write(address_low, uint32_t(iova));
-    bar0.write(address_low + 4, uint32_t(iova >> 32));
-    if (bar0.read(address_low) != uint32_t(iova) ||
-        bar0.read(address_low + 4) != uint32_t(iova >> 32)) {
-        return kIOReturnIOError;
     }
 
     ring->stream = IOUserAudioStream::Create(driver, direction, ring->buffer.get());
@@ -196,6 +209,10 @@ kern_return_t EnsembleDevice::Attach(IOPCIDevice * pci, uint8_t bar0)
     regs.write(kSampleDepth, kMaxDepth - 1);
     regs.write(kOutputBufferSize, kOutputChannels * kRingFrames);
     regs.write(kInputBufferSize, kInputChannels * kRingFrames);
+    ret = startMeters();
+    if (ret != kIOReturnSuccess) {
+        return ret;
+    }
 
     SetAvailableSampleRates(kSampleRates, kSampleRateCount);
     SetSampleRate(kInitialRate);
@@ -238,6 +255,33 @@ kern_return_t EnsembleDevice::Attach(IOPCIDevice * pci, uint8_t bar0)
         return ret;
     }
     return startMailbox();
+}
+
+kern_return_t EnsembleDevice::startMeters()
+{
+    const Bar0 & regs = ivars->bar0;
+    const uint32_t count = regs.read(kNumHostMeters) & 0xFFFF;
+    const uint64_t bytes = meterBufferBytes(count);
+    IOBufferMemoryDescriptor * buffer = nullptr;
+    kern_return_t ret = IOBufferMemoryDescriptor::Create(kIOMemoryDirectionIn, bytes, 0, &buffer);
+    if (ret != kIOReturnSuccess) {
+        return ret;
+    }
+    ivars->meters = OSSharedPtr(buffer, OSNoRetain);
+    ivars->meters->SetLength(bytes);
+    ret = mapForDMA(regs, buffer, bytes, kMeterAddressLow, &ivars->meter_dma);
+    if (ret != kIOReturnSuccess) {
+        return ret;
+    }
+    regs.write(kNumHostMeters, count << 16);
+    regs.write(kMeterTimer, meterTimer(kMeterHz, regs.read(kGeneral)));
+    regs.write(kGeneral, regs.read(kGeneral) | kGeneralMeterArmAndRun);
+    return kIOReturnSuccess;
+}
+
+IOMemoryDescriptor * EnsembleDevice::Meters()
+{
+    return ivars->meters.get();
 }
 
 kern_return_t EnsembleDevice::addVolume()
@@ -349,15 +393,15 @@ void EnsembleDevice::Detach()
         ivars->mailbox_timer->SetEnable(false);
     }
     const Bar0 & regs = ivars->bar0;
-    regs.write(kGeneral, regs.read(kGeneral) & ~kGeneralAudioRun);
+    regs.write(kGeneral, regs.read(kGeneral) & ~(kGeneralAudioRun | kGeneralMeterRun));
     regs.write(kInterrupt, regs.read(kInterrupt) & ~kInterruptWrap);
     if (ivars->wrap.get() != nullptr) {
         ivars->wrap->SetEnableWithCompletion(false, nullptr);
     }
-    Ring * rings[] = {&ivars->output, &ivars->input};
-    for (Ring * ring : rings) {
-        if (ring->dma.get() != nullptr) {
-            ring->dma->CompleteDMA(kIODMACommandCompleteDMANoOptions);
+    IODMACommand * commands[] = {ivars->output.dma.get(), ivars->input.dma.get(), ivars->meter_dma.get()};
+    for (IODMACommand * command : commands) {
+        if (command != nullptr) {
+            command->CompleteDMA(kIODMACommandCompleteDMANoOptions);
         }
     }
 }

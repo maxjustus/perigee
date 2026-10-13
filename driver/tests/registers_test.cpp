@@ -22,8 +22,21 @@ static void depth_follows_the_vendor_rate_bands()
     CHECK(depthFor(176400.0) == 32 && depthFor(192000.0) == 32);
 }
 
+static void meter_timer_divides_the_core_clock_constant()
+{
+    CHECK(meterTimer(20, 0) == 122070 / 20 - 1);
+    CHECK(meterTimer(30, kGeneralFastClock) == 244140 / 30 - 1);
+}
+
+static void meter_buffer_holds_the_sequence_byte_and_every_meter()
+{
+    CHECK(meterBufferBytes(88) == 0xB4);
+}
+
 int main()
 {
+    meter_timer_divides_the_core_clock_constant();
+    meter_buffer_holds_the_sequence_byte_and_every_meter();
     depth_follows_the_vendor_rate_bands();
     if (failures == 0) {
         std::printf("ok\n");

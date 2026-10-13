@@ -17,6 +17,8 @@ public:
                                          const IOUserClientMethodDispatch * dispatch,
                                          OSObject * target,
                                          void * reference) override;
+    virtual kern_return_t CopyClientMemoryForType(uint64_t type, uint64_t * options,
+                                                  IOMemoryDescriptor ** memory) override;
 
     void Report(const Ensemble::Report & report) LOCALONLY;
 };

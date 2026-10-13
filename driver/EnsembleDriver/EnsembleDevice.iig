@@ -29,6 +29,7 @@ public:
     void ClockSourceChanged(uint64_t source) LOCALONLY;
     void Send(const Ensemble::Message & message) LOCALONLY;
     void SetListener(EnsembleUserClient * listener) LOCALONLY;
+    IOMemoryDescriptor * Meters() LOCALONLY;
 
     virtual kern_return_t StartIO(IOUserAudioStartStopFlags in_flags) final LOCALONLY;
     virtual kern_return_t StopIO(IOUserAudioStartStopFlags in_flags) final LOCALONLY;
@@ -39,6 +40,7 @@ public:
 private:
     kern_return_t startMailbox() LOCALONLY;
     kern_return_t applyRate(double rate) LOCALONLY;
+    kern_return_t startMeters() LOCALONLY;
     kern_return_t addVolume() LOCALONLY;
     kern_return_t addClockSource() LOCALONLY;
     void nameChannels(IOUserAudioObjectPropertyScope scope, bool input, uint32_t count) LOCALONLY;
