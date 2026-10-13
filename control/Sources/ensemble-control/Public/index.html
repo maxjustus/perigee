@@ -115,6 +115,14 @@
   <div class="view cards" id="outputs"></div>
   <div class="view cards" id="routing"></div>
   <div class="view cards" id="device"></div>
+  <div class="view cards" id="monitor">
+    <section>
+      <h2>Remote monitor</h2>
+      <div class="row"><span class="name">Channel</span><select id="monitor-channel" aria-label="Channel"></select></div>
+      <div class="row"><span class="name">Listen</span>
+        <button id="monitor-listen" class="switch" aria-pressed="false" aria-label="Listen"></button></div>
+    </section>
+  </div>
 </main>
 <script>
 const controls = new Map();
@@ -136,7 +144,7 @@ function watch(path, update) {
 }
 
 const tabs = { mixer: "Mixer", meters: "Meters", inputs: "Inputs", outputs: "Outputs", routing: "Routing",
-               device: "Device" };
+               device: "Device", monitor: "Monitor" };
 
 for (const [id, name] of Object.entries(tabs)) {
   document.getElementById("tabs").append(Object.assign(document.createElement("a"), { href: `#${id}`, textContent: name }));
@@ -481,6 +489,58 @@ const setHideOff = on => {
 };
 hideOff.onclick = () => setHideOff(hideOff.getAttribute("aria-pressed") !== "true");
 setHideOff(localStorage.getItem("hideOff") === "true");
+
+const monitorChannel = document.getElementById("monitor-channel");
+const monitorListen = document.getElementById("monitor-listen");
+let monitorSocket = null, audio = null, playAt = 0;
+
+monitorChannel.append(...[...channelNames.slice(0, 30), "Mix 1 L", "Mix 1 R", "FX Send L", "FX Send R"]
+  .map((name, index) => new Option(name, index + 1)));
+monitorChannel.value = localStorage.getItem("monitorChannel") ?? 9;
+monitorChannel.onchange = () => {
+  localStorage.setItem("monitorChannel", monitorChannel.value);
+  if (monitorSocket?.readyState === WebSocket.OPEN) {
+    monitorSocket.send(JSON.stringify({ channel: Number(monitorChannel.value) }));
+  }
+};
+monitorListen.onclick = () => {
+  const on = monitorListen.getAttribute("aria-pressed") !== "true";
+  monitorListen.setAttribute("aria-pressed", String(on));
+  if (on) {
+    listen();
+  } else {
+    monitorSocket.close();
+    monitorSocket = null;
+  }
+};
+
+// iOS starts Web Audio only from a tap. It mutes Web Audio with the ringer switch unless the session type is playback.
+function listen() {
+  if (navigator.audioSession) navigator.audioSession.type = "playback";
+  audio ??= new AudioContext();
+  audio.resume();
+  const socket = new WebSocket(`ws://${location.hostname}:8739`);
+  socket.binaryType = "arraybuffer";
+  socket.onopen = () => socket.send(JSON.stringify({ channel: Number(monitorChannel.value) }));
+  socket.onmessage = event => play(event.data);
+  socket.onclose = () => setTimeout(() => { if (monitorSocket === socket) listen(); }, 1000);
+  monitorSocket = socket;
+}
+
+// Each frame is the sample rate as a little-endian uint32, then int16 samples. The lead absorbs Wi-Fi jitter.
+function play(frame) {
+  const rate = new DataView(frame).getUint32(0, true);
+  const samples = new Int16Array(frame, 4);
+  if (samples.length === 0) return;
+  const buffer = audio.createBuffer(1, samples.length, rate);
+  buffer.getChannelData(0).set(Float32Array.from(samples, sample => sample / 32768));
+  const source = audio.createBufferSource();
+  source.buffer = buffer;
+  source.connect(audio.destination);
+  if (playAt < audio.currentTime || playAt > audio.currentTime + 0.5) playAt = audio.currentTime + 0.1;
+  source.start(playAt);
+  playAt += buffer.duration;
+}
 
 function connect() {
   const status = document.getElementById("status");
