@@ -1,20 +1,9 @@
-#include <cstdio>
-#include <cstdlib>
 #include <vector>
 
+#include "check.h"
 #include "Outbox.h"
 
 using namespace Ensemble;
-
-static int failures = 0;
-
-#define CHECK(condition)                                                   \
-    do {                                                                   \
-        if (!(condition)) {                                                \
-            std::printf("%s:%d: CHECK(%s)\n", __FILE__, __LINE__, #condition); \
-            failures++;                                                    \
-        }                                                                  \
-    } while (0)
 
 struct FakeMailbox {
     std::vector<uint32_t> * sent;
@@ -76,8 +65,5 @@ int main()
     flush_sends_in_order_until_the_ring_is_full();
     push_refuses_when_full();
     a_limited_push_leaves_the_reserve_free();
-    if (failures == 0) {
-        std::printf("ok\n");
-    }
-    return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
+    return finish();
 }

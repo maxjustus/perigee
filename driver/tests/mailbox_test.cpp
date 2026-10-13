@@ -1,21 +1,10 @@
-#include <cstdio>
-#include <cstdlib>
 #include <map>
 #include <vector>
 
+#include "check.h"
 #include "Mailbox.h"
 
 using namespace Ensemble;
-
-static int failures = 0;
-
-#define CHECK(condition)                                                   \
-    do {                                                                   \
-        if (!(condition)) {                                                \
-            std::printf("%s:%d: CHECK(%s)\n", __FILE__, __LINE__, #condition); \
-            failures++;                                                    \
-        }                                                                  \
-    } while (0)
 
 struct FakeRegs {
     std::map<uint64_t, uint32_t> * values;
@@ -94,8 +83,5 @@ int main()
     send_refuses_a_message_longer_than_a_slot();
     receive_reads_one_slot_and_frees_it();
     event_bit1_answers_the_handshake();
-    if (failures == 0) {
-        std::printf("ok\n");
-    }
-    return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
+    return finish();
 }

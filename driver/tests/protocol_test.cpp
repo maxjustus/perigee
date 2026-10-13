@@ -1,20 +1,9 @@
-#include <cstdio>
-#include <cstdlib>
 #include <vector>
 
+#include "check.h"
 #include "Protocol.h"
 
 using namespace Ensemble;
-
-static int failures = 0;
-
-#define CHECK(condition)                                                   \
-    do {                                                                   \
-        if (!(condition)) {                                                \
-            std::printf("%s:%d: CHECK(%s)\n", __FILE__, __LINE__, #condition); \
-            failures++;                                                    \
-        }                                                                  \
-    } while (0)
 
 static uint32_t word(uint8_t b0, uint8_t b1, uint8_t b2, uint8_t b3)
 {
@@ -110,8 +99,5 @@ int main()
     unknown_type_stops_the_parse();
     get_all_is_one_type4_word_after_the_header();
     set_packs_type_command_p1_and_value();
-    if (failures == 0) {
-        std::printf("ok\n");
-    }
-    return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
+    return finish();
 }

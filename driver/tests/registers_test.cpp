@@ -1,19 +1,7 @@
-#include <cstdio>
-#include <cstdlib>
-
+#include "check.h"
 #include "Registers.h"
 
 using namespace Ensemble;
-
-static int failures = 0;
-
-#define CHECK(condition)                                                   \
-    do {                                                                   \
-        if (!(condition)) {                                                \
-            std::printf("%s:%d: CHECK(%s)\n", __FILE__, __LINE__, #condition); \
-            failures++;                                                    \
-        }                                                                  \
-    } while (0)
 
 static void depth_follows_the_vendor_rate_bands()
 {
@@ -60,8 +48,5 @@ int main()
     depth_follows_the_vendor_rate_bands();
     wraps_count_ring_periods_not_interrupts();
     latency_matches_the_vendor_hal();
-    if (failures == 0) {
-        std::printf("ok\n");
-    }
-    return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
+    return finish();
 }
