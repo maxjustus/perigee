@@ -6,15 +6,18 @@
 namespace Ensemble {
 
 constexpr uint32_t kOutboxCapacity = 32;
+// The user client fills the outbox only up to the reserve, so that the
+// dext's own messages still fit while a client sends a burst.
+constexpr uint32_t kOutboxReserve = 8;
 
 struct Outbox {
     Message items[kOutboxCapacity];
     uint32_t head;
     uint32_t count;
 
-    bool push(const Message & message)
+    bool push(const Message & message, uint32_t limit = kOutboxCapacity)
     {
-        if (count == kOutboxCapacity) {
+        if (count >= limit) {
             return false;
         }
         items[(head + count) % kOutboxCapacity] = message;

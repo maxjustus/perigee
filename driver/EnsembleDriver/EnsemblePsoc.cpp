@@ -94,7 +94,7 @@ kern_return_t EnsemblePsoc::Send(const Message & message)
 {
     __block bool queued = false;
     ivars->queue->DispatchSync(^{
-        queued = ivars->outbox.push(message);
+        queued = ivars->outbox.push(message, kOutboxCapacity - kOutboxReserve);
     });
     return queued ? kIOReturnSuccess : kIOReturnNoSpace;
 }

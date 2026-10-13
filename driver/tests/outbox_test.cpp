@@ -57,10 +57,25 @@ static void push_refuses_when_full()
     CHECK(!outbox.push(getAll()));
 }
 
+static void a_limited_push_leaves_the_reserve_free()
+{
+    Outbox outbox = {};
+    const uint32_t limit = kOutboxCapacity - kOutboxReserve;
+    for (uint32_t i = 0; i < limit; i++) {
+        CHECK(outbox.push(getAll(), limit));
+    }
+    CHECK(!outbox.push(getAll(), limit));
+    for (uint32_t i = 0; i < kOutboxReserve; i++) {
+        CHECK(outbox.push(getAll()));
+    }
+    CHECK(!outbox.push(getAll()));
+}
+
 int main()
 {
     flush_sends_in_order_until_the_ring_is_full();
     push_refuses_when_full();
+    a_limited_push_leaves_the_reserve_free();
     if (failures == 0) {
         std::printf("ok\n");
     }
