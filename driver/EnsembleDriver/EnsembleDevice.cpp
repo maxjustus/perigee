@@ -372,6 +372,8 @@ void EnsembleDevice::Reported(const Report & report)
     } else if (report.command == kCommandClockSource && report.data[0] < kClockSourceCount) {
         const IOUserAudioSelectorValue source = report.data[0];
         ivars->clock_source->SetCurrentSelectedValues(&source, 1);
+    } else if (report.command == kReportClockLock) {
+        SetClockIsStable(report.data[0] != 0);
     }
 }
 

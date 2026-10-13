@@ -12,6 +12,7 @@ constexpr uint8_t kSpeaker = 2;
 constexpr uint8_t kMaxAttenuation = 64;
 
 constexpr uint8_t kCommandClockSource = 0x2A;
+constexpr uint8_t kReportClockLock = 0x42;
 constexpr const char * kClockSourceNames[] = {"Internal", "Word Clock", "S/PDIF Coax",
                                               "Optical 1", "Optical 2"};
 constexpr uint32_t kClockSourceCount = sizeof(kClockSourceNames) / sizeof(kClockSourceNames[0]);

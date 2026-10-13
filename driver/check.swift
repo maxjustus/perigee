@@ -71,6 +71,7 @@ print("inputs \(channels(device, kAudioObjectPropertyScopeInput)) outputs \(chan
 print("rate \(get(device, kAudioDevicePropertyNominalSampleRate, kAudioObjectPropertyScopeGlobal, Float64(0)))")
 print("safety offset in \(get(device, kAudioDevicePropertySafetyOffset, kAudioObjectPropertyScopeInput, UInt32(0)))"
     + " out \(get(device, kAudioDevicePropertySafetyOffset, kAudioObjectPropertyScopeOutput, UInt32(0)))")
+print("clock stable \(get(device, 0x63737462 /* cstb, AudioServerPlugIn.h */, kAudioObjectPropertyScopeGlobal, UInt32(0)))")
 print("latency in \(latency(device, kAudioObjectPropertyScopeInput)) out \(latency(device, kAudioObjectPropertyScopeOutput))")
 
 final class Stats {

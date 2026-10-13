@@ -619,6 +619,9 @@ value. Extra report IDs:
 | 0x44 | Get-all complete. data[0] = 1 |
 | 0x52, 0x53 | Functional test result (not decoded) |
 | 0x64 | PLL clock lock |
+
+With Word Clock selected and no signal, the unit reports 0x42 = 0 and
+0x64 = 0, and the audio DMA stops. With Internal, both report 1.
 | 0xD2 | DSP core version, 7 bytes |
 | 0xD5 | DSP cycle count per thread and sample, data[0]. See 8.1 |
 
@@ -644,7 +647,7 @@ clock source item ID that the HAL publishes.
 | 3 | 0xAF003 | Optical 1 (name depends on the port format) |
 | 4 | 0xAF004 | Optical 2 |
 
-Command 0x41 reports external clock lock. `data[0] != 0` = locked.
+Report 0x42 gives the external clock lock. `data[0] != 0` = locked.
 
 `_Ensemble2AnalogInputType` (command 0x01). The wire value differs from the
 ID that the HAL publishes to Apogee Control (`AErl`, `AErN`):
