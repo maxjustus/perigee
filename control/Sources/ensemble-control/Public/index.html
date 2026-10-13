@@ -619,7 +619,7 @@ function listen() {
   if (navigator.audioSession) navigator.audioSession.type = "playback";
   audio ??= new AudioContext();
   audio.resume();
-  const socket = new WebSocket(`ws://${location.hostname}:8739`);
+  const socket = new WebSocket(`ws://${location.hostname}:@MONITOR_PORT@`);
   socket.binaryType = "arraybuffer";
   socket.onopen = () => socket.send(JSON.stringify({ channel: Number(monitorChannel.value) }));
   socket.onmessage = event => play(event.data);
@@ -662,7 +662,7 @@ function showPeak(ratio) {
 
 function connect() {
   const status = document.getElementById("status");
-  socket = new WebSocket(`ws://${location.hostname}:8738`);
+  socket = new WebSocket(`ws://${location.hostname}:@RPC_PORT@`);
   socket.onmessage = event => {
     const message = JSON.parse(event.data);
     if (message.id && pending.has(message.id)) {

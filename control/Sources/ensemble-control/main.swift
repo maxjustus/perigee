@@ -19,9 +19,11 @@ do {
         .appendingPathComponent("ensemble-control/presets.json")
     let controller = Controller(transport: device, presets: presets) { server.broadcast($0) }
     try device.subscribe { controller.receive($0) }
-    let page = try Data(contentsOf: Bundle.module.url(forResource: "index", withExtension: "html",
-                                                      subdirectory: "Public")!)
-    try server.start(controller: controller, page: page, httpPort: httpPort, webSocketPort: webSocketPort)
+    let page = try String(contentsOf: Bundle.module.url(forResource: "index", withExtension: "html",
+                                                        subdirectory: "Public")!, encoding: .utf8)
+        .replacingOccurrences(of: "@RPC_PORT@", with: "\(webSocketPort)")
+        .replacingOccurrences(of: "@MONITOR_PORT@", with: "\(monitorPort)")
+    try server.start(controller: controller, page: Data(page.utf8), httpPort: httpPort, webSocketPort: webSocketPort)
     try monitor.start(port: monitorPort)
     poller = MeterPoller(buffer: try device.mapMeters()) { controller.meters($0) }
     try controller.send(getAll)
