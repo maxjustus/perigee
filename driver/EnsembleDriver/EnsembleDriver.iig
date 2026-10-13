@@ -18,7 +18,7 @@ public:
     virtual kern_return_t NewUserClient(uint32_t type, IOUserClient ** user_client) override;
     virtual kern_return_t SetPowerState(uint32_t powerFlags) override LOCAL;
 
-    EnsembleDevice * Device() LOCALONLY;
+    EnsembleDevice * GetDevice() LOCALONLY;
 };
 
 #endif

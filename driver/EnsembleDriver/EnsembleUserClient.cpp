@@ -46,17 +46,17 @@ kern_return_t IMPL(EnsembleUserClient, Start)
         return ret;
     }
     EnsembleDriver * driver = OSDynamicCast(EnsembleDriver, provider);
-    if (driver == nullptr || driver->Device() == nullptr) {
+    if (driver == nullptr || driver->GetDevice() == nullptr) {
         return kIOReturnNotAttached;
     }
-    ivars->device = OSSharedPtr(driver->Device(), OSRetain);
+    ivars->device = OSSharedPtr(driver->GetDevice(), OSRetain);
     return kIOReturnSuccess;
 }
 
 kern_return_t IMPL(EnsembleUserClient, Stop)
 {
     if (ivars->device.get() != nullptr) {
-        ivars->device->Psoc()->RemoveListener(this);
+        ivars->device->GetPsoc()->RemoveListener(this);
     }
     return Stop(provider, SUPERDISPATCH);
 }
@@ -77,7 +77,7 @@ kern_return_t EnsembleUserClient::ExternalMethod(uint64_t selector,
         Message message = {};
         message.count = uint32_t(input->getLength() / 4);
         memcpy(message.words, input->getBytesNoCopy(), input->getLength());
-        ivars->device->Psoc()->Send(message);
+        ivars->device->GetPsoc()->Send(message);
         return kIOReturnSuccess;
     }
     case kSelectorSubscribe:
@@ -85,7 +85,7 @@ kern_return_t EnsembleUserClient::ExternalMethod(uint64_t selector,
             return kIOReturnBadArgument;
         }
         ivars->reports = OSSharedPtr(arguments->completion, OSRetain);
-        ivars->device->Psoc()->AddListener(this);
+        ivars->device->GetPsoc()->AddListener(this);
         return kIOReturnSuccess;
     default:
         return super::ExternalMethod(selector, arguments, dispatch, target, reference);
@@ -94,7 +94,7 @@ kern_return_t EnsembleUserClient::ExternalMethod(uint64_t selector,
 
 kern_return_t IMPL(EnsembleUserClient, CopyClientMemoryForType)
 {
-    IOMemoryDescriptor * meters = ivars->device->Meters();
+    IOMemoryDescriptor * meters = ivars->device->GetMeters();
     if (type != kMemoryMeters || meters == nullptr) {
         return kIOReturnBadArgument;
     }

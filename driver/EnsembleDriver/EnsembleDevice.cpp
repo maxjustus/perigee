@@ -293,7 +293,7 @@ kern_return_t EnsembleDevice::program()
     return kIOReturnSuccess;
 }
 
-IOMemoryDescriptor * EnsembleDevice::Meters()
+IOMemoryDescriptor * EnsembleDevice::GetMeters()
 {
     return ivars->meters.get();
 }
@@ -355,7 +355,7 @@ void EnsembleDevice::VolumeChanged(float in_decibels)
     ivars->psoc->SetMonitorAttenuation(attenuation(in_decibels));
 }
 
-EnsemblePsoc * EnsembleDevice::Psoc()
+EnsemblePsoc * EnsembleDevice::GetPsoc()
 {
     return ivars->psoc.get();
 }

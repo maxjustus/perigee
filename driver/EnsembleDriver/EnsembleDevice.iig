@@ -29,8 +29,8 @@ public:
     void VolumeChanged(float decibels) LOCALONLY;
     void ClockSourceChanged(uint64_t source) LOCALONLY;
     void Reported(const Ensemble::Report & report) LOCALONLY;
-    EnsemblePsoc * Psoc() LOCALONLY;
-    IOMemoryDescriptor * Meters() LOCALONLY;
+    EnsemblePsoc * GetPsoc() LOCALONLY;
+    IOMemoryDescriptor * GetMeters() LOCALONLY;
 
     virtual kern_return_t StartIO(IOUserAudioStartStopFlags in_flags) final LOCALONLY;
     virtual kern_return_t StopIO(IOUserAudioStartStopFlags in_flags) final LOCALONLY;

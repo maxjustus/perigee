@@ -150,7 +150,7 @@ kern_return_t IMPL(EnsembleDriver, SetPowerState)
     return SetPowerState(powerFlags, SUPERDISPATCH);
 }
 
-EnsembleDevice * EnsembleDriver::Device()
+EnsembleDevice * EnsembleDriver::GetDevice()
 {
     return ivars->device.get();
 }
