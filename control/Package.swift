@@ -15,7 +15,7 @@ let package = Package(
                           linkerSettings: [.unsafeFlags(["-Xlinker", "-sectcreate", "-Xlinker", "__TEXT",
                                                          "-Xlinker", "__info_plist", "-Xlinker", infoPlist])]),
         .executableTarget(name: "ensemblectl", dependencies: ["EnsembleIO", "EnsembleModel"]),
-        .executableTarget(name: "ensemble-audio", dependencies: ["EnsembleIO"]),
+        .executableTarget(name: "ensemble-audio", dependencies: ["EnsembleIO", "EnsembleModel"]),
         .testTarget(name: "EnsembleModelTests", dependencies: ["EnsembleModel"]),
     ]
 )
