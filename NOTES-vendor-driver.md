@@ -954,8 +954,8 @@ front-panel meter is the source of its input or output.
 The matrix commands check few arguments:
 
 - 0x15 and 0x09 accept any source code. So 0x15 with code 0x70 + o sends
-  DSP outputs o and o + 1 to an output pair. 0x09 with 0x70 + o records
-  them. Not tested on the unit.
+  DSP outputs o and o + 1 to an output pair (tested with Headphone 1,
+  8.7). 0x09 with 0x70 + o records them. The 0x09 route is not tested.
 - 0xD3 checks nothing and computes each index modulo 256 (8.6). It is the
   only command that writes destinations 0xC0 to 0xCF.
 - No command writes destinations 0x80 to 0x8F, 0xB0 to 0xB7, or 0xE0 to
@@ -1529,9 +1529,10 @@ p1 = 0x60 + n and data = n, (s − 0x70) mod 256, 1:
 | 3 | 0x30 + p1 = 0x90 + n ← Analog 1. This is front-panel meter tap n (5.10) |
 
 For example, s = 0x60 puts Mixer 1 L on DSP input n, and s = 0x30 puts
-Playback 1 there. This follows from the code and is not tested on the
-unit. With s = 0x60 and the DSP output in Mixer 1, the signal loops back.
-Mode 0 with the same p1 sets DSP input n to Analog 1 again.
+Playback 1 there. The unit test used s = 0x60 (8.7). Playback is not
+tested. With s = 0x60 and the DSP output in Mixer 1, the signal loops
+back. Mode 0 with the same p1 sets DSP input n to Analog 1 again. The
+start-up source of meter tap 0 is Analog 1, so n = 0 changes no meter.
 
 Mode 3 is the FX Rack "Print" mode: the record channel carries the FX
 output (8.7). The Ensemble HAL sends only mode 0 or 1, and the FX Rack
@@ -1583,6 +1584,13 @@ speaker output stayed muted.
   Analog 1: m = 1 put 0.25 in Mixer 1, m = 3 also on record channel 0,
   and m = 0 and 2 left both dry (`isa.py routes`). MonoGain on the front
   panel mic with m = 3 recorded c2 times the input, 3 samples late.
+- 0xD3 with p1 = 0x60 and data = 0, 0xF0, 1 put Mixer 1 L on DSP input 0.
+  A program that sends 0.1 times DSP input 0 to Mixer 1 R gave exactly 0.1
+  times Mixer 1 L, with a residual of 1e-5. With Analog 1 on DSP input 0,
+  the result was 0. Then 0x15 with p1 = 15 and code 0x70 put DSP outputs
+  0 and 1 on Headphone 1: the headphone meters read 12288 and 1228, which
+  is 0.75 and 0.075 of full scale, as the program wrote. Code 0x62 put
+  Mixer 2 back (`isa.py monitor`). The headphones stayed muted.
 - A loop with a backward jump (offset 0xFE) ran three times. 0x14 with
   source thread 1 copied a word of thread 1. A state operand A with k = 3
   stepped through its group (`isa.py extra`).
