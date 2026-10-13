@@ -4,6 +4,10 @@ Companion to `NOTES-vendor-driver.md`. That file records what the vendor
 binary does. This file records what we do not know, what we build, and in
 which order.
 
+[DRIVERKIT-workflow.md](DRIVERKIT-workflow.md) covers the macOS build,
+activation, debug, test, and release cycle. It also records the entitlement,
+HAL access, and BAR access gates that remain unresolved.
+
 ## 1. What the notes do not settle
 
 The notes describe one working sequence. They do not describe the hardware
@@ -45,9 +49,22 @@ clock model.
 
 ## 3. Design
 
-The kernel/user split is forced by macOS. Kernel code maps BAR0 and owns
-DMA memory. User code implements `AudioServerPlugIn`. Inside that boundary
-the design departs from the vendor in five places.
+Evaluate **PCIDriverKit plus AudioDriverKit in C++ first**, with hardware
+control and the PSoC mailbox inside the dext. Keep the probe in Rust.
+Use a separate Rust `AudioServerPlugIn` only if a concrete requirement
+excludes AudioDriverKit. Record that requirement before the fallback implementation.
+
+Both designs run custom driver code in user space. Neither requires a
+custom kernel extension. AudioDriverKit can remove the separate HAL plugin
+and its custom communication layer. Rust suits the fallback HAL, but its
+memory safety does not remove unsafe FFI, shared DMA, or real-time constraints.
+
+Verify API availability, entitlements, and device behavior through the gates
+in `DRIVERKIT-workflow.md` before the audio implementation. Reduced complexity
+is the goal. Hardware tests must establish stability.
+
+The following split design is the fallback, not the default architecture.
+It departs from the vendor in five places.
 
 1. **DriverKit dext, not a kext.** `PCIDriverKit` with `IOUserClient`
    methods. Third-party kexts require reduced security on Apple silicon.
@@ -58,9 +75,9 @@ the design departs from the vendor in five places.
    plugin reads it each IO cycle and uses the MSI only as a wrap marker.
 3. **PSoC mailbox in user space.** The kext runs a timer, a FIFO, and a
    parser in the kernel for a protocol that touches neither DMA nor
-   interrupts. The dext maps BAR0 offsets 0x400 to 0xBF0 into the plugin as
-   one region. The plugin runs the mailbox. The dext shrinks to: map,
-   allocate, arm, interrupt.
+   interrupts. The proposed dext exposes BAR0 offsets 0x400 to 0xBFF to
+   the plugin. This requires proof of supported, isolated access through
+   PCIDriverKit. If that gate fails, the mailbox stays in the dext.
 4. **One unit, one device.** No `Ensemble2AudioSystem` layer, no
    Thunderbolt topology sort, no multi-unit sync pauses. CoreAudio
    aggregate devices cover multiple units.
@@ -71,7 +88,7 @@ the design departs from the vendor in five places.
 Kept from the vendor: the 32-bit integer frame-interleaved ring, and meter
 DMA on the hardware timer.
 
-### 3.1 Components
+### 3.1 Fallback components
 
 | Component | Language | Responsibility |
 |-----------|----------|----------------|
@@ -81,18 +98,17 @@ DMA on the hardware timer.
 
 Language rationale:
 
-- The dext must be C++. DriverKit has no C ABI. `iig` emits C++ classes
-  that subclass `IOService` and `IOUserClient`. The dext holds about 400
-  lines and almost no logic, so a Rust core behind a C++ shim gains
-  nothing.
+- DriverKit exposes C++ interfaces. `iig` emits C++ classes that subclass
+  `IOService` and `IOUserClient`. Use C++ directly rather than add a Rust
+  core behind a C++ shim without a concrete need.
 - `AudioServerPlugIn` is a C API. The host loads a `CFPlugIn` bundle, calls
   one exported factory, and receives `AudioServerPlugInDriverInterface`, a
   struct of C function pointers. Rust reaches it through `coreaudio-sys`
   (bindgen over `AudioServerPlugIn.h`). IOKit calls (`IOServiceOpen`,
   `IOConnectCallMethod`, `IOConnectMapMemory64`) come from `io-kit-sys` or
   a hand-written `extern "C"` block.
-- The probe uses the same IOKit bindings. It is the smallest piece, so it
-  proves the FFI layer before the plugin depends on it.
+- The Rust probe uses IOKit independently of the audio architecture.
+  Its language does not require a Rust HAL.
 
 Rust constraints:
 
@@ -103,7 +119,7 @@ Rust constraints:
 - The bundle is `EnsembleHAL.driver/Contents/MacOS/EnsembleHAL`, built as
   a universal `cdylib` (arm64 + x86_64) and code-signed.
 
-### 3.2 Dext user client
+### 3.2 Fallback dext user client
 
 | Method | Purpose |
 |--------|---------|
@@ -117,19 +133,21 @@ Rust constraints:
 
 Each step ends with a passing test and one commit.
 
-1. Probe (section 2).
-2. Dext: match, map BAR0, read `ID`. Test: `ReadReg(0)` returns the same
-   value the probe saw.
-3. Dext: allocate rings and page, write address and size registers. Test:
+1. Probe in Rust (section 2).
+2. Evaluate PCIDriverKit plus AudioDriverKit against device requirements,
+   target macOS versions, and entitlements. Record the architecture decision.
+3. Dext: match, access BAR0, read `ID`. Test: the value matches the probe.
+4. Dext: allocate DMA buffers, write address and size registers. Test:
    registers read back the IOVA.
-4. Dext: MSI. Test: timestamp page advances at the expected wrap rate under
-   the vendor-equivalent register sequence.
-5. HAL: one stream each way, 48 kHz only, format `lpcm` int32 packed.
+5. Dext: MSI. Test: timestamp progression matches the expected wrap rate
+   under the vendor-equivalent register sequence.
+6. AudioDriverKit, or the justified fallback HAL: one stream each way,
+   48 kHz only, format `lpcm` int32 packed.
    Test: sine out on Analog 1 read back on Analog 1 with a loopback cable.
-6. HAL: mailbox, sample rate, clock source. Test: rate change survives a
-   Get-all round trip.
-7. HAL: input channel names, meter buffer exposure.
-8. Optional: Apogee Control selectors.
+7. Audio controls: mailbox, sample rate, clock source. Test: rate change
+   survives a Get-all round trip.
+8. Audio controls: input channel names, meter data.
+9. Optional: Apogee Control selectors.
 
 ## 4. Risks
 
