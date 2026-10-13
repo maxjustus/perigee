@@ -1002,42 +1002,95 @@ Coefficients go on the wire as IEEE 754 single-precision bit patterns.
 `FXFragment::setCoefficients` passes its `float` array to 0xD1 without
 conversion.
 
+Do not use 0xD4 to change single words while a program runs. A one-word
+write changed other state words in the thread, also while the thread was
+halted (8.6). The HAL uses 0xD4 only to fill the state block of a new
+fragment.
+
 ### 8.3 Instruction word
 
-Each instruction is one 32-bit word. Bits 5:0 hold the opcode. The HAL
-relocation functions (`TransformInPlace_*`, @0x94084 to @0x943f8) settle
-these fields:
+Each instruction is one 32-bit word, and bits 5:0 hold the opcode. A thread
+runs one instruction per cycle from code address 0. Instructions past the
+cycle budget do not run. Coefficient and state words are IEEE 754
+single-precision floats. The core has two result registers, r and x.
 
-| Opcodes | Bits | Meaning |
-|---------|------|---------|
-| 0x0B | 11:6 | Read audio input. DSP I/O channel |
-| 0x0B, 0x14, 0x15, 0x16 | 28:21 | State offset. The ModernEQ input read stores the sample there |
-| 0x15 | 13:6, 17:14, 20:18 | Copy from state: offset, thread, address mode. The linker writes 0x15 over an 0x0B when the input comes from another fragment |
-| 0x02 | 13:6, 17:14, 20:18 | Store to state: offset, thread, address mode |
-| 0x02 | 22, 28:23 | Bit 22 also sends the value to an audio output. Bits 28:23 hold the DSP I/O channel |
-| 0x04 to 0x0A, 0x0C to 0x13, 0x26 to 0x2B | 13:6, select 23:22 | Operand A. Select 0 = coefficient address, 1 = state offset |
-| 0x04 to 0x0A, 0x0C to 0x13, 0x26 to 0x2B | 21:14, select 25:24 | Operand B. Select 1 = state offset. The relocation skips operand B when operand A is a state offset |
-| 0x17 | 13:6 | STALL. A code address: the linker adds the code start. The linker replaces a STALL at the end of a fragment with 0 |
+The HAL relocation functions (`TransformInPlace_*`, @0x94084 to @0x943f8)
+give the address fields. The tests on the unit (8.6) give the other fields
+and the opcodes. `scripts/dsp/isa.py` repeats the tests.
 
-The state block of a fragment must align to 2^k words, where k is its
-largest address mode (`FXFragment::sizeMaxStateMode` @0x256e4 returns
+Arithmetic instructions, opcodes 0x04 to 0x0A, 0x0C to 0x13, and 0x26 to
+0x2B:
+
+| Bits | Field |
+|------|-------|
+| 13:6 | Operand A: coefficient address or state offset |
+| 21:14 | Operand B: state offset |
+| 23:22 | A select: 0 coefficient, 1 state, 2 r, 3 x |
+| 25:24 | B select: 0 zero, 1 state, 2 r, 3 x |
+| 27:26 | k. A state operand B is a circular group of 2^k words |
+| 30 | Destination: 1 r, 0 x |
+| 31 | Also writes the result to offset 0 of the operand B group |
+
+The linker relocates one state offset per instruction: operand A if its
+select is 1, else operand B. A circular group advances one word per
+sample, so offset j reads the value that offset 0 held j samples earlier.
+k = 0 is a fixed word. The state block of a fragment must align to 2^k
+words for its largest k (`FXFragment::sizeMaxStateMode` @0x256e4 returns
 `1 << mode`).
 
-The tests on the unit (8.6) settle these items:
+| Opcode | Result |
+|--------|--------|
+| 0x04 | Previous result + A × B. Tested with destination r (ModernEQ) |
+| 0x05 | A × B |
+| 0x06 | A + B |
+| 0x07 | A − B |
+| 0x08 | B − A |
+| 0x12 | \|A\| |
+| 0x26 | max(A, B) |
+| 0x27 | min(A, B) |
+| 0x28 | max(\|A\|, \|B\|) |
+| 0x0C, then 0x0E | e^A |
+| 0x0F, then 0x11 | ln A |
+| 0x09, then 0x2B | B / A |
+| 0x0A, then 0x2B | A / B |
 
-| Item | Meaning |
-|------|---------|
-| Coefficient and state words | IEEE 754 single-precision floats |
-| Opcode 0x05 | Multiply: A * B |
-| Opcode 0x04 | Multiply and add: the previous result + A * B |
-| Opcode 0x0B | The input sample becomes the result. In ModernEQ (bit 30 set) it also goes to the state offset in bits 28:21 |
-| Operand B select 2 | The result register |
-| Bit 30 | Writes the result to the result register. Without it, a later store does not see the value. Tested on opcode 0x05 |
-| Bit 31 | Also writes the result to offset 0 of the operand B group |
-| Bits 27:26 = k | Operand B is a circular group of 2^k state words. The group advances one word per sample, so offset j reads the value that offset 0 held j samples earlier. k = 0 is a fixed word |
+Both instructions of a pair take the same operands, as in the vendor
+programs. The first one leaves r and x unchanged. 0x0E, 0x11, or 0x2B alone
+acts on the product A × B of the previous instruction. After an add with
+B = zero, 0x0E gave e^0 = 1.
 
-The programs use 17 more opcodes: 0x01, 0x06 to 0x0A, 0x0C, 0x0E, 0x0F,
-0x11, 0x12, 0x14, 0x16, 0x26 to 0x28, 0x2B. They are not decoded.
+Other instructions:
+
+| Opcode | Bits | Meaning |
+|--------|------|---------|
+| 0x01 | 13:6 | Jump to this address + the offset. Offset 2 skips one instruction |
+| 0x01 | 23:21 | Condition on x, see below |
+| 0x02 | 13:6, 17:14, 20:18 | Store: state offset, thread, address mode |
+| 0x02 | 21 | Source: 0 r, 1 x |
+| 0x02 | 22, 28:23 | Bit 22 also sends the value to an audio output. Bits 28:23 hold the DSP I/O channel |
+| 0x0B | 11:6 | Read audio input: DSP I/O channel. The sample goes to r |
+| 0x0B | 28:21 | State offset. In ModernEQ (bit 30 set) the sample also goes there |
+| 0x14 | 13:6, 28:21 | Copy a state word: source offset, destination offset |
+| 0x16 | 13:6, 28:21 | As 0x14, and also loads the value into x |
+| 0x15 | 13:6, 17:14, 20:18, 28:21 | Copy from state: offset, thread, address mode, destination offset. The linker writes 0x15 over an 0x0B when the input comes from another fragment. Not tested |
+| 0x17 | 13:6 | STALL until cycle n. The next instruction runs at cycle n + 1. The linker adds the code start to n and replaces a STALL at the end of a fragment with 0 |
+
+Jump conditions, bits 23:21 of 0x01:
+
+| Bits | Jump when |
+|------|-----------|
+| 000 | x ≤ 0 |
+| 001 | x ≠ 0 |
+| 010 | x < 0 |
+| 011 | x ≥ 0 |
+| 100 | x = 0 |
+| 101 | x > 0 |
+| 110 | never |
+| 111 | always |
+
+The vendor programs set bits 20:17 of 0x01 to 1111, and bits 16:14 to 1,
+2, or 3. In the tests, words with equal bits 23:21 jumped alike, whatever
+bits 16:14 and 27:24 held. A value of ±1e-30 counts as nonzero.
 
 ### 8.4 FX programs
 
@@ -1068,7 +1121,7 @@ output.
 MonoGain:
 
     0  0000000b  read input, I/O channel 0
-    1  42000085  0x05  c2 * previous result
+    1  42000085  0x05  c2 * r
     2  00400042  0x02  store to state 1 and to audio output 0
 
 ModernEQ is six biquads. Band k (1 to 6) reads its input group x at
@@ -1082,7 +1135,7 @@ state 4k and writes its output group y at state 4k + 4. Each group is a
      4  49024184  0x04  + c6 * s9   y[n-1]
      5  c90281c4  0x04  + c7 * s10  y[n-2], bit 31
      6 to 30      bands 2 to 6, the same shape, c8 to c32
-    31  42000085  0x05  c2 * previous result
+    31  42000085  0x05  c2 * r
     32  49010044  0x04  + c1 * s4   dry x[n]
     33  00400002  0x02  store to state 0 and to audio output 0
 
@@ -1113,11 +1166,11 @@ store that feeds it. This is unverified.
 ### 8.6 Tests on the unit
 
 Measured with the open driver at 48 kHz. `scripts/dsp/dsp.py` sends the
-commands through `raw.send` of ensemble-control. Each load erased all threads, followed 8.2
-in thread 0 at address 0 with DSP I/O channel 0, and sent a resume-all.
-The record stream gave the reference: channel 8 is the dry front panel
-mic, and channels 30 and 31 are Mixer 1 (5.10). The speaker output stayed
-muted.
+commands through `raw.send` of ensemble-control. Each load erased all
+threads, followed 8.2 in thread 0 at address 0 with DSP I/O channel 0, and
+sent a resume-all. The record stream gave the reference: channel 8 is the
+dry front panel mic, and channels 30 and 31 are Mixer 1 (5.10). The
+speaker output stayed muted.
 
 - A Get of 0xD5 returns 162.
 - 0xD3 with p1 = 0 routes Analog 1, and p1 = 8 routes the front panel
@@ -1140,14 +1193,31 @@ muted.
   c5 = 1 by 2 samples. c6 = 0.5 gives the impulse response 1, 0.49,
   0.26, 0.11. c7 = 0.5 gives 1.04, -0.03, 0.54, -0.02, 0.28. c1 = 0.5
   with c2 = 0 passes the dry input at 0.5.
+- STALL 159 lets two more instructions run, and STALL 160 does not. So
+  cycles 0 to 161 run at 48 kHz.
+- A one-word 0xD4 write to s40 changed s39, s41, s100, s200, and s254,
+  and left s2, s8, and s15. Other one-word writes cleared most of a
+  circular group.
+- A halted thread sends exact zeros to its DSP I/O channels. Now and then
+  a resume-all after a code swap left the thread halted. A second
+  resume-all restarted it.
+
+For the opcode tests, `scripts/dsp/isa.py` sends DSP I/O channel 0 to
+Analog 1 and channel 1 to Analog 2. Mixer 1 pans them hard left and hard
+right. The left channel carries 0.25 b, where b steps through a circular
+group of eight state words. The right channel carries the result. Each
+capture gives eight points.
 
 The input meters hold their peaks for 2 s (`meters/peakHold`), so a level
 decrease shows late. After the tests, 0xD3 with data[2] = 0 and an erase
-of all threads returned both inputs to dry.
+of all threads returned the inputs to dry.
 
 ### 8.7 Open questions
 
-- The meaning of the 17 undecoded opcodes, and of bit 30 on them.
+- Bits 29 and 30 of 0x14. They changed nothing in the test.
+- Whether bits 27:26 also make a state operand A circular.
+- Why a one-word 0xD4 write changes other state words, and why a
+  resume-all sometimes does not restart the thread.
 - Whether the core can feed the record stream, as the FX Rack "Print"
   mode needs.
 - Which caller in the vendor HAL resumes the core after a load.
