@@ -1,27 +1,19 @@
 #!/usr/bin/env python3
 import hashlib
 from pathlib import Path
+import runpy
 import struct
 import unittest
+
+PROVENANCE = runpy.run_path(str(Path(__file__).parents[1] / "provenance.py"))
 
 
 class TransportEvidenceTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.hal = read_slice(
-            "/Library/Audio/Plug-Ins/HAL-disabled/ApogeeElementEnsemble.driver/"
-            "Contents/MacOS/ApogeeElementEnsemble",
-            0x100000C,
-        )
-        cls.kext = read_slice(
-            "/Library/Extensions/ApogeeElementEnsemble.kext/"
-            "Contents/MacOS/ApogeeElementEnsemble",
-            0x1000007,
-        )
-        resources = Path(
-            "/Applications/Utilities/Apogee Firmware Updater.app/Contents/Resources"
-        )
-        cls.cyacd = (resources / "EnsemblePSoC.cyacd").read_bytes()
+        cls.hal = read_slice(PROVENANCE["path"]("ApogeeElementEnsemble.driver"), 0x100000C)
+        cls.kext = read_slice(PROVENANCE["path"]("ApogeeElementEnsemble.kext"), 0x1000007)
+        cls.cyacd = PROVENANCE["path"]("EnsemblePSoC.cyacd").read_bytes()
 
     def test_source_hashes(self):
         for data, expected in (
@@ -33,10 +25,7 @@ class TransportEvidenceTests(unittest.TestCase):
                 self.kext,
                 "4e6c613a454ce9c6b337b3647677d06300757c452c92b408f9d5d97a29ea7b01",
             ),
-            (
-                self.cyacd,
-                "7dd0ab0a7e7d1637309d48684b250c4f8a69a1cafa215b5a9c682ad4673a3a24",
-            ),
+            (self.cyacd, PROVENANCE["sha256"]("EnsemblePSoC.cyacd")),
         ):
             self.assertEqual(hashlib.sha256(data).hexdigest(), expected)
 

@@ -7,6 +7,7 @@ if not __debug__:
 
 import hashlib
 from pathlib import Path
+import runpy
 import struct
 
 from unicorn import (
@@ -19,8 +20,9 @@ from unicorn.arm_const import (
     UC_ARM_REG_SP, UC_ARM_REG_LR, UC_ARM_REG_PC,
 )
 
-IMAGE = Path('/tmp/apogee-fw/flash.bin')
-SHA256 = 'a5e8e2c752255e627fdd4549408ed4f1a5fe1f76f7352799614a3eb386f1b9a8'
+PROVENANCE = runpy.run_path(str(Path(__file__).parents[1] / "provenance.py"))
+IMAGE = PROVENANCE['path']('flash.bin')
+SHA256 = PROVENANCE['sha256']('flash.bin')
 DEST = 0x1FFFA030
 TIMER = 0x1FFFA0A8
 COUNT = 0x1FFF9000

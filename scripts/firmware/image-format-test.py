@@ -3,6 +3,7 @@
 import importlib.util
 import json
 from pathlib import Path
+import runpy
 import subprocess
 import sys
 import unittest
@@ -12,10 +13,10 @@ SCRIPT = Path(__file__).with_name("image-format-inspect.py")
 spec = importlib.util.spec_from_file_location("image_format", SCRIPT)
 image_format = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(image_format)
-VENDOR = Path(
-    "/Applications/Utilities/Apogee Firmware Updater.app/Contents/Resources/"
-    "EnsemblePSoC.cyacd"
-)
+PROVENANCE = runpy.run_path(str(Path(__file__).parents[1] / "provenance.py"))
+VENDOR = PROVENANCE["path"]("EnsemblePSoC.cyacd")
+FLASH = PROVENANCE["path"]("flash.bin")
+CONFIG = PROVENANCE["path"]("config.bin")
 
 
 class ImageFormatTests(unittest.TestCase):
@@ -126,7 +127,7 @@ class ImageFormatTests(unittest.TestCase):
     @unittest.skipUnless(VENDOR.exists(), "vendor CYACD absent")
     def test_vendor_file(self):
         result = image_format.inspect(VENDOR.read_bytes())
-        self.assertEqual(result["sha256"], "7dd0ab0a7e7d1637309d48684b250c4f8a69a1cafa215b5a9c682ad4673a3a24")
+        self.assertEqual(result["sha256"], PROVENANCE["sha256"]("EnsemblePSoC.cyacd"))
         self.assertEqual(result["row_count"], 355)
         self.assertEqual(result["arrays"], {"1": [0, 255, 256], "2": [0, 97, 98], "3": [255, 255, 1]})
         self.assertEqual(result["app_end_exclusive"], 0x26200)
@@ -152,8 +153,7 @@ class ImageFormatTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "coverage"):
             self.inspect(lines)
 
-    @unittest.skipUnless(VENDOR.exists() and Path("/tmp/apogee-fw/config.bin").exists()
-                         and Path("/tmp/apogee-fw/flash.bin").exists(), "derived baseline absent")
+    @unittest.skipUnless(VENDOR.exists() and CONFIG.exists() and FLASH.exists(), "derived baseline absent")
     def test_derived_baseline_includes_synthetic_holes(self):
         flash = bytearray(b"\xff" * 0x30000)
         config = bytearray(0x8000)
@@ -162,8 +162,8 @@ class ImageFormatTests(unittest.TestCase):
             index = body[0] * 256 + int.from_bytes(body[1:3], "big")
             flash[(index - 256) * 256:(index - 255) * 256] = body[5:261]
             config[index * 32:(index + 1) * 32] = body[261:-1]
-        self.assertEqual(bytes(flash), Path("/tmp/apogee-fw/flash.bin").read_bytes())
-        self.assertEqual(bytes(config), Path("/tmp/apogee-fw/config.bin").read_bytes())
+        self.assertEqual(bytes(flash), FLASH.read_bytes())
+        self.assertEqual(bytes(config), CONFIG.read_bytes())
         self.assertEqual(flash[0x16200:0x2FF00], b"\xff" * 0x19D00)
         self.assertEqual(config[:0x2000], bytes(0x2000))
 

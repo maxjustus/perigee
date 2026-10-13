@@ -8,10 +8,9 @@ import runpy
 import sys
 from pathlib import Path
 
-DEFAULT = Path(
-    "/Applications/Utilities/Apogee Firmware Updater.app/Contents/Resources/EnsemblePSoC.cyacd"
-)
-SHA256 = "7dd0ab0a7e7d1637309d48684b250c4f8a69a1cafa215b5a9c682ad4673a3a24"
+PROVENANCE = runpy.run_path(str(Path(__file__).parents[1] / "provenance.py"))
+DEFAULT = PROVENANCE["path"]("EnsemblePSoC.cyacd")
+SHA256 = PROVENANCE["sha256"]("EnsemblePSoC.cyacd")
 
 
 def main():

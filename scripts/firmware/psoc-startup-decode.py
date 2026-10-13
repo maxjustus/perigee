@@ -9,12 +9,15 @@ import hashlib
 import json
 import pathlib
 import re
+import runpy
 import struct
 import sys
 
+PROVENANCE = runpy.run_path(str(pathlib.Path(__file__).parents[1] / "provenance.py"))
+
 
 def main():
-    root = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else "/tmp/apogee-fw")
+    root = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else PROVENANCE["path"]("flash.bin").parent
     flash = (root / "flash.bin").read_bytes()
     config = (root / "config.bin").read_bytes()
     if len(flash) != 0x30000 or len(config) != 0x8000:

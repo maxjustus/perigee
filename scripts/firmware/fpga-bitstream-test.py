@@ -3,10 +3,13 @@
 
 import json
 from pathlib import Path
+import runpy
 import subprocess
 import sys
 import tempfile
 import unittest
+
+PROVENANCE = runpy.run_path(str(Path(__file__).parents[1] / "provenance.py"))
 
 
 class InspectorTests(unittest.TestCase):
@@ -103,10 +106,10 @@ class InspectorTests(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    default = "/Applications/Utilities/Apogee Firmware Updater.app/Contents/Resources/E2FPGA.bin"
+    default = PROVENANCE["path"]("E2FPGA.bin")
     if len(sys.argv) != 2:
-        if not Path(default).exists():
+        if not default.exists():
             raise SystemExit("Usage: fpga-bitstream-test.py /path/to/E2FPGA.bin")
-        sys.argv.append(default)
+        sys.argv.append(str(default))
     InspectorTests.source = Path(sys.argv[1]).resolve()
     unittest.main(argv=[sys.argv[0]], verbosity=2)

@@ -1,8 +1,9 @@
 """Check audio tables and emulate pure gain functions. No device access."""
 
 import argparse
-import struct
 from pathlib import Path
+import runpy
+import struct
 
 from unicorn import UC_ARCH_ARM, UC_MODE_THUMB, Uc
 from unicorn.arm_const import (
@@ -13,12 +14,14 @@ from unicorn.arm_const import (
     UC_ARM_REG_SP,
 )
 
+PROVENANCE = runpy.run_path(str(Path(__file__).parents[1] / "provenance.py"))
+
 
 def main():
     if not __debug__:
         raise SystemExit("Run without Python optimization to retain verification checks")
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("flash", nargs="?", default="/tmp/apogee-fw/flash.bin")
+    parser.add_argument("flash", nargs="?", default=PROVENANCE["path"]("flash.bin"))
     args = parser.parse_args()
     flash = Path(args.flash).read_bytes()
     source, target, size, _ = struct.unpack_from("<4I", flash, 0x153C4)

@@ -99,7 +99,7 @@ The updater resources reside under `/Applications/Utilities/Apogee Firmware Upda
 | `E2FPGA.bin` | 1,813,864 bytes. | No proof of the complete external flash layout or lower recovery image. |
 | `EnsembleResourceData.bin` | 230,036 bytes. | No proof of all external resource storage or per-unit data. |
 
-Derivative behavior is explicit in `scripts/ghidra/psoc-images.py:35–36`: `flash = bytearray(b"\xff" * (ROWS * ROW_BYTES))` and `config = bytearray(ROWS * ECC_BYTES)`.
+Derivative behavior is explicit in `scripts/ghidra/psoc-images.py:36–37`: `flash = bytearray(b"\xff" * (ROWS * ROW_BYTES))` and `config = bytearray(ROWS * ECC_BYTES)`.
 
 SHA-256 values identify the inspected vendor files, not the contents of the unit:
 

@@ -207,7 +207,7 @@ The following later confirmations do not change the frozen 447-function count:
 - **Resolved baseline overwrite and header-source risks:** `scripts/ghidra/psoc.sh:9–16` rejects existing projects and pins the header commit.
   Main reports a failed-before/fixed-after guard test and byte-identical regeneration of all four baseline artifacts.
   This establishes current-host reproduction, not every future tool environment.
-- **Resolved emulator false-success risks:** `scripts/firmware/psoc-audio-check.py:18–19,84–86` rejects optimized Python and instruction-limit termination without a return.
+- **Resolved emulator false-success risks:** `scripts/firmware/psoc-audio-check.py:21–22,87–89` rejects optimized Python and instruction-limit termination without a return.
   Main reports three guard tests and all 13 original arithmetic cases passed.
   The guard tests reside at `scripts/firmware/psoc-audio-test.py:18–40`.
   Peripheral models and electrical safety remain outside these arithmetic checks.

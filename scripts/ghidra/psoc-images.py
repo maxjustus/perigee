@@ -13,7 +13,8 @@ import pathlib
 import runpy
 import sys
 
-DEFAULT = "/Applications/Utilities/Apogee Firmware Updater.app/Contents/Resources/EnsemblePSoC.cyacd"
+PROVENANCE = runpy.run_path(str(pathlib.Path(__file__).parents[1] / "provenance.py"))
+DEFAULT = PROVENANCE["path"]("EnsemblePSoC.cyacd")
 ROW_BYTES = 256
 ECC_BYTES = 32
 ROWS = 4 * 256
@@ -23,7 +24,7 @@ INSPECT = pathlib.Path(__file__).parents[1] / "firmware" / "image-format-inspect
 
 def main():
     out = pathlib.Path(sys.argv[1])
-    flash, config = images(pathlib.Path(sys.argv[2] if len(sys.argv) > 2 else DEFAULT).read_bytes())
+    flash, config = images(pathlib.Path(sys.argv[2]).read_bytes() if len(sys.argv) > 2 else DEFAULT.read_bytes())
     out.mkdir(parents=True, exist_ok=True)
     (out / "flash.bin").write_bytes(flash[APPLICATION:])
     (out / "config.bin").write_bytes(config)

@@ -19,16 +19,13 @@ from unicorn.arm_const import (
     UC_ARM_REG_SP,
 )
 
+PROVENANCE = runpy.run_path(str(Path(__file__).parents[1] / "provenance.py"))
 crc8 = runpy.run_path(str(Path(__file__).with_name("front-panel-resources.py")))["crc8"]
 
 
 def main():
-    image = Path("/tmp/apogee-fw/flash.bin").read_bytes()
-    check(
-        hashlib.sha256(image).hexdigest()
-        == "a5e8e2c752255e627fdd4549408ed4f1a5fe1f76f7352799614a3eb386f1b9a8",
-        "image identity",
-    )
+    image = PROVENANCE["path"]("flash.bin").read_bytes()
+    check(hashlib.sha256(image).hexdigest() == PROVENANCE["sha256"]("flash.bin"), "image identity")
     fw = Firmware(image)
     for start, now, expected in (
         (0, 3000, 3000),

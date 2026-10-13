@@ -5,12 +5,15 @@ Pass hexadecimal start and end addresses to disassemble a range.
 """
 import hashlib
 from pathlib import Path
+import runpy
 import struct
 import sys
 
+PROVENANCE = runpy.run_path(str(Path(__file__).parents[1] / 'provenance.py'))
+
 
 def main():
-    image = Path('/tmp/apogee-fw/flash.bin').read_bytes()
+    image = PROVENANCE['path']('flash.bin').read_bytes()
     if len(sys.argv) == 3:
         from capstone import Cs, CS_ARCH_ARM, CS_MODE_THUMB, CS_MODE_MCLASS
         start, end = (int(arg, 16) for arg in sys.argv[1:])
