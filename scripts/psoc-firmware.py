@@ -8,30 +8,19 @@ starts at 0x10000. The script wraps the image in an ELF object and runs
 llvm-objdump from Xcode with addresses as on the device.
 """
 import pathlib
+import runpy
 import subprocess
 import sys
 import tempfile
 
-DEFAULT = "/Applications/Utilities/Apogee Firmware Updater.app/Contents/Resources/EnsemblePSoC.cyacd"
-ROW_BYTES = 256
-ROWS_PER_ARRAY = 256
-APPLICATION = 0x10000
-
-
-def flash_image(cyacd):
-    lines = pathlib.Path(cyacd).read_text().split()
-    image = bytearray(b"\xff" * (4 * ROWS_PER_ARRAY * ROW_BYTES))
-    for line in lines[1:]:
-        row = bytes.fromhex(line[1:])
-        array, number = row[0], int.from_bytes(row[1:3], "big")
-        address = (array * ROWS_PER_ARRAY + number) * ROW_BYTES
-        image[address:address + ROW_BYTES] = row[5:5 + ROW_BYTES]
-    return lines[0][:8], bytes(image[APPLICATION:])
+IMAGES = runpy.run_path(str(pathlib.Path(__file__).parent / "ghidra" / "psoc-images.py"))
+APPLICATION = IMAGES["APPLICATION"]
 
 
 def main():
-    silicon_id, application = flash_image(sys.argv[1] if len(sys.argv) > 1 else DEFAULT)
-    print(f"@ silicon ID {silicon_id}", flush=True)
+    raw = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else IMAGES["DEFAULT"]).read_bytes()
+    application = IMAGES["images"](raw)[0][APPLICATION:]
+    print(f"@ silicon ID {raw[:8].decode()}", flush=True)
     with tempfile.TemporaryDirectory() as tmp:
         tmp = pathlib.Path(tmp)
         (tmp / "app.bin").write_bytes(application)

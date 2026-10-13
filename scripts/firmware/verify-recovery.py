@@ -4,6 +4,7 @@ Run: python3 scripts/firmware/verify-recovery.py [image.cyacd]
 """
 
 import hashlib
+import runpy
 import sys
 from pathlib import Path
 
@@ -96,20 +97,11 @@ def main():
 def load_image(path):
     raw = path.read_bytes()
     assert hashlib.sha256(raw).hexdigest() == SHA256, "Unexpected vendor image"
+    rows, _ = runpy.run_path(str(Path(__file__).with_name("image-format-inspect.py")))["parse"](raw)
+    assert list(rows) == [256 + n for n in range(256)] + [512 + n for n in range(98)] + [1023]
     image = bytearray(b"\xff" * 0x40000)
-    rows = []
-    for line in raw.decode().split()[1:]:
-        row = bytes.fromhex(line[1:])
-        array = row[0]
-        number = int.from_bytes(row[1:3], "big")
-        size = int.from_bytes(row[3:5], "big")
-        assert size == 288 and len(row) == size + 6 and sum(row) % 256 == 0
-        rows.append((array, number))
-        address = (array * 256 + number) * 256
-        image[address : address + 256] = row[5:261]
-    assert rows == [(1, n) for n in range(256)] + [(2, n) for n in range(98)] + [
-        (3, 255)
-    ]
+    for index, data in rows.items():
+        image[index * 256 : (index + 1) * 256] = data[:256]
     print("PASS vendor hash and 355 rows, no array-zero payload")
     return image
 

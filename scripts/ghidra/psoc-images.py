@@ -10,6 +10,7 @@ configuration there. Writes:
 - config.bin: the 32-byte ECC area of every row, row order, from row 0.
 """
 import pathlib
+import runpy
 import sys
 
 DEFAULT = "/Applications/Utilities/Apogee Firmware Updater.app/Contents/Resources/EnsemblePSoC.cyacd"
@@ -17,22 +18,26 @@ ROW_BYTES = 256
 ECC_BYTES = 32
 ROWS = 4 * 256
 APPLICATION = 0x10000
+INSPECT = pathlib.Path(__file__).parents[1] / "firmware" / "image-format-inspect.py"
 
 
 def main():
     out = pathlib.Path(sys.argv[1])
-    lines = pathlib.Path(sys.argv[2] if len(sys.argv) > 2 else DEFAULT).read_text().split()
-    flash = bytearray(b"\xff" * (ROWS * ROW_BYTES))
-    config = bytearray(ROWS * ECC_BYTES)
-    for line in lines[1:]:
-        row = bytes.fromhex(line[1:])
-        index = row[0] * 256 + int.from_bytes(row[1:3], "big")
-        data = row[5:5 + int.from_bytes(row[3:5], "big")]
-        flash[index * ROW_BYTES:(index + 1) * ROW_BYTES] = data[:ROW_BYTES]
-        config[index * ECC_BYTES:(index + 1) * ECC_BYTES] = data[ROW_BYTES:]
+    flash, config = images(pathlib.Path(sys.argv[2] if len(sys.argv) > 2 else DEFAULT).read_bytes())
     out.mkdir(parents=True, exist_ok=True)
     (out / "flash.bin").write_bytes(flash[APPLICATION:])
     (out / "config.bin").write_bytes(config)
+
+
+def images(raw):
+    """Returns the flash from address 0 and the configuration of every row."""
+    rows, _ = runpy.run_path(str(INSPECT))["parse"](raw)
+    flash = bytearray(b"\xff" * (ROWS * ROW_BYTES))
+    config = bytearray(ROWS * ECC_BYTES)
+    for index, data in rows.items():
+        flash[index * ROW_BYTES:(index + 1) * ROW_BYTES] = data[:ROW_BYTES]
+        config[index * ECC_BYTES:(index + 1) * ECC_BYTES] = data[ROW_BYTES:]
+    return bytes(flash), bytes(config)
 
 
 if __name__ == "__main__":

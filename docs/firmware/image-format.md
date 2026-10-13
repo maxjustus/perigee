@@ -241,10 +241,9 @@ They are not CYACD records and the inspector does not validate their contents.
 
 ## Explanation: existing extractor assumptions
 
-**Verified:** `scripts/ghidra/psoc-images.py:24–32` uses `.read_text().split()` and `for line in lines[1:]:`.
-It skips the header and copies row data without checksum checks.
-It does not reject duplicate rows, unsupported arrays, incomplete payloads, or metadata inconsistencies.
-Its fixed-size slice assignments can alter image lengths when the payload has the wrong size.
+**Verified:** `scripts/ghidra/psoc-images.py` and `scripts/psoc-firmware.py` read rows with the inspector's `parse`.
+A bad header, hex, row length, row checksum, array, geometry, or row order stops the extraction.
+The extractors do not run the metadata and coverage checks of `inspect`.
 
 **Verified:** Its geometry matches this specific vendor file.
 Its main-flash image starts at `0x10000`, not zero.
@@ -257,9 +256,9 @@ The independent baseline test checks both complete derived files.
 | `config.bin[0:0x2000]` | 8,192 zero bytes | Verified synthetic substitution, absent bootloader configuration |
 | `config.bin[0x4C40:0x7FE0]` | 13,216 zero bytes | Verified synthetic substitution, absent rows |
 
-**Verified:** The validator remains independent and the extractor is unchanged.
+**Verified:** The tests keep their own row decoder, independent of the shared parser.
 A minimal integration can gate extraction on inspector success for the exact same input file.
-That gate only rejects malformed or inconsistent supported images.
+That gate adds the metadata and coverage checks only.
 It does not authorize device access or convert derived files into flashable images.
 No serializer or round-trip tool was needed.
 A serialization round trip could prove byte preservation only, not firmware correctness.
@@ -301,7 +300,7 @@ It has no device interface, image writer, serializer, or network operation.
 Vendor-specific tests skip when the vendor file is absent.
 The baseline test skips when either derived binary is absent.
 
-**Proposed integration, not applied:** Add the inspector command before the current extractor invocation, joined with `&&`.
+**Proposed integration, not applied:** Add the inspector command before the extractor invocation, joined with `&&`.
 Pass the same source pathname to both commands.
 Treat extraction output as disassembly input only.
 
