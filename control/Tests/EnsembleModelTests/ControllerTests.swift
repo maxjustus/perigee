@@ -214,6 +214,13 @@ func makeController() -> (Controller, FakeTransport, Broadcasts) {
     #expect((changed["params"] as? [String: Any])?["mixers/channels/31/stereo"] as? Bool == true)
 }
 
+@Test func theEchoOfASentBlockUpdatesAParameterThatReportsAsASet() {
+    let (controller, _, broadcasts) = makeController()
+    controller.receive(Report(type: 2, command: 0x39, p1: 30, p2: 2, data: [1]))
+    let changed = object(broadcasts.texts.last!)
+    #expect((changed["params"] as? [String: Any])?["mixers/channels/31/stereo"] as? Bool == true)
+}
+
 @Test func theFrontMicHasNoStereoPair() {
     let (controller, transport, _) = makeController()
     _ = controller.handle(#"{"jsonrpc":"2.0","id":1,"method":"set","params":{"mixers/channels/9/stereo":true}}"#)

@@ -16,7 +16,7 @@ public final class Controller: @unchecked Sendable {
     private let broadcast: @Sendable (String) -> Void
     private let byPath = Dictionary(uniqueKeysWithValues: parameters.map { ($0.path, $0) })
     private let byKey = Dictionary(grouping: parameters.flatMap { parameter in
-        targets(parameter).map { (key: Key(parameter, $0), parameter: parameter) }
+        keys(parameter).map { (key: $0, parameter: parameter) }
     }, by: \.key).mapValues { $0.map(\.parameter) }
     private let lock = NSLock()
     private var values: [String: Int] = [:]
@@ -136,8 +136,8 @@ private struct Key: Hashable {
     let p1: UInt8
     let p2: UInt8
 
-    init(_ parameter: Parameter, _ target: Target) {
-        block = (parameter.reported ?? parameter.wire) != .set
+    init(_ parameter: Parameter, _ target: Target, block: Bool) {
+        self.block = block
         command = parameter.command
         p1 = target.p1
         p2 = block ? target.p2 : 0
@@ -149,6 +149,13 @@ private struct Key: Hashable {
         p1 = report.p1
         p2 = block ? report.p2 : 0
     }
+}
+
+// The dext reports each sent message, so a parameter also matches its own
+// wire format when the PSoC reports it in another one.
+private func keys(_ parameter: Parameter) -> [Key] {
+    let formats = Set([parameter.wire, parameter.reported ?? parameter.wire].map { $0 != .set })
+    return targets(parameter).flatMap { target in formats.map { Key(parameter, target, block: $0) } }
 }
 
 private func targets(_ parameter: Parameter) -> [Target] {
