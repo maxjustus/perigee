@@ -34,6 +34,16 @@ final class Device: Transport, @unchecked Sendable {
         }
     }
 
+    func mapMeters() throws -> UnsafeRawBufferPointer {
+        var address: mach_vm_address_t = 0
+        var size: mach_vm_size_t = 0
+        let kr = IOConnectMapMemory64(connect, 0, mach_task_self_, &address, &size, IOOptionBits(kIOMapAnywhere))
+        guard kr == KERN_SUCCESS, let base = UnsafeRawPointer(bitPattern: UInt(address)) else {
+            throw DeviceError(description: String(format: "map meters: %#x", kr))
+        }
+        return UnsafeRawBufferPointer(start: base, count: Int(size))
+    }
+
     func subscribe(queue: DispatchQueue, _ onReport: @escaping (Report) -> Void) throws {
         self.onReport = onReport
         guard let port = IONotificationPortCreate(kIOMainPortDefault) else {
