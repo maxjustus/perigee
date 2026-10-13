@@ -104,6 +104,29 @@ func makeController() -> (Controller, FakeTransport, Broadcasts) {
     #expect((object(response!)["error"] as? [String: Any])?["code"] as? Int == -32601)
 }
 
+@Test func malformedRequestsAreErrors() {
+    let (controller, _, _) = makeController()
+    func code(_ text: String) -> Int? {
+        (object(controller.handle(text)!)["error"] as? [String: Any])?["code"] as? Int
+    }
+    #expect(code("{") == -32700)
+    #expect(code("[]") == -32600)
+    #expect(code(#"{"jsonrpc":"2.0","id":7}"#) == -32600)
+    #expect(code(#"{"id":7,"method":"get"}"#) == -32600)
+}
+
+@Test func setRejectsValuesOfTheWrongJsonType() {
+    let (controller, transport, _) = makeController()
+    for params in [#"{"outputs/speaker/mute":1}"#, #"{"outputs/speaker/attenuation":true}"#,
+                   #"{"outputs/speaker/attenuation":2.0}"#] {
+        let response = controller.handle(#"{"jsonrpc":"2.0","id":1,"method":"set","params":"# + params + "}")
+        #expect((object(response!)["error"] as? [String: Any])?["code"] as? Int == -32602)
+    }
+    let raw = controller.handle(#"{"jsonrpc":"2.0","id":2,"method":"raw.send","params":{"words":[true,0,4]}}"#)
+    #expect((object(raw!)["error"] as? [String: Any])?["code"] as? Int == -32602)
+    #expect(transport.sent.isEmpty)
+}
+
 @Test func mixerFaderSendsATypeTwoBlockBigEndian() {
     let (controller, transport, _) = makeController()
     _ = controller.handle(#"{"jsonrpc":"2.0","id":1,"method":"set","params":{"mixers/2/channels/31/fader":700}}"#)

@@ -28,10 +28,13 @@ public final class Controller: @unchecked Sendable {
     }
 
     public func handle(_ text: String) -> String? {
-        guard let request = try? JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: Any],
+        guard let json = try? JSONSerialization.jsonObject(with: Data(text.utf8), options: .fragmentsAllowed) else {
+            return reply(NSNull(), .failure(RPCError(code: -32700, message: "parse error")))
+        }
+        guard let request = json as? [String: Any], request["jsonrpc"] as? String == "2.0",
               let method = request["method"] as? String
         else {
-            return encode(["jsonrpc": "2.0", "id": NSNull(), "error": ["code": -32700, "message": "parse error"]])
+            return reply(NSNull(), .failure(RPCError(code: -32600, message: "invalid request")))
         }
         let result: Result<Any, RPCError>
         do {
@@ -44,6 +47,10 @@ public final class Controller: @unchecked Sendable {
         guard let id = request["id"] else {
             return nil
         }
+        return reply(id, result)
+    }
+
+    private func reply(_ id: Any, _ result: Result<Any, RPCError>) -> String {
         switch result {
         case .success(let value):
             return encode(["jsonrpc": "2.0", "id": id, "result": value])
@@ -107,12 +114,13 @@ public final class Controller: @unchecked Sendable {
             try messages.forEach(transport.send)
             return true
         case "raw.send":
-            guard let words = (params as? [String: Any])?["words"] as? [Int], (3...30).contains(words.count),
-                  words.allSatisfy({ UInt32(exactly: $0) != nil })
+            guard let items = (params as? [String: Any])?["words"] as? [Any],
+                  case let words = items.compactMap({ integer($0).flatMap { UInt32(exactly: $0) } }),
+                  words.count == items.count, (3...30).contains(words.count)
             else {
                 throw RPCError.invalidParams("raw.send takes words: 3 to 30 unsigned 32-bit integers")
             }
-            try transport.send(words.map { UInt32($0) })
+            try transport.send(words)
             return true
         default:
             throw RPCError(code: -32601, message: "unknown method \(method)")
@@ -206,11 +214,11 @@ private func json(_ value: Int, _ kind: Kind) -> Any {
 private func encodeValue(_ value: Any, _ parameter: Parameter) throws -> Int {
     switch parameter.kind {
     case .bool:
-        if let flag = value as? Bool {
+        if let flag = boolean(value) {
             return flag ? parameter.on : 0
         }
     case .int(let range):
-        if let number = value as? Int, range.contains(number) {
+        if let number = integer(value), range.contains(number) {
             return number
         }
     case .choice(let choices):
@@ -219,6 +227,24 @@ private func encodeValue(_ value: Any, _ parameter: Parameter) throws -> Int {
         }
     }
     throw RPCError.invalidParams("bad value for \(parameter.path)")
+}
+
+// JSONSerialization returns every JSON number and boolean as an NSNumber, and
+// NSNumber bridges to both Bool and Int.
+private func boolean(_ value: Any) -> Bool? {
+    guard let number = value as? NSNumber, CFGetTypeID(number) == CFBooleanGetTypeID() else {
+        return nil
+    }
+    return number.boolValue
+}
+
+private func integer(_ value: Any) -> Int? {
+    guard let number = value as? NSNumber, CFGetTypeID(number) != CFBooleanGetTypeID(),
+          !CFNumberIsFloatType(number as CFNumber)
+    else {
+        return nil
+    }
+    return Int(exactly: number)
 }
 
 private func encode(_ object: [String: Any]) -> String {
