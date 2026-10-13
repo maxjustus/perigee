@@ -17,6 +17,7 @@ without its cleanup.
 """
 import asyncio
 import contextlib
+import enum
 import json
 import pathlib
 import struct
@@ -155,6 +156,12 @@ class Core:
     async def state(self, values, start=0, thread=0):
         await self.write(0xD4, start, thread, [f32(v) for v in values])
 
+    async def swap(self, code, length=32, thread=0):
+        """Replaces the program at address 0. Zero words pad it, so no old word runs."""
+        await self.halt(0, thread, length)
+        await self.code(code + [0] * (length - len(code)), thread=thread)
+        await self.resume_all()
+
     async def load(self, code, coefs, state=(), thread=0):
         """Loads one program at address 0 of a thread, as FXFragment::load does."""
         await self.erase_all()
@@ -167,6 +174,25 @@ class Core:
 
     async def route(self, rack, io=0, on=True):
         await self.send(block(0xD3, rack, 0, [io, io, int(on)]))
+
+
+class Src(enum.IntEnum):
+    """Operand select. For operand B, COEF selects zero."""
+    COEF = 0
+    STATE = 1
+    R = 2
+    X = 3
+
+
+def ins(op, a=0, a_src=Src.COEF, b=0, b_src=Src.COEF, k=0, to_r=True, write=False):
+    """Encodes an arithmetic instruction. k sets a 2^k-word circular group."""
+    return (op | a << 6 | b << 14 | a_src << 22 | b_src << 24 | k << 26
+            | int(to_r) << 30 | int(write) << 31)
+
+
+def store(offset=0, io=0, out=True, from_x=False, mode=0):
+    """Encodes opcode 0x02: r or x to a state word and, with out, to a DSP I/O channel."""
+    return 2 | offset << 6 | mode << 18 | int(from_x) << 21 | int(out) << 22 | io << 23
 
 
 def f32(value):

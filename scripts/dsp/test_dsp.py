@@ -1,6 +1,6 @@
 import unittest
 
-from dsp import block, f32, get, transfers
+from dsp import Src, block, f32, get, ins, store, transfers
 
 
 class WireTest(unittest.TestCase):
@@ -13,6 +13,17 @@ class WireTest(unittest.TestCase):
     def test_f32(self):
         self.assertEqual(f32(1.0), 0x3F800000)
         self.assertEqual(f32(-0.25), 0xBE800000)
+
+
+class InstructionTest(unittest.TestCase):
+    def test_vendor_words(self):
+        self.assertEqual(ins(5, a=3, b=4, b_src=Src.STATE, k=2), 0x490100C5)
+        self.assertEqual(ins(4, a=7, b=10, b_src=Src.STATE, k=2, write=True), 0xC90281C4)
+        self.assertEqual(ins(5, a=2, b_src=Src.R), 0x42000085)
+
+    def test_store(self):
+        self.assertEqual(store(offset=1), 0x00400042)
+        self.assertEqual(store(offset=2, out=False, from_x=True), 0x00200082)
 
 
 class TransferTest(unittest.TestCase):
