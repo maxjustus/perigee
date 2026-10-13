@@ -22,10 +22,11 @@ struct Outbox {
         return true;
     }
 
-    template <typename Mailbox>
-    void flush(const Mailbox & mailbox)
+    template <typename Mailbox, typename Sent>
+    void flush(const Mailbox & mailbox, Sent && sent)
     {
         while (count > 0 && mailbox.send(items[head])) {
+            sent(items[head]);
             head = (head + 1) % kOutboxCapacity;
             count--;
         }

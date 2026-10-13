@@ -36,12 +36,16 @@ static void flush_sends_in_order_until_the_ring_is_full()
     Outbox outbox = {};
     CHECK(outbox.push(set(1, 0, 1)) && outbox.push(set(2, 0, 2)) && outbox.push(set(3, 0, 3)));
     std::vector<uint32_t> sent;
+    std::vector<uint32_t> reported;
+    auto report = [&](const Message & m) { reported.push_back(m.words[2]); };
     uint32_t room = 2;
-    outbox.flush(FakeMailbox{&sent, &room});
+    outbox.flush(FakeMailbox{&sent, &room}, report);
     CHECK(sent.size() == 2 && sent[0] == set(1, 0, 1).words[2] && sent[1] == set(2, 0, 2).words[2]);
+    CHECK(reported == sent);
     room = 8;
-    outbox.flush(FakeMailbox{&sent, &room});
+    outbox.flush(FakeMailbox{&sent, &room}, report);
     CHECK(sent.size() == 3 && sent[2] == set(3, 0, 3).words[2]);
+    CHECK(reported == sent);
 }
 
 static void push_refuses_when_full()

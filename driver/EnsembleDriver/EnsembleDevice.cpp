@@ -456,8 +456,7 @@ void IMPL(EnsembleDevice, MailboxTimerOccurred)
         }
         ivars->requested_volume = -1;
     }
-    ivars->outbox.flush(mailbox);
-    while (mailbox.receive([&](const Report & report) {
+    auto handle = [&](const Report & report) {
         if (ivars->listener.get() != nullptr) {
             ivars->listener->Report(report);
         }
@@ -477,7 +476,9 @@ void IMPL(EnsembleDevice, MailboxTimerOccurred)
             const IOUserAudioSelectorValue source = report.data[0];
             ivars->clock_source->SetCurrentSelectedValues(&source, 1);
         }
-    })) {
+    };
+    ivars->outbox.flush(mailbox, [&](const Message & sent) { parseMessage(sent.words, sent.count, handle); });
+    while (mailbox.receive(handle)) {
     }
     ivars->mailbox_timer->WakeAtTime(kIOTimerClockMachAbsoluteTime, time + ivars->mailbox_period, 0);
 }
