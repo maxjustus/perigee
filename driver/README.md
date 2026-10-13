@@ -12,15 +12,22 @@ records the design.
 
 ## Build and install
 
+First install, or after a reboot when the vendor kext owns the device:
+
 1. Run `driver/build.sh`. It prints the path of the app.
 2. Run `<app>/Contents/MacOS/EnsembleHost activate`.
 3. If the system asks, approve the driver in System Settings > General >
    Login Items & Extensions.
 4. Replug the Thunderbolt cable.
 
-IOKit compares drivers only when the device appears. A dext that owns the
-device keeps running until the device leaves, so each new build needs a
-replug.
+IOKit compares drivers only when the device appears, so the first install
+needs a replug.
+
+## Reload a new build
+
+Run `driver/reload.sh`. It builds, activates the new build, unloads the
+vendor kext for this boot, and stops the old dext. The new build then takes
+the device without a replug. The script uses sudo.
 
 ## Test
 
