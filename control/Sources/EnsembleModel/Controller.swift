@@ -134,14 +134,13 @@ public final class Controller: @unchecked Sendable {
                 throw RPCError.invalidParams("unknown preset \(name)")
             }
             var skipped: [String] = []
-            let changes = preset.compactMap { path, value -> (Parameter, Int)? in
+            try load(preset.compactMap { path, value -> (Parameter, Int)? in
                 guard let parameter = byPath[path], let wire = try? encodeValue(value, parameter) else {
                     skipped.append(path)
                     return nil
                 }
                 return (parameter, wire)
-            }
-            try apply(lock.withLock { changes.filter { values[$0.0.path] != $0.1 } })
+            })
             return ["skipped": skipped.sorted()]
         case "presets.delete":
             var presets = try readPresets()
@@ -160,6 +159,24 @@ public final class Controller: @unchecked Sendable {
         default:
             throw RPCError(code: -32601, message: "unknown method \(method)")
         }
+    }
+
+    // The vendor HAL mutes the monitor outputs for a snapshot recall and sets
+    // their saved mutes last (`Ensemble2AudioDevice::recall`).
+    private func load(_ preset: [(Parameter, Int)]) throws {
+        let (changes, current) = lock.withLock { (preset.filter { values[$0.0.path] != $0.1 }, values) }
+        let others = changes.filter { !monitorMutes.contains($0.0.path) }
+        if others.isEmpty {
+            return try apply(changes)
+        }
+        let mutes = monitorMutes.map { byPath[$0]! }
+        let saved = mutes.compactMap { mute in
+            (preset.first { $0.0.path == mute.path }?.1 ?? current[mute.path]).map { (mute, $0) }
+        }
+        try apply(mutes.map { ($0, $0.on) })
+        Thread.sleep(forTimeInterval: 0.5)
+        try apply(others)
+        try apply(saved)
     }
 
     private func snapshot() -> [String: Any] {
@@ -274,6 +291,8 @@ public final class Controller: @unchecked Sendable {
         encode(["jsonrpc": "2.0", "method": method, "params": params])
     }
 }
+
+private let monitorMutes = ["outputs/headphone1/mute", "outputs/headphone2/mute", "outputs/speaker/mute"]
 
 private struct Key: Hashable {
     let block: Bool

@@ -80,6 +80,11 @@ The service keeps all presets in
 value, as one `set`. It skips each path that the service does not know
 or that has an invalid value, and returns these paths in `skipped`.
 
+Like Apogee Control, `presets.load` mutes the speakers and both
+headphones, and waits 500 ms. Then it sets the other values, and last
+the saved mutes. If only mutes differ, it sets them with no wait. If the
+load fails, the outputs stay muted.
+
 The server sends five notifications:
 
 - `changed`: object of path: new value. The dext reports every sent set

@@ -374,15 +374,18 @@ func call(_ controller: Controller, _ method: String, _ params: String) -> [Stri
     #expect((presets["params"] as? [String: Any])?["names"] as? [String] == ["Mix", "Tracking"])
 }
 
-@Test func loadSendsTheSavedValuesThatDiffer() {
+@Test func loadMutesTheMonitorsWhileItSendsTheValuesThatDiffer() {
     let (controller, transport, _) = makeController()
     controller.receive(Report(type: 1, command: 0x11, p1: 2, p2: 0, data: [47]))
-    controller.receive(Report(type: 1, command: 0x12, p1: 2, p2: 0, data: [1]))
+    for (output, mute) in [(0, 0), (1, 1), (2, 0)] as [(UInt8, UInt8)] {
+        controller.receive(Report(type: 1, command: 0x12, p1: output, p2: 0, data: [mute]))
+    }
     _ = call(controller, "presets.save", #"{"name":"A"}"#)
     controller.receive(Report(type: 1, command: 0x11, p1: 2, p2: 0, data: [10]))
     let result = call(controller, "presets.load", #"{"name":"A"}"#)["result"] as? [String: Any]
     #expect(result?["skipped"] as? [String] == [])
-    #expect(transport.sent == [[1, 0, word(1, 0x11, 2, 47)]])
+    let mutes = { (values: [UInt32]) in values.enumerated().map { [1, 0, word(1, 0x12, UInt32($0), $1)] } }
+    #expect(transport.sent == mutes([1, 1, 1]) + [[1, 0, word(1, 0x11, 2, 47)]] + mutes([0, 1, 0]))
 }
 
 @Test func loadSkipsAndReportsPathsThatItCannotSet() throws {
