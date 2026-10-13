@@ -1112,8 +1112,8 @@ store that feeds it. This is unverified.
 
 ### 8.6 Tests on the unit
 
-Measured with the open driver at 48 kHz. The commands went out through
-`raw.send` of ensemble-control. Each load erased all threads, followed 8.2
+Measured with the open driver at 48 kHz. `scripts/dsp/dsp.py` sends the
+commands through `raw.send` of ensemble-control. Each load erased all threads, followed 8.2
 in thread 0 at address 0 with DSP I/O channel 0, and sent a resume-all.
 The record stream gave the reference: channel 8 is the dry front panel
 mic, and channels 30 and 31 are Mixer 1 (5.10). The speaker output stayed
