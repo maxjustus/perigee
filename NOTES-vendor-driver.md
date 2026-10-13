@@ -1752,9 +1752,13 @@ of all threads returned the inputs to dry.
 
 - Why a resume-all left a thread halted a few times early in the tests.
   130 later sequences did not repeat it (8.7). The PSoC has no path that
-  drops a resume. The dext drops a message when its 32-entry outbox is
-  full, and the mailbox reset after a PSoC restart drops the queued slots.
-  Either can lose a resume, but no test showed it.
+  drops a resume: halt and resume both write the FPGA in order and then
+  wait 25 ticks (0x1335E, 0x13398). The open driver no longer drops a
+  message when its outbox is full. The service waits and sends it again.
+  After that fix, `isa.py state` without pauses between messages showed
+  it twice in 16 swaps. 120 later swaps without pauses, 60 of them after
+  a full state write, did not repeat it. The mailbox reset after a PSoC
+  restart also drops queued slots, but no PSoC restart came in the tests.
 - Whether the FPGA sends DSP core meters when the host writes a count
   above 88 into bits 31:16 of BAR0 0x1C (8.6).
 - The Cyclone V image itself. Project Mistral documents the Cyclone V
