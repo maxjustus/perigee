@@ -2,6 +2,7 @@
 
 NOTES-vendor-driver.md section 8 describes the core and its commands.
 `python3 scripts/dsp/dsp.py` prints the cycle count and the core version.
+`python3 scripts/dsp/dsp.py restore` cleans up after an interrupted session.
 An experiment opens a session, loads a program, routes a rack, and records:
 
     async with session({"mixers/1/channels/9/mute": False}) as core:
@@ -9,8 +10,10 @@ An experiment opens a session, loads a program, routes a rack, and records:
         await core.route(8)
         dry, mix = record([8, 30])
 
-A session mutes the speaker output. On exit it removes its routes, erases
-the core, and restores every setting that it changed.
+A session mutes the speaker output. On exit it removes all routes, erases
+the core, and restores every setting that it changed. It keeps the old
+values in RESTORE_FILE until then, because a service restart ends a session
+without its cleanup.
 """
 import asyncio
 import contextlib
@@ -18,6 +21,7 @@ import json
 import pathlib
 import struct
 import subprocess
+import sys
 
 import numpy as np
 import websockets
@@ -25,35 +29,68 @@ import websockets
 URL = "ws://127.0.0.1:8738"
 CODE, COEF, STATE = 0, 1, 2
 THREADS = 16
+RACKS = 30
 CHUNK_WORDS = 23
 PROTECT = {"outputs/speaker/mute": True}
+RESTORE_FILE = pathlib.Path("/tmp/ensemble-dsp-restore.json")
 
 
 @contextlib.asynccontextmanager
 async def session(changes=None):
     changes = {**PROTECT, **(changes or {})}
-    async with websockets.connect(URL, max_size=None) as ws:
-        core = Core(ws)
-        before = await core.call("get")
-        await core.call("set", changes)
-        try:
-            yield core
-        finally:
-            for rack in sorted(core.routes):
-                await core.route(rack, on=False)
-            await core.erase_all()
-            await core.call("set", {path: before[path] for path in changes})
+    if RESTORE_FILE.exists():
+        raise RuntimeError(f"{RESTORE_FILE} exists: run `python3 dsp.py restore` first")
+    core = await Core.connect()
+    before = await core.call("get")
+    RESTORE_FILE.write_text(json.dumps({path: before[path] for path in changes}))
+    await core.call("set", changes)
+    try:
+        yield core
+    finally:
+        await restore(core)
+        await core.ws.close()
+
+
+async def restore(core):
+    for rack in range(RACKS):
+        await core.route(rack, on=False)
+    await core.erase_all()
+    await core.call("set", json.loads(RESTORE_FILE.read_text()))
+    RESTORE_FILE.unlink()
 
 
 class Core:
+    """A JSON-RPC client. When ensemble-control restarts, it reconnects and
+    repeats the call. Every command that it sends is safe to repeat."""
+
     def __init__(self, ws):
         self.ws = ws
         self.id = 0
         self.reports = []
-        self.routes = set()
+
+    @classmethod
+    async def connect(cls):
+        return cls(await websockets.connect(URL, max_size=None))
+
+    async def reconnect(self):
+        for _ in range(60):
+            await asyncio.sleep(0.5)
+            try:
+                self.ws = await websockets.connect(URL, max_size=None)
+                return
+            except OSError:
+                pass
+        raise RuntimeError("ensemble-control did not come back in 30 s")
 
     async def call(self, method, params=None):
         self.id += 1
+        while True:
+            try:
+                return await self.exchange(method, params)
+            except websockets.ConnectionClosed:
+                await self.reconnect()
+
+    async def exchange(self, method, params):
         await self.ws.send(json.dumps({"jsonrpc": "2.0", "id": self.id, "method": method, "params": params}))
         while True:
             reply = json.loads(await self.ws.recv())
@@ -79,6 +116,9 @@ class Core:
                 note = json.loads(await asyncio.wait_for(self.ws.recv(), left))
             except asyncio.TimeoutError:
                 break
+            except websockets.ConnectionClosed:
+                await self.reconnect()
+                continue
             if note.get("method") == method:
                 found.append(note["params"])
         return found
@@ -127,7 +167,6 @@ class Core:
 
     async def route(self, rack, io=0, on=True):
         await self.send(block(0xD3, rack, 0, [io, io, int(on)]))
-        (self.routes.add if on else self.routes.discard)(rack)
 
 
 def f32(value):
@@ -189,12 +228,15 @@ def response(dry, wet, taps=range(-4, 12)):
     return np.linalg.lstsq(x, wet[edge:edge + n], rcond=None)[0]
 
 
-async def main():
-    async with websockets.connect(URL, max_size=None) as ws:
-        core = Core(ws)
+async def main(command):
+    core = await Core.connect()
+    if command == "restore":
+        await restore(core)
+    else:
         print("cycles per thread and sample:", await core.query(0xD5))
         print("core version:", await core.query(0xD2))
+    await core.ws.close()
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(main(sys.argv[1] if len(sys.argv) > 1 else None))
