@@ -503,7 +503,7 @@ the value in `data[0]`. A command with two arguments sends `p1` and
 | 0x06 | PhaseInverse | 1 | channel | bool |
 | 0x07 | GroupID | 1 | channel | group |
 | 0x08 | HighPassFilter | 1 | channel | bool |
-| 0x0A | InsertEnable | 1 | channel | bool |
+| 0x0A | InsertEnable | 1 | 0 = Analog 1, 1 = Analog 2 | bool |
 | 0x0D | AnalogOutputReferenceLevel | 1 | channel | level |
 | 0x0E | AnalogOutputTrim | 1 | channel | trim |
 | 0x0F | MainOutputMode | 1 | mode | |
@@ -521,8 +521,8 @@ the value in `data[0]`. A command with two arguments sends `p1` and
 | 0x1E | InputChannelPairAllocation | 1 | count (1..255) | |
 | 0x1F | OutputChannelPairAllocation | 1 | count (1..255) | |
 | 0x20 | KeyboardVolumeControl | 1 | monitor output | |
-| 0x21 | MeterPeakHold | 1 | value | |
-| 0x22 | MeterOverHold | 1 | value | |
+| 0x21 | MeterPeakHold | 1 | 0 Off, 1 2 seconds, 2 Infinite | |
+| 0x22 | MeterOverHold | 1 | 0 Off, 1 2 seconds, 2 Infinite | |
 | 0x23 | ActiveEncoderSelect | 1 | 0..11, not 8 or 9 | |
 | 0x24 | LockHomeScreen | 1 | bool | |
 | 0x25 | TouchPadAssignment | 1 | pad (0..3) | function |
@@ -549,12 +549,12 @@ the value in `data[0]`. A command with two arguments sends `p1` and
 | 0x62 | FirmwareUpdatePacket | 2 | | packet bytes |
 | 0x63 | RestartPSocFirmware | 1 | reset type | |
 | 0x66 | MultiUnitSettings | 2 | | 2 bytes |
-| 0x90 | MixerIsPreFader | 2 | mixer | 1 byte |
+| 0x90 | MixerIsPreFader | 2 | mixer 0-3, p2 0 | 1 byte. Reported as type 1. Mixers 2-4 tap their inputs before (1) or after (0) the Mixer 1 faders |
 | 0x91 | DAWMixerFaderLevel | 2 | mixer | channel, 2 bytes big-endian |
 | 0x92 | DAWMixerPan | 2 | mixer | channel, 1 byte |
 | 0x93 | DAWMixerMute | 2 | mixer | channel, 1 byte (inverted) |
 | 0x94 | DAWMixerRouting | 1 | bool | 0x80 |
-| 0xA0 | OpticalIsSubMix | 1 | bool | |
+| 0xA0 | OpticalIsSubMix | 1 | bool | 1 only with a second linked unit |
 | 0xD3 | DSPCoreRouting | 2 | | 3 bytes |
 | 0xD6 | DSPCore load/erase/coefficients | 2 | | 4 bytes |
 | 0xD7 | DSPCoreHaltResume | 2 | | 4 bytes |
@@ -580,7 +580,7 @@ value. Extra report IDs:
 
 | ID | Meaning |
 |----|---------|
-| 0x40 | Versions. p1 0 = main firmware, p1 1 = FPGA firmware, p1 3 data[1] = 4th main firmware digit |
+| 0x40 | Versions, matching `ElementsUpdateVersionInfo.plist`: p1 0 = PSoC firmware (1.5.3), p1 1 = FPGA firmware (0.56), p1 2 = hardware revision (3), p1 3 = front-panel resources (0.6) |
 | 0x41 | 8-byte unit ID. The PSoC sends 7 of the 8 bytes |
 | 0x42 | External clock lock. data[0] != 0 = locked |
 | 0x43 | Power switch on. The HAL then requests all properties |

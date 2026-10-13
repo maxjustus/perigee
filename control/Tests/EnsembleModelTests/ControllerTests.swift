@@ -180,6 +180,22 @@ func makeController() -> (Controller, FakeTransport, Broadcasts) {
     #expect(parameters.first { $0.path == "inputs/guitar/2/gain" }?.p1 == 11)
 }
 
+@Test func preFaderIsABlockPerMixerReportedAsTypeOne() {
+    let (controller, transport, broadcasts) = makeController()
+    _ = controller.handle(#"{"jsonrpc":"2.0","id":1,"method":"set","params":{"mixers/2/preFader":false}}"#)
+    #expect(transport.sent == [[1, 0, word(2, 0x90, 1, 0), word(1, 0, 0, 0)]])
+    controller.receive(Report(type: 1, command: 0x90, p1: 3, p2: 2, data: [1]))
+    let changed = object(broadcasts.texts.last!)
+    #expect((changed["params"] as? [String: Any])?["mixers/4/preFader"] as? Bool == true)
+}
+
+@Test func insertsBelongToAnalog1And2AndMetersHaveHoldTimes() {
+    #expect(parameters.first { $0.path == "inputs/analog/2/insert" }?.p1 == 1)
+    #expect(parameters.first { $0.path == "meters/peakHold" }?.kind
+        == .choice([Choice(name: "Off", code: 0), Choice(name: "2 Seconds", code: 1),
+                    Choice(name: "Infinite", code: 2)]))
+}
+
 @Test func reportDecodesFromAsyncArguments() {
     let args: [UInt64] = [2 | 0x41 << 8 | 0 << 16 | 0 << 24 | 3 << 32, 0xccbbaa]
     let report = Report(arguments: args)
