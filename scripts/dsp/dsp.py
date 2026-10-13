@@ -125,8 +125,6 @@ class Core:
 
     async def send(self, words):
         await self.call("raw.send", {"words": words})
-        # The dext drops messages when its 32-entry outbox is full.
-        await asyncio.sleep(0.02)
 
     async def notifications(self, method, seconds):
         found = [r for r in self.reports if method == "report"]
