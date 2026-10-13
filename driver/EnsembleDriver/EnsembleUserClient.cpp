@@ -3,6 +3,7 @@
 
 #include "EnsembleDevice.h"
 #include "EnsembleDriver.h"
+#include "EnsemblePsoc.h"
 #include "EnsembleUserClient.h"
 
 using namespace Ensemble;
@@ -55,7 +56,7 @@ kern_return_t IMPL(EnsembleUserClient, Start)
 kern_return_t IMPL(EnsembleUserClient, Stop)
 {
     if (ivars->device.get() != nullptr) {
-        ivars->device->SetListener(nullptr);
+        ivars->device->Psoc()->RemoveListener(this);
     }
     return Stop(provider, SUPERDISPATCH);
 }
@@ -76,7 +77,7 @@ kern_return_t EnsembleUserClient::ExternalMethod(uint64_t selector,
         Message message = {};
         message.count = uint32_t(input->getLength() / 4);
         memcpy(message.words, input->getBytesNoCopy(), input->getLength());
-        ivars->device->Send(message);
+        ivars->device->Psoc()->Send(message);
         return kIOReturnSuccess;
     }
     case kSelectorSubscribe:
@@ -84,7 +85,7 @@ kern_return_t EnsembleUserClient::ExternalMethod(uint64_t selector,
             return kIOReturnBadArgument;
         }
         ivars->reports = OSSharedPtr(arguments->completion, OSRetain);
-        ivars->device->SetListener(this);
+        ivars->device->Psoc()->AddListener(this);
         return kIOReturnSuccess;
     default:
         return super::ExternalMethod(selector, arguments, dispatch, target, reference);

@@ -1,0 +1,31 @@
+#ifndef EnsemblePsoc_h
+#define EnsemblePsoc_h
+
+#include <DriverKit/IOTimerDispatchSource.iig>
+#include <PCIDriverKit/IOPCIDevice.iig>
+
+#include "Protocol.h"
+
+class EnsembleDevice;
+class EnsembleUserClient;
+
+class EnsemblePsoc: public OSObject
+{
+public:
+    virtual bool init() override LOCALONLY;
+    virtual void free() override LOCALONLY;
+
+    kern_return_t Start(EnsembleDevice * device, IOPCIDevice * pci, uint8_t bar0,
+                        IODispatchQueue * queue) LOCALONLY;
+    void Stop() LOCALONLY;
+    void Send(const Ensemble::Message & message) LOCALONLY;
+    void SetMonitorAttenuation(uint8_t attenuation) LOCALONLY;
+    void AddListener(EnsembleUserClient * listener) LOCALONLY;
+    void RemoveListener(EnsembleUserClient * listener) LOCALONLY;
+
+private:
+    virtual void PollOccurred(OSAction * action, uint64_t time)
+        TYPE(IOTimerDispatchSource::TimerOccurred);
+};
+
+#endif

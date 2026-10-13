@@ -5,17 +5,15 @@
 
 #include "EnsembleClockSource.h"
 #include "EnsembleDevice.h"
-#include "EnsembleUserClient.h"
+#include "EnsemblePsoc.h"
 #include "EnsembleVolume.h"
 #include "Bar0.h"
 #include "Controls.h"
-#include "Mailbox.h"
-#include "Outbox.h"
+#include "Registers.h"
 
 using namespace Ensemble;
 
 constexpr uint32_t kSafetyOffset = 64;
-constexpr uint64_t kMailboxPeriodNs = 10000000;
 constexpr uint32_t kMeterHz = 30;
 constexpr uint64_t kReportedRateChange = 0x1000;
 constexpr double kInitialRate = 48000.0;
@@ -38,18 +36,10 @@ struct EnsembleDevice_IVars {
     OSSharedPtr<IOInterruptDispatchSource> wrap;
     OSSharedPtr<OSAction> wrap_action;
     uint64_t sample_time;
-    Mailbox<Bar0> mailbox;
-    OSSharedPtr<IOTimerDispatchSource> mailbox_timer;
-    OSSharedPtr<OSAction> mailbox_action;
-    uint64_t mailbox_period;
+    OSSharedPtr<EnsemblePsoc> psoc;
     double reported_rate;
-    Outbox outbox;
     OSSharedPtr<EnsembleVolume> volume;
     OSSharedPtr<EnsembleClockSource> clock_source;
-    OSSharedPtr<EnsembleUserClient> listener;
-    uint8_t monitors[kMonitorOutputs];
-    uint8_t monitors_known;
-    int requested_volume;
 };
 
 bool EnsembleDevice::init(IOUserAudioDriver * in_driver,
@@ -69,18 +59,16 @@ bool EnsembleDevice::init(IOUserAudioDriver * in_driver,
     }
     ivars->driver = OSSharedPtr(in_driver, OSRetain);
     ivars->queue = GetWorkQueue();
-    ivars->requested_volume = -1;
-    return true;
+    ivars->psoc = OSSharedPtr(OSTypeAlloc(EnsemblePsoc), OSNoRetain);
+    return ivars->psoc.get() != nullptr && ivars->psoc->init();
 }
 
 void EnsembleDevice::free()
 {
     if (ivars != nullptr) {
-        ivars->listener.reset();
         ivars->clock_source.reset();
         ivars->volume.reset();
-        ivars->mailbox_action.reset();
-        ivars->mailbox_timer.reset();
+        ivars->psoc.reset();
         ivars->wrap_action.reset();
         ivars->wrap.reset();
         ivars->meter_dma.reset();
@@ -254,7 +242,7 @@ kern_return_t EnsembleDevice::Attach(IOPCIDevice * pci, uint8_t bar0)
     if (ret != kIOReturnSuccess) {
         return ret;
     }
-    return startMailbox();
+    return ivars->psoc->Start(this, pci, bar0, ivars->queue.get());
 }
 
 kern_return_t EnsembleDevice::startMeters()
@@ -332,66 +320,39 @@ kern_return_t EnsembleDevice::addClockSource()
 void EnsembleDevice::ClockSourceChanged(uint64_t source)
 {
     if (source < kClockSourceCount) {
-        Send(set(kCommandClockSource, 0, uint8_t(source)));
+        ivars->psoc->Send(set(kCommandClockSource, 0, uint8_t(source)));
     }
 }
 
 void EnsembleDevice::VolumeChanged(float in_decibels)
 {
-    const int target = attenuation(in_decibels);
-    ivars->queue->DispatchAsync(^{
-        ivars->requested_volume = target;
-    });
+    ivars->psoc->SetMonitorAttenuation(attenuation(in_decibels));
 }
 
-void EnsembleDevice::SetListener(EnsembleUserClient * listener)
+EnsemblePsoc * EnsembleDevice::Psoc()
 {
-    auto retained = OSSharedPtr(listener, OSRetain);
-    ivars->queue->DispatchAsync(^{
-        ivars->listener = retained;
-    });
+    return ivars->psoc.get();
 }
 
-void EnsembleDevice::Send(const Message & message)
+void EnsembleDevice::Reported(const Report & report)
 {
-    const Message copy = message;
-    ivars->queue->DispatchAsync(^{
-        ivars->outbox.push(copy);
-    });
-}
-
-kern_return_t EnsembleDevice::startMailbox()
-{
-    ivars->mailbox = {ivars->bar0};
-    ivars->mailbox.reset();
-    ivars->outbox.push(getAll());
-
-    IOTimerDispatchSource * timer = nullptr;
-    kern_return_t ret = IOTimerDispatchSource::Create(ivars->queue.get(), &timer);
-    if (ret != kIOReturnSuccess) {
-        return ret;
+    if (report.command == kCommandSampleRate && report.data[0] < kSampleRateCount) {
+        const double rate = kSampleRates[report.data[0]];
+        if (rate != GetSampleRate()) {
+            ivars->reported_rate = rate;
+            RequestDeviceConfigurationChange(kReportedRateChange, nullptr);
+        }
+    } else if (report.command == kCommandOutputAttenuation && report.p1 == kSpeaker) {
+        ivars->volume->SetDecibelValue(decibels(report.data[0]));
+    } else if (report.command == kCommandClockSource && report.data[0] < kClockSourceCount) {
+        const IOUserAudioSelectorValue source = report.data[0];
+        ivars->clock_source->SetCurrentSelectedValues(&source, 1);
     }
-    ivars->mailbox_timer = OSSharedPtr(timer, OSNoRetain);
-    OSAction * action = nullptr;
-    ret = CreateActionMailboxTimerOccurred(0, &action);
-    if (ret != kIOReturnSuccess) {
-        return ret;
-    }
-    ivars->mailbox_action = OSSharedPtr(action, OSNoRetain);
-    ivars->mailbox_timer->SetHandler(ivars->mailbox_action.get());
-    mach_timebase_info_data_t timebase;
-    mach_timebase_info(&timebase);
-    ivars->mailbox_period = kMailboxPeriodNs * timebase.denom / timebase.numer;
-    ivars->mailbox_timer->WakeAtTime(kIOTimerClockMachAbsoluteTime,
-                                     mach_absolute_time() + ivars->mailbox_period, 0);
-    return ivars->mailbox_timer->SetEnable(true);
 }
 
 void EnsembleDevice::Detach()
 {
-    if (ivars->mailbox_timer.get() != nullptr) {
-        ivars->mailbox_timer->SetEnable(false);
-    }
+    ivars->psoc->Stop();
     const Bar0 & regs = ivars->bar0;
     regs.write(kGeneral, regs.read(kGeneral) & ~(kGeneralAudioRun | kGeneralMeterRun));
     regs.write(kInterrupt, regs.read(kInterrupt) & ~kInterruptWrap);
@@ -457,7 +418,7 @@ kern_return_t EnsembleDevice::HandleChangeSampleRate(double in_sample_rate)
     if (index < 0) {
         return kIOReturnBadArgument;
     }
-    Send(set(kCommandSampleRate, 0, uint8_t(index)));
+    ivars->psoc->Send(set(kCommandSampleRate, 0, uint8_t(index)));
     return applyRate(in_sample_rate);
 }
 
@@ -478,51 +439,4 @@ kern_return_t EnsembleDevice::applyRate(double rate)
     }
     ivars->output.stream->DeviceSampleRateChanged(rate);
     return ivars->input.stream->DeviceSampleRateChanged(rate);
-}
-
-void IMPL(EnsembleDevice, MailboxTimerOccurred)
-{
-    const Mailbox<Bar0> & mailbox = ivars->mailbox;
-    if (mailbox.serviceEvents()) {
-        ivars->outbox.push(getAll());
-    }
-    if (ivars->requested_volume >= 0 && ivars->monitors_known == (1 << kMonitorOutputs) - 1) {
-        uint8_t next[kMonitorOutputs];
-        for (uint8_t i = 0; i < kMonitorOutputs; i++) {
-            next[i] = ivars->monitors[i];
-        }
-        follow(next, uint8_t(ivars->requested_volume));
-        for (uint8_t i = 0; i < kMonitorOutputs; i++) {
-            if (next[i] != ivars->monitors[i] &&
-                ivars->outbox.push(set(kCommandOutputAttenuation, i, next[i]))) {
-                ivars->monitors[i] = next[i];
-            }
-        }
-        ivars->requested_volume = -1;
-    }
-    auto handle = [&](const Report & report) {
-        if (ivars->listener.get() != nullptr) {
-            ivars->listener->Report(report);
-        }
-        if (report.command == kCommandSampleRate && report.data[0] < kSampleRateCount) {
-            const double rate = kSampleRates[report.data[0]];
-            if (rate != GetSampleRate()) {
-                ivars->reported_rate = rate;
-                RequestDeviceConfigurationChange(kReportedRateChange, nullptr);
-            }
-        } else if (report.command == kCommandOutputAttenuation && report.p1 < kMonitorOutputs) {
-            ivars->monitors[report.p1] = report.data[0];
-            ivars->monitors_known |= 1 << report.p1;
-            if (report.p1 == kSpeaker) {
-                ivars->volume->SetDecibelValue(decibels(report.data[0]));
-            }
-        } else if (report.command == kCommandClockSource && report.data[0] < kClockSourceCount) {
-            const IOUserAudioSelectorValue source = report.data[0];
-            ivars->clock_source->SetCurrentSelectedValues(&source, 1);
-        }
-    };
-    ivars->outbox.flush(mailbox, [&](const Message & sent) { parseMessage(sent.words, sent.count, handle); });
-    while (mailbox.receive(handle)) {
-    }
-    ivars->mailbox_timer->WakeAtTime(kIOTimerClockMachAbsoluteTime, time + ivars->mailbox_period, 0);
 }
