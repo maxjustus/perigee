@@ -135,7 +135,11 @@ kern_return_t IMPL(EnsembleDriver, NewUserClient)
         return ret;
     }
     *user_client = OSDynamicCast(IOUserClient, service);
-    return *user_client != nullptr ? kIOReturnSuccess : kIOReturnError;
+    if (*user_client == nullptr) {
+        service->release();
+        return kIOReturnError;
+    }
+    return kIOReturnSuccess;
 }
 
 kern_return_t IMPL(EnsembleDriver, SetPowerState)
