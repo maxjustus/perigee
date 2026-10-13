@@ -105,7 +105,7 @@ register write in the kext is followed by a read-back of the same register.
 | 0x04 | SCRATCH1 | RW | |
 | 0x08 | SCRATCH2 | RW | |
 | 0x0C | GENERAL | RW | DMA enables, message doorbells, clock select. See 2.2 |
-| 0x10 | STATUS | R | Read on uninit. Bits not decoded |
+| 0x10 | STATUS | R | `_uninitHardware` reads it and discards the value (x86_64 0x31A8). Possibly the read clears a state, unverified. Reads 0 when idle (probe-results.md). Bits not decoded |
 | 0x14 | INTERRUPT | RW | Bit 22, 24, 26 = MSI enables. Bit 24 = buffer-wrap interrupt. See 2.3 |
 | 0x18 | I2C_CTRL | RW | Remote I2C engine. See 7 |
 | 0x1C | NUM_HOST_METERS | RW | Bits 15:0 = meter count (device). Host writes count << 16 |
@@ -164,9 +164,9 @@ it clears only the "run" bit. The "arm" bit stays set.
 
 | Bit | Mask | Kext enum | Meaning |
 |-----|------|-----------|---------|
-| 22 | 0x0040_0000 | MSI type 1 | Unverified. Never enabled by the kext |
+| 22 | 0x0040_0000 | MSI type 1 | Never enabled by the kext. A probe got a second MSI within 1 ms of each ring wrap (probe-results.md). Probably the wrap of the other ring, unverified |
 | 24 | 0x0100_0000 | MSI type 2 | Ring-wrap timestamp interrupt |
-| 26 | 0x0400_0000 | MSI type 3 | Unverified. Never enabled by the kext |
+| 26 | 0x0400_0000 | MSI type 3 | Never enabled by the kext. A probe got no MSI from it in 2 s of a stream. Function unknown |
 
 The kext sets bit 24 in `setHardwareRunningState(true)` when timestamps are
 enabled, and clears it on stop, sleep, and unload.
@@ -502,6 +502,12 @@ of records follows. Each record starts with a type byte:
 
 Each record becomes one 120-byte packet to the HAL. Any other type byte
 logs `message error` and stops the parse.
+
+The header words carry no data in either direction. The PSoC parser
+(0x153F8) copies words 0 and 1 of a host message into locals and never
+reads them. The PSoC writes 0 into both words of each message that it
+sends (0x15668), and the probe saw 0 in all 936 packets of a Get-all
+(probe-results.md).
 
 ### 5.5 PSoC events (Ensemble only)
 
@@ -898,9 +904,14 @@ physical destination.
 Source: the PSoC firmware. The FPGA routing matrix has 256 destinations.
 Each destination takes one source. The PSoC writes the source of
 destination d to FPGA 0x0200 + d and a control byte to FPGA 0x0300 + d
-(5.13). The control byte is 8 for each route. Outputs of an inactive speaker
-set get 0x18. The meaning of the control bits is unverified. Source numbers
-are the codes of 5.9.
+(5.13). Source numbers are the codes of 5.9.
+
+Only two functions write the control byte, and no code reads it. 0x11C24
+always writes 8. 0x11C5C writes the value of its caller, and only 0x13DFC
+passes a value other than 8: 0x18 for the outputs of an inactive speaker
+set. Bit 4 silences the destination before its output meter (8.7). Bit 3
+is set in every route, and no command can clear it, so its function is
+unknown.
 
 | Source | Signal | Evidence |
 |--------|--------|----------|
@@ -914,7 +925,7 @@ are the codes of 5.9.
 | 0x60 to 0x67 | Mixer 1 L/R, Mixer 2, Mixer 3, FX Send | 5.9 |
 | 0x68 + 2m, 0x69 + 2m | DAW mixer m (0 to 3), L/R | 0x13DA4 |
 | 0x70 to 0x7F | DSP outputs 0 to 15 | 0x14188, 8.6 |
-| 0x90 to 0xAF | Unknown. Start-up routes them to destinations 0xE0 to 0xFF | 0x13860 |
+| 0x90 to 0xAF | Unknown. Start-up routes them to destinations 0xE0 to 0xFF. Source 0x94 does not return the signal on destination 0x94. Sources 0x90 to 0xF0 in steps of 0x10 do not return the signal on destination 0xE0 or 0xF0 (8.7) | 0x13860 |
 
 | Destination | Signal | Written by |
 |-------------|--------|------------|
@@ -927,16 +938,19 @@ are the codes of 5.9.
 | 0x30 to 0x51 | Record channel r = d − 0x30 (5.11) | 0x09, 0xD3 |
 | 0x52, 0x53 | S/PDIF coax out | 0x15 with p1 6 |
 | 0x60 to 0x7D | Mixer feed and host input meter of input r = d − 0x60 | 0xD3, start-up (0x13860) |
-| 0x80 to 0x8F | Playback 1-16. Probably the mixer channels 30 to 45 (inferred) | 0x2C, start-up |
+| 0x80 to 0x8F | Playback 1-16 into the mixers: mixer channel 30 + i (5.6) and host meter group 2 (0x84). Tested for 0x80 with Mixers 1 to 3 (8.7) | 0x2C, start-up |
 | 0x90 to 0x99 | Front-panel input meters 0 to 9: Analog 1-8, Guitar 1-2 (inferred) | Start-up (0x14020) |
 | 0x9A to 0xA9 | Front-panel output meters 10 to 25: Line out 1-10, Guitar out 1-2, Headphone 1 and 2 (inferred) | 0x15 (0x13D10) |
-| 0xB0 to 0xB7 | Unknown. 0x2C routes the mixer outputs 0x60 to 0x67 to them | 0x2C |
+| 0xB0 to 0xB7 | Host mixer meters (0xA4): Mixer 1 L to FX Send R. 0x2C routes the mixer outputs 0x60 to 0x67 to them. Tested for 0xB0: it drives the Mixer 1 L meter and not the mixer output (8.7) | 0x2C |
 | 0xC0 to 0xCF | DSP inputs 0 to 15 | 0xD3 |
-| 0xE0 to 0xFF | Unknown. Start-up routes sources 0x90 to 0xAF to them | Start-up |
+| 0xE0 to 0xFF | Unknown. Start-up routes sources 0x90 to 0xAF to them. A signal on 0xE0 or 0xF0 lit no host meter (8.7) | Start-up |
 
 The meter rows are inferred from counts: the display code reads 10 input
 meters and 16 output meters from FPGA 0x0040 (0x19208). The source of each
-front-panel meter is the source of its input or output.
+front-panel meter is the source of its input or output. Start-up writes
+the input taps through 0x14020: record pair p (0 to 3) to 0x90 + 2p, pair
+5 (Guitar 1-2) to 0x98. The host cannot read the front-panel meters, so
+the tests cannot check these rows.
 
 0x15 (0x13DFC) writes these entries for p1 = d and code c:
 
@@ -955,11 +969,13 @@ The matrix commands check few arguments:
 
 - 0x15 and 0x09 accept any source code. So 0x15 with code 0x70 + o sends
   DSP outputs o and o + 1 to an output pair (tested with Headphone 1,
-  8.7). 0x09 with 0x70 + o records them. The 0x09 route is not tested.
+  8.7). 0x09 with 0x70 + o records them (tested with record pair 0, 8.7).
 - 0xD3 checks nothing and computes each index modulo 256 (8.6). It is the
-  only command that writes destinations 0xC0 to 0xCF.
-- No command writes destinations 0x80 to 0x8F, 0xB0 to 0xB7, or 0xE0 to
-  0xFF with a host-chosen source.
+  only command that writes destinations 0x80 to 0x8F, 0xB0 to 0xB7, 0xC0
+  to 0xCF, and 0xE0 to 0xFF with a host-chosen source. With p1 = d −
+  0x60 and data = n, s − 0x70, 1, it puts source s on destination d. It
+  also puts the input of p1 on 0xC0 + n and on 0x30 + p1 (= d − 0x30). The
+  input of p1 is Analog 1 for p1 ≥ 30.
 
 Default routes:
 
@@ -1081,12 +1097,12 @@ not settle.
 |---------|--------|----------|-----------|
 | 0x0000 | R | 0xAB when the FPGA is ready. The PSoC polls it at start-up | 0x11754 |
 | 0x0002 | R | Status. Bit 6 = PLL not locked (report 0x64). Bits 5:3 + 1 = hardware revision (report 0x40, p1 2). The event handler reads bit 0 | 0x11B4C, 0x1FD84 |
-| 0x0003 | W | 0xA2 after the PSoC writes host messages. Likely the host doorbell, unverified | 0x11D98 |
-| 0x0004 | R | Read once at start-up. A nonzero value changes the start state. Meaning unknown | 0x17540 |
+| 0x0003 | W | 0xA2 after each batch of reports that the PSoC writes into the RX slots. No host register is known to show the write: the vendor kext and the open driver poll the RX indices. Likely the host doorbell, unverified | 0x11D98, caller 0x15668 |
+| 0x0004 | R | Read once at start-up. 0 selects power state 2 (stand-alone). A nonzero value selects state 3 (software off), or state 1 if the EEPROM holds the restart marker. See the [power-state contract](docs/firmware/psoc-scheduler.md). Physical meaning unknown | 0x17540 through 0x11664 |
 | 0x0005, 0x0006 | R | FPGA firmware version for report 0x40, p1 1 | 0x17404 |
 | 0x0007 | W | Bit n: phase invert on Analog n + 1 | 0x11C98 |
 | 0x0008 | W | Bits 3:0: Instrument on Analog 1-4. Bits 5:4: -10dBV on Line out 1-2. Bits 7:6: insert on Analog 1-2 | 0x1190C |
-| 0x0009 | W | Bits 1:0: guitar out Thru. Bit 2: word clock termination off. Bit 3: set by the guitar gain code, meaning unknown. Bits 7:6: sample-rate set-up | 0x1190C |
+| 0x0009 | W | Bits 1:0: guitar out Thru. Bit 2: word clock termination off. Bit 3: I2C branch. Before each write to a converter, 0x114A0 sets the bit to the branch of that converter (0x11460), so two devices can share address 0x49. Bits 7:6: sample-rate set-up | 0x1190C, 0x11460 |
 | 0x000A | W | Bits 3:2: sample-rate set-up. Bit 4: phantom power supply | 0x1190C |
 | 0x000B | W | Bit n: Analog n + 1 is not +4dBu | 0x1198C |
 | 0x000C | W | Bit n: Line out n + 3 is -10dBV | 0x11A10 |
@@ -1095,17 +1111,17 @@ not settle.
 | 0x000F | W | Clock source, the 0x2A value (5.8) | 0x118E4 |
 | 0x0011 to 0x0018 | R | Unit ID for report 0x41, read from 0x0018 down to 0x0011. The overlap with 0x0018 is unexplained | 0x11B74 |
 | 0x0018 to 0x001B | R | 32-bit period count of the external clock. The PSoC converts it to a sample rate | 0x12150 |
-| 0x001C, 0x0020, 0x0024 | R, RW, W | Event flags, event enable, and event clear, bits 0 to 5. Meaning of the bits unverified | 0x116F8, 0x1167C, 0x11614 |
+| 0x001C, 0x0020, 0x0024 | R, RW, W | Event flags, event enable, and event clear, bits 0 to 5. The PSoC enables bits 1, 2, 3, and 5 (0x20100). Bit 1: the host sent a message, and the PSoC reads up to 8 TX slots. Bit 2: host reset of the message state, the PSoC clears its report state and, with a link (0x0002 bit 0), accepts the host. Bit 3: link change, read from 0x0002 bit 0. Bits 0 and 5 only increment counters that no code reads. Bit 4 has no handler. See the [FPGA event handshake](docs/firmware/psoc-protocol.md). Inferred: GENERAL bit 6 (host doorbell) raises bit 1, and GENERAL bit 5 raises bit 2 | 0x116F8, 0x1167C, 0x11614, 0x1FD84, 0x1FF6C |
 | 0x0028 | W | Optical port format, 2 bits per port (5.6, 0x1A) | 0x11D24 |
-| 0x002D | W | 1 after start-up, 0 before a firmware update. Meaning unverified | 0x1F8FC, 0x17FB4 |
+| 0x002D | W | 1 after start-up, 0 before the bootloader reset of a firmware update (0x60 mode 0 only). Inferred: the FPGA shows this value as the PSoC status in BAR0 INFO bits 7:6. INFO reads 1 while the application runs (probe-results.md), and the HAL waits for status 2 after it sends 0x60 (docs/firmware/updater.md). The vendor image holds no bootloader, so the write of 2 cannot be checked | 0x1F92A, 0x17FD4 |
 | 0x002E to 0x0034 | RW | Flash writes for the firmware update | 0x12334 to 0x12570 |
 | 0x0035 | R | The start-up code reads bit 1 after 0x0000 reads 0xAB | 0x11754 |
 | 0x0037 | W | ADC delay of the current sample rate (0x2D) | 0x153A4 |
 | 0x0040 + 2m | R | Front-panel meter m, 16 bits. m 0 to 9: inputs. m 10 to 25: outputs. Bit 15: over | 0x19208 |
-| 0x0080 | W | 3 resets the front-panel meter state, unverified | 0x12130 |
+| 0x0080 | W | 3. The PSoC writes it directly before each read of the 26 front-panel meters (at most every 30 scheduler ticks), 1000 ticks after a clock-source change, and on a 2000-tick display timeout. Likely latches the peaks for the read and restarts them, unverified | 0x12130, callers 0x19208, 0x19390 |
 | 0x008B + n | W | Fine trim of Line out n + 1, 0 to 4 steps (0x0E) | 0x14D28 |
 | 0x0200 + d | W | Routing matrix: source of destination d (5.10) | 0x11C24 |
-| 0x0300 + d | W | Routing matrix: control byte of destination d | 0x11C5C |
+| 0x0300 + d | W | Routing matrix: control byte of destination d. Bit 4 silences the destination. Bit 3 is always set (5.10) | 0x11C24, 0x11C5C |
 | 0x0400 to 0x0BF3 | RW | Message slots and indices, the same bytes as BAR0 0x400 to 0xBF3 (2.5) | 0x11DB0 to 0x11F68 |
 | 0x0C00 | RW | Data buffer of the firmware update | 0x12444 |
 | 0x1000 + 0x100 m + 0x80 s + 2c | W | 16-bit gain of channel c (0 to 63) into side s (0 L, 1 R) of mixer m. m 0 to 3: Mixer 1 to 4. m 4 to 7: DAW mixers 1 to 4. The gain format is in 0x18534 | 0x11BE4 |
@@ -1187,8 +1203,15 @@ Three power states, registered with `registerPowerDriver`:
 Register `I2C_CTRL (0x18)` and window `0x3C00`.
 
 Enable: write `0x18 = 0x00040000`, then `0x18 = 0x006C0036`. Disable: write
-`0x18 = 0`. The meaning of 0x6C and 0x36 is unverified. 0x36 is likely the
-I2C address byte.
+`0x18 = 0`. The meaning of 0x6C and 0x36 is unverified. 0x6C is 2 × 0x36,
+and two readings fit:
+
+- A target address: 0x36 as a 7-bit I2C address, and 0x6C as its address
+  byte. The read flag (bit 7) is then free because 0x36 is below 0x80. The
+  target is the PSoC bootloader (docs/firmware/updater.md). The bootloader
+  is not in the vendor image, so its address cannot be checked.
+- A clock divider: 62.5 MHz / (4 × 108) = 145 kHz. The transfer delay
+  below assumes 150 bits per ms.
 
 Transfer (`_performRemoteI2CTransfer(isWrite, bytes)`):
 
@@ -1547,9 +1570,9 @@ p1 = 0x60 + n and data = n, (s − 0x70) mod 256, 1:
 | 3 | 0x30 + p1 = 0x90 + n ← Analog 1. This is front-panel meter tap n (5.10) |
 
 For example, s = 0x60 puts Mixer 1 L on DSP input n, and s = 0x30 puts
-Playback 1 there. The unit test used s = 0x60 (8.7). Playback is not
-tested. With s = 0x60 and the DSP output in Mixer 1, the signal loops
-back. Mode 0 with the same p1 sets DSP input n to Analog 1 again. The
+Playback 1 there. The unit tests used s = 0x60 and s = 0x4E, Playback 31
+(8.7). So the host can process a playback channel in the DSP. With s =
+0x60 and the DSP output in Mixer 1, the signal loops back. Mode 0 with the same p1 sets DSP input n to Analog 1 again. The
 start-up source of meter tap 0 is Analog 1, so n = 0 changes no meter.
 
 Mode 3 is the FX Rack "Print" mode: the record channel carries the FX
@@ -1681,6 +1704,39 @@ speaker output stayed muted.
 161 is a jump without idle cycles, and 157 a jump with 4 idle cycles. 160
 is no jump, and 156 no jump with 4 idle cycles.
 
+The routing tests (`scripts/dsp/matrix.py`) use the same set-up:
+
+- In "2 Speaker Sets" mode, 0x15 put DSP outputs 0 and 1 (0.5 and 0.25)
+  on Line 3-4, the outputs of set B. Line 1-2 played them through Mixer 1.
+  The meters of Line 1 to 4 read 8268, 4097, 0, 0 with set A active, 0, 0,
+  8192, 4096 with set B, and 8268, 4097, 8192, 4096 with mask 3
+  (`matrix.py speakers`). So control byte 0x18 silences the destination
+  before its meter, and mask 3 makes both sets play. The speaker output
+  stayed muted.
+- After a Get-all, no output route used Playback 31-32. 0xD3 with p1 =
+  0x60 and data = 0, 0xDE, 1 put Playback 31 on DSP input 0.
+  `scripts/dsp/play.swift` played a constant on Playback 31. The program
+  read 0.000 without playback, 0.500 for 0.5, and −0.250 for −0.25
+  (`matrix.py playback`).
+- 0x09 with p1 = 0 and code 0x70 put DSP outputs 0 and 1 on record
+  channels 0 and 1. They matched Mixer 1 L and R with gains 0.993 and
+  1.000 (the pan leak again), 2 samples earlier, with a residual of 1e-5.
+  A Get-all then showed 0x09 of pair 0 at 0x00, its value before the test
+  (`matrix.py record`). The PSoC saved both changes in the EEPROM.
+- 0xD3 put DSP output 3, at 0.2 (meter value 3277), on one destination at
+  a time (`matrix.py taps`). With the default routes, no host meter reached
+  1024. 0x80 lit the Playback 1 meter of group 2 (3276), the L meters of
+  Mixer 1 (3225), Mixer 2 (1639), and Mixer 3 (3278), Line 1 (3225), and
+  Headphone 1 L and 2 L (1639, 3278). 0xB0 lit only the Mixer 1 L meter
+  (3276), and not Line 1, which plays Mixer 1. 0xE0 lit no meter. The
+  headphones stayed muted.
+- With DSP output 3 on destination 0x94, source 0x94 on DSP input 0 read
+  0. Source 0x73 (DSP output 3) read 0.2 (`matrix.py taps`). An ad hoc
+  test put 0.2 on destination 0xE0, then 0xF0, and read sources 0x90 to
+  0xF0 in steps of 0x10. All read 0. With silent inputs, a scan of the
+  sources read only noise, except Mixer 1. These two tests settled
+  nothing, so the scripts do not keep them.
+
 For the opcode tests, `scripts/dsp/isa.py` sends DSP I/O channel 0 to
 Analog 1 and channel 1 to Analog 2. Mixer 1 pans them hard left and hard
 right. The left channel carries 0.25 b, where b steps through a circular
@@ -1740,10 +1796,11 @@ Sample rate changes need command 0x29.
 
 ### 9.3 Unverified items
 
-- Bit layouts of `STATUS`, `HOST_CONTROL`, `INTERRUPT` bits 22 and 26.
+- Bit layouts of `STATUS` and `HOST_CONTROL`, and the function of
+  `INTERRUPT` bits 22 and 26. The kext uses none of them (2.1, 2.3). Only a
+  BAR0 read through the vendor kext (probe-results.md) can add data.
+- The meaning of 0x6C and 0x36 in the remote I2C enable value (7).
 - Names of meter group 2 (0x84) and output positions 2 to 5 (0x7C). Apogee
   Control assigns them. The driver never reads them.
-- The two header words of the PSoC wire messages. The HAL sends 1, the
-  PSoC reply header is copied but never read.
 - The timer period of 10 ms. The vtable slot matches `setTimeoutUS(10000)`
   with one slot of tolerance.
