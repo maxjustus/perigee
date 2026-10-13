@@ -21,6 +21,7 @@ public:
 
     kern_return_t Attach(IOPCIDevice * pci, uint8_t bar0) LOCALONLY;
     void Detach() LOCALONLY;
+    void VolumeChanged(float decibels) LOCALONLY;
 
     virtual kern_return_t StartIO(IOUserAudioStartStopFlags in_flags) final LOCALONLY;
     virtual kern_return_t StopIO(IOUserAudioStartStopFlags in_flags) final LOCALONLY;
@@ -31,6 +32,7 @@ public:
 private:
     kern_return_t startMailbox() LOCALONLY;
     kern_return_t applyRate(double rate) LOCALONLY;
+    kern_return_t addVolume() LOCALONLY;
     virtual void WrapOccurred(OSAction * action, uint64_t count, uint64_t time)
         TYPE(IOInterruptDispatchSource::InterruptOccurred);
     virtual void MailboxTimerOccurred(OSAction * action, uint64_t time)

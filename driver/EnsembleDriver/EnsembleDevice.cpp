@@ -4,7 +4,9 @@
 #include <AudioDriverKit/AudioDriverKit.h>
 
 #include "EnsembleDevice.h"
+#include "EnsembleVolume.h"
 #include "Bar0.h"
+#include "Controls.h"
 #include "Mailbox.h"
 
 using namespace Ensemble;
@@ -36,6 +38,10 @@ struct EnsembleDevice_IVars {
     uint64_t mailbox_period;
     double reported_rate;
     int requested_rate;
+    OSSharedPtr<EnsembleVolume> volume;
+    uint8_t monitors[kMonitorOutputs];
+    uint8_t monitors_known;
+    int requested_volume;
 };
 
 bool EnsembleDevice::init(IOUserAudioDriver * in_driver,
@@ -56,12 +62,14 @@ bool EnsembleDevice::init(IOUserAudioDriver * in_driver,
     ivars->driver = OSSharedPtr(in_driver, OSRetain);
     ivars->queue = GetWorkQueue();
     ivars->requested_rate = -1;
+    ivars->requested_volume = -1;
     return true;
 }
 
 void EnsembleDevice::free()
 {
     if (ivars != nullptr) {
+        ivars->volume.reset();
         ivars->mailbox_action.reset();
         ivars->mailbox_timer.reset();
         ivars->wrap_action.reset();
@@ -190,6 +198,10 @@ kern_return_t EnsembleDevice::Attach(IOPCIDevice * pci, uint8_t bar0)
     SetInputSafetyOffset(kSafetyOffset);
     AddStream(ivars->output.stream.get());
     AddStream(ivars->input.stream.get());
+    ret = addVolume();
+    if (ret != kIOReturnSuccess) {
+        return ret;
+    }
 
     uint32_t msi = 0;
     ret = findMSI(pci, &msi);
@@ -214,6 +226,26 @@ kern_return_t EnsembleDevice::Attach(IOPCIDevice * pci, uint8_t bar0)
         return ret;
     }
     return startMailbox();
+}
+
+kern_return_t EnsembleDevice::addVolume()
+{
+    ivars->volume = OSSharedPtr(OSTypeAlloc(EnsembleVolume), OSNoRetain);
+    if (ivars->volume.get() == nullptr ||
+        !ivars->volume->init(ivars->driver.get(), true, 0.0f,
+                             {decibels(kMaxAttenuation), decibels(0)},
+                             IOUserAudioObjectPropertyElementMain,
+                             IOUserAudioObjectPropertyScope::Output,
+                             IOUserAudioClassID::VolumeControl)) {
+        return kIOReturnNoMemory;
+    }
+    ivars->volume->SetDevice(this);
+    return AddControl(ivars->volume.get());
+}
+
+void EnsembleDevice::VolumeChanged(float in_decibels)
+{
+    __atomic_store_n(&ivars->requested_volume, int(attenuation(in_decibels)), __ATOMIC_RELAXED);
 }
 
 kern_return_t EnsembleDevice::startMailbox()
@@ -348,14 +380,33 @@ void IMPL(EnsembleDevice, MailboxTimerOccurred)
         __atomic_compare_exchange_n(&ivars->requested_rate, &none, requested, false,
                                     __ATOMIC_RELAXED, __ATOMIC_RELAXED);
     }
-    while (mailbox.receive([&](const Report & report) {
-        if (report.command != kCommandSampleRate || report.data[0] >= kSampleRateCount) {
-            return;
+    const int volume = __atomic_exchange_n(&ivars->requested_volume, -1, __ATOMIC_RELAXED);
+    if (volume >= 0 && ivars->monitors_known == (1 << kMonitorOutputs) - 1) {
+        uint8_t next[kMonitorOutputs];
+        for (uint8_t i = 0; i < kMonitorOutputs; i++) {
+            next[i] = ivars->monitors[i];
         }
-        const double rate = kSampleRates[report.data[0]];
-        if (rate != GetSampleRate()) {
-            ivars->reported_rate = rate;
-            RequestDeviceConfigurationChange(kReportedRateChange, nullptr);
+        follow(next, uint8_t(volume));
+        for (uint8_t i = 0; i < kMonitorOutputs; i++) {
+            if (next[i] != ivars->monitors[i] &&
+                mailbox.send(set(kCommandOutputAttenuation, i, next[i]))) {
+                ivars->monitors[i] = next[i];
+            }
+        }
+    }
+    while (mailbox.receive([&](const Report & report) {
+        if (report.command == kCommandSampleRate && report.data[0] < kSampleRateCount) {
+            const double rate = kSampleRates[report.data[0]];
+            if (rate != GetSampleRate()) {
+                ivars->reported_rate = rate;
+                RequestDeviceConfigurationChange(kReportedRateChange, nullptr);
+            }
+        } else if (report.command == kCommandOutputAttenuation && report.p1 < kMonitorOutputs) {
+            ivars->monitors[report.p1] = report.data[0];
+            ivars->monitors_known |= 1 << report.p1;
+            if (report.p1 == kSpeaker) {
+                ivars->volume->SetDecibelValue(decibels(report.data[0]));
+            }
         }
     })) {
     }

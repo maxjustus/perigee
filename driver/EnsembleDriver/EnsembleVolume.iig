@@ -1,0 +1,28 @@
+#ifndef EnsembleVolume_h
+#define EnsembleVolume_h
+
+#include <AudioDriverKit/IOUserAudioLevelControl.iig>
+
+using namespace AudioDriverKit;
+
+class EnsembleDevice;
+
+class EnsembleVolume: public IOUserAudioLevelControl
+{
+public:
+    virtual bool init(IOUserAudioDriver * in_driver,
+                      bool in_is_settable,
+                      float in_decibel_value,
+                      IOUserAudioLevelControlRange in_decibel_range,
+                      IOUserAudioObjectPropertyElement in_control_element,
+                      IOUserAudioObjectPropertyScope in_control_scope,
+                      IOUserAudioClassID in_control_class_id) override LOCALONLY;
+    virtual void free() override LOCALONLY;
+
+    void SetDevice(EnsembleDevice * device) LOCALONLY;
+
+    virtual kern_return_t HandleChangeDecibelValue(float in_decibel_value) override LOCALONLY;
+    virtual kern_return_t HandleChangeScalarValue(float in_scalar_value) override LOCALONLY;
+};
+
+#endif
