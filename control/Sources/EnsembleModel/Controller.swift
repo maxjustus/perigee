@@ -15,9 +15,9 @@ public final class Controller: @unchecked Sendable {
     private let transport: Transport
     private let broadcast: @Sendable (String) -> Void
     private let byPath = Dictionary(uniqueKeysWithValues: parameters.map { ($0.path, $0) })
-    private let byKey = Dictionary(parameters.flatMap { parameter in
-        targets(parameter).map { (Key(parameter, $0), parameter) }
-    }, uniquingKeysWith: { first, _ in first })
+    private let byKey = Dictionary(grouping: parameters.flatMap { parameter in
+        targets(parameter).map { (key: Key(parameter, $0), parameter: parameter) }
+    }, by: \.key).mapValues { $0.map(\.parameter) }
     private let lock = NSLock()
     private var values: [String: Int] = [:]
 
@@ -52,16 +52,25 @@ public final class Controller: @unchecked Sendable {
     }
 
     public func receive(_ report: Report) {
-        guard let parameter = byKey[Key(report)], let value = value(parameter, report) else {
+        let matches = byKey[Key(report)] ?? []
+        guard !matches.isEmpty else {
             broadcast(notification("report", [
                 "type": Int(report.type), "command": Int(report.command), "p1": Int(report.p1),
                 "p2": Int(report.p2), "data": report.data.map(Int.init),
             ]))
             return
         }
-        let old = lock.withLock { values.updateValue(value, forKey: parameter.path) }
-        if old != value {
-            broadcast(notification("changed", [parameter.path: json(value, parameter.kind)]))
+        let changes: [String: Any] = lock.withLock {
+            var changes: [String: Any] = [:]
+            for parameter in matches {
+                if let value = value(parameter, report), values.updateValue(value, forKey: parameter.path) != value {
+                    changes[parameter.path] = json(value, parameter.kind)
+                }
+            }
+            return changes
+        }
+        if !changes.isEmpty {
+            broadcast(notification("changed", changes))
         }
     }
 
@@ -90,7 +99,7 @@ public final class Controller: @unchecked Sendable {
                     throw RPCError.invalidParams("unknown path \(path)")
                 }
                 let wire = try encodeValue(value, parameter)
-                return targets(parameter).map { message(parameter, $0, wire) }
+                return sendTargets(parameter).map { message(parameter, $0, wire) }
             }
             try messages.forEach(transport.send)
             return true
@@ -105,6 +114,15 @@ public final class Controller: @unchecked Sendable {
         default:
             throw RPCError(code: -32601, message: "unknown method \(method)")
         }
+    }
+
+    private func sendTargets(_ parameter: Parameter) -> [Target] {
+        guard parameter.perSpeakerSet else {
+            return targets(parameter)
+        }
+        let mode = lock.withLock { values["outputs/mainMode"] }
+        let sets = mode == 2 ? 2 : mode == 3 ? 3 : 1
+        return (0..<sets).map { Target(p1: parameter.p1 + UInt8($0), p2: 0) }
     }
 
     private func notification(_ method: String, _ params: [String: Any]) -> String {

@@ -28,6 +28,7 @@ public struct Parameter: Sendable {
     public var wire: Wire = .set
     public var reported: Wire?
     public var on = 1
+    public var perSpeakerSet = false
     public let kind: Kind
 }
 
@@ -50,6 +51,7 @@ private let outputs: [Parameter] = [
               kind: choices(["Line", "Stereo", "2 Speaker Sets", "3 Speaker Sets", "5.1", "7.1", "9.1"])),
     Parameter(path: "outputs/activeSpeakerSet", command: 0x10, p1: 0,
               kind: .choice([Choice(name: "A", code: 1), Choice(name: "B", code: 2), Choice(name: "C", code: 4)])),
+    Parameter(path: "outputs/speakerSource", command: 0x15, p1: 0, perSpeakerSet: true, kind: sources),
 ] + monitors + lines + guitarOutputs
 
 private let monitors: [Parameter] = ["headphone1", "headphone2", "speaker"].enumerated().flatMap { index, name in

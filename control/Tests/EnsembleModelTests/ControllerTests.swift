@@ -205,6 +205,27 @@ func makeController() -> (Controller, FakeTransport, Broadcasts) {
     #expect((changed["params"] as? [String: Any])?["mixers/channels/33/enabled"] as? Bool == true)
 }
 
+@Test func speakerSourceWritesTheRouteOfEachSpeakerSet() {
+    let (controller, transport, _) = makeController()
+    let set = #"{"jsonrpc":"2.0","id":1,"method":"set","params":{"outputs/speakerSource":"Mixer 1"}}"#
+    _ = controller.handle(set)
+    #expect(transport.sent == [[1, 0, word(1, 0x15, 0, 0x60)]])
+    controller.receive(Report(type: 1, command: 0x0F, p1: 0, p2: 0, data: [2]))
+    _ = controller.handle(set)
+    controller.receive(Report(type: 1, command: 0x0F, p1: 0, p2: 0, data: [3]))
+    _ = controller.handle(set)
+    let expected: [[UInt32]] = [0, 1, 0, 1, 2].map { [1, 0, word(1, 0x15, $0, 0x60)] }
+    #expect(Array(transport.sent.dropFirst()) == expected)
+}
+
+@Test func speakerSourceFollowsTheSetARoute() {
+    let (controller, _, broadcasts) = makeController()
+    controller.receive(Report(type: 1, command: 0x15, p1: 0, p2: 0, data: [0x62]))
+    let params = object(broadcasts.texts.last!)["params"] as? [String: Any]
+    #expect(params?["outputs/speakerSource"] as? String == "Mixer 2")
+    #expect(params?["routing/line1-2"] as? String == "Mixer 2")
+}
+
 @Test func reportDecodesFromAsyncArguments() {
     let args: [UInt64] = [2 | 0x41 << 8 | 0 << 16 | 0 << 24 | 3 << 32, 0xccbbaa]
     let report = Report(arguments: args)

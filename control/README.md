@@ -54,6 +54,11 @@ Routing paths name the output pair: `routing/line1-2` to
 `routing/headphone2`. The value is a source name, for example
 `Mixer 1`, `Playback 3-4`, `Analog 1-2`, or `Optical 1-2`.
 
+`outputs/speakerSource` sets the source of every speaker set in one step,
+like the vendor's speaker source setting. It writes `routing/line1-2`, plus
+`routing/line3-4` in "2 Speaker Sets" mode, plus `routing/line5-6` in
+"3 Speaker Sets" mode. Its value shows the route of speaker set A.
+
 ## Test
 
     cd control && swift test
