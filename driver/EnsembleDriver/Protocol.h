@@ -8,6 +8,21 @@ namespace Ensemble {
 constexpr uint32_t kSlotWords = 30;
 constexpr uint8_t kMaxReportData = 100;
 
+constexpr uint8_t kCommandSampleRate = 0x29;
+
+constexpr double kSampleRates[] = {44100.0, 48000.0, 88200.0, 96000.0, 176400.0, 192000.0};
+constexpr uint32_t kSampleRateCount = sizeof(kSampleRates) / sizeof(kSampleRates[0]);
+
+inline int rateIndex(double rate)
+{
+    for (uint32_t i = 0; i < kSampleRateCount; i++) {
+        if (kSampleRates[i] == rate) {
+            return int(i);
+        }
+    }
+    return -1;
+}
+
 struct Report {
     uint8_t type;
     uint8_t command;

@@ -43,8 +43,12 @@ constexpr uint32_t kInterruptWrap = 0x01000000;
 constexpr uint32_t kRingFrames = 0x4000;
 constexpr uint32_t kOutputChannels = 36;
 constexpr uint32_t kInputChannels = 34;
-constexpr double kSampleRate = 48000.0;
-constexpr uint32_t kDepth = 2;
+constexpr uint32_t kMaxDepth = 32;
+
+inline uint32_t depthFor(double rate)
+{
+    return rate <= 48000.0 ? 2 : rate <= 96000.0 ? 8 : kMaxDepth;
+}
 
 }
 

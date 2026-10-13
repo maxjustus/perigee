@@ -83,8 +83,16 @@ static void set_packs_type_command_p1_and_value()
     CHECK(m.words[2] == word(1, 0x29, 0, 3));
 }
 
+static void rate_index_matches_the_psoc_table()
+{
+    CHECK(rateIndex(44100.0) == 0 && rateIndex(48000.0) == 1 && rateIndex(192000.0) == 5);
+    CHECK(rateIndex(32000.0) == -1);
+    CHECK(kSampleRates[3] == 96000.0);
+}
+
 int main()
 {
+    rate_index_matches_the_psoc_table();
     type1_record_carries_one_value();
     type2_record_spans_words_by_its_length();
     record_past_the_message_end_is_truncated();

@@ -5,11 +5,14 @@
 
 #include "EnsembleDevice.h"
 #include "Bar0.h"
-#include "Registers.h"
+#include "Mailbox.h"
 
 using namespace Ensemble;
 
 constexpr uint32_t kSafetyOffset = 64;
+constexpr uint64_t kMailboxPeriodNs = 10000000;
+constexpr uint64_t kReportedRateChange = 0x1000;
+constexpr double kInitialRate = 48000.0;
 
 struct Ring {
     OSSharedPtr<IOBufferMemoryDescriptor> buffer;
@@ -27,6 +30,12 @@ struct EnsembleDevice_IVars {
     OSSharedPtr<IOInterruptDispatchSource> wrap;
     OSSharedPtr<OSAction> wrap_action;
     uint64_t sample_time;
+    Mailbox<Bar0> mailbox;
+    OSSharedPtr<IOTimerDispatchSource> mailbox_timer;
+    OSSharedPtr<OSAction> mailbox_action;
+    uint64_t mailbox_period;
+    double reported_rate;
+    int requested_rate;
 };
 
 bool EnsembleDevice::init(IOUserAudioDriver * in_driver,
@@ -46,12 +55,15 @@ bool EnsembleDevice::init(IOUserAudioDriver * in_driver,
     }
     ivars->driver = OSSharedPtr(in_driver, OSRetain);
     ivars->queue = GetWorkQueue();
+    ivars->requested_rate = -1;
     return true;
 }
 
 void EnsembleDevice::free()
 {
     if (ivars != nullptr) {
+        ivars->mailbox_action.reset();
+        ivars->mailbox_timer.reset();
         ivars->wrap_action.reset();
         ivars->wrap.reset();
         ivars->input = {};
@@ -64,10 +76,10 @@ void EnsembleDevice::free()
     super::free();
 }
 
-static IOUserAudioStreamBasicDescription format(uint32_t channels)
+static IOUserAudioStreamBasicDescription format(uint32_t channels, double rate)
 {
     return {
-        kSampleRate,
+        rate,
         IOUserAudioFormatID::LinearPCM,
         static_cast<IOUserAudioFormatFlags>(IOUserAudioFormatFlags::FormatFlagIsSignedInteger |
                                             IOUserAudioFormatFlags::FormatFlagIsPacked),
@@ -126,9 +138,12 @@ static kern_return_t makeRing(IOUserAudioDriver * driver, const Bar0 & bar0,
     if (ring->stream.get() == nullptr) {
         return kIOReturnNoMemory;
     }
-    auto stream_format = format(channels);
-    ring->stream->SetAvailableStreamFormats(&stream_format, 1);
-    ring->stream->SetCurrentStreamFormat(&stream_format);
+    IOUserAudioStreamBasicDescription formats[kSampleRateCount];
+    for (uint32_t i = 0; i < kSampleRateCount; i++) {
+        formats[i] = format(channels, kSampleRates[i]);
+    }
+    ring->stream->SetAvailableStreamFormats(formats, kSampleRateCount);
+    ring->stream->SetCurrentStreamFormat(&formats[rateIndex(kInitialRate)]);
     return kIOReturnSuccess;
 }
 
@@ -164,13 +179,12 @@ kern_return_t EnsembleDevice::Attach(IOPCIDevice * pci, uint8_t bar0)
         return ret;
     }
     regs.write(kNumberOfChannels, ((kInputChannels / 2) << 16) | (kOutputChannels / 2));
-    regs.write(kSampleDepth, kDepth - 1);
+    regs.write(kSampleDepth, kMaxDepth - 1);
     regs.write(kOutputBufferSize, kOutputChannels * kRingFrames);
     regs.write(kInputBufferSize, kInputChannels * kRingFrames);
 
-    double rate = kSampleRate;
-    SetAvailableSampleRates(&rate, 1);
-    SetSampleRate(rate);
+    SetAvailableSampleRates(kSampleRates, kSampleRateCount);
+    SetSampleRate(kInitialRate);
     SetTransportType(IOUserAudioTransportType::Thunderbolt);
     SetOutputSafetyOffset(kSafetyOffset);
     SetInputSafetyOffset(kSafetyOffset);
@@ -195,11 +209,45 @@ kern_return_t EnsembleDevice::Attach(IOPCIDevice * pci, uint8_t bar0)
     }
     ivars->wrap_action = OSSharedPtr(action, OSNoRetain);
     ivars->wrap->SetHandler(ivars->wrap_action.get());
-    return ivars->wrap->SetEnableWithCompletion(true, nullptr);
+    ret = ivars->wrap->SetEnableWithCompletion(true, nullptr);
+    if (ret != kIOReturnSuccess) {
+        return ret;
+    }
+    return startMailbox();
+}
+
+kern_return_t EnsembleDevice::startMailbox()
+{
+    ivars->mailbox = {ivars->bar0};
+    ivars->mailbox.reset();
+    ivars->mailbox.send(getAll());
+
+    IOTimerDispatchSource * timer = nullptr;
+    kern_return_t ret = IOTimerDispatchSource::Create(ivars->queue.get(), &timer);
+    if (ret != kIOReturnSuccess) {
+        return ret;
+    }
+    ivars->mailbox_timer = OSSharedPtr(timer, OSNoRetain);
+    OSAction * action = nullptr;
+    ret = CreateActionMailboxTimerOccurred(0, &action);
+    if (ret != kIOReturnSuccess) {
+        return ret;
+    }
+    ivars->mailbox_action = OSSharedPtr(action, OSNoRetain);
+    ivars->mailbox_timer->SetHandler(ivars->mailbox_action.get());
+    mach_timebase_info_data_t timebase;
+    mach_timebase_info(&timebase);
+    ivars->mailbox_period = kMailboxPeriodNs * timebase.denom / timebase.numer;
+    ivars->mailbox_timer->WakeAtTime(kIOTimerClockMachAbsoluteTime,
+                                     mach_absolute_time() + ivars->mailbox_period, 0);
+    return ivars->mailbox_timer->SetEnable(true);
 }
 
 void EnsembleDevice::Detach()
 {
+    if (ivars->mailbox_timer.get() != nullptr) {
+        ivars->mailbox_timer->SetEnable(false);
+    }
     const Bar0 & regs = ivars->bar0;
     regs.write(kGeneral, regs.read(kGeneral) & ~kGeneralAudioRun);
     regs.write(kInterrupt, regs.read(kInterrupt) & ~kInterruptWrap);
@@ -233,6 +281,7 @@ kern_return_t EnsembleDevice::StartIO(IOUserAudioStartStopFlags in_flags)
         zero(ivars->output.buffer.get());
         zero(ivars->input.buffer.get());
         ivars->sample_time = 0;
+        regs.write(kSampleDepth, depthFor(GetSampleRate()) - 1);
         regs.write(kGeneral, regs.read(kGeneral) | kGeneralAudioArmAndRun);
         UpdateCurrentZeroTimestamp(0, mach_absolute_time());
         regs.write(kInterrupt, regs.read(kInterrupt) | kInterruptWrap);
@@ -256,4 +305,59 @@ void IMPL(EnsembleDevice, WrapOccurred)
 {
     ivars->sample_time += count * kRingFrames;
     UpdateCurrentZeroTimestamp(ivars->sample_time, time);
+}
+
+kern_return_t EnsembleDevice::HandleChangeSampleRate(double in_sample_rate)
+{
+    const int index = rateIndex(in_sample_rate);
+    if (index < 0) {
+        return kIOReturnBadArgument;
+    }
+    __atomic_store_n(&ivars->requested_rate, index, __ATOMIC_RELAXED);
+    return applyRate(in_sample_rate);
+}
+
+kern_return_t EnsembleDevice::PerformDeviceConfigurationChange(uint64_t change_action,
+                                                               OSObject * in_change_info)
+{
+    if (change_action == kReportedRateChange) {
+        return applyRate(ivars->reported_rate);
+    }
+    return super::PerformDeviceConfigurationChange(change_action, in_change_info);
+}
+
+kern_return_t EnsembleDevice::applyRate(double rate)
+{
+    kern_return_t ret = SetSampleRate(rate);
+    if (ret != kIOReturnSuccess) {
+        return ret;
+    }
+    ivars->output.stream->DeviceSampleRateChanged(rate);
+    return ivars->input.stream->DeviceSampleRateChanged(rate);
+}
+
+void IMPL(EnsembleDevice, MailboxTimerOccurred)
+{
+    const Mailbox<Bar0> & mailbox = ivars->mailbox;
+    if (mailbox.serviceEvents()) {
+        mailbox.send(getAll());
+    }
+    const int requested = __atomic_exchange_n(&ivars->requested_rate, -1, __ATOMIC_RELAXED);
+    if (requested >= 0 && !mailbox.send(set(kCommandSampleRate, 0, uint8_t(requested)))) {
+        int none = -1;
+        __atomic_compare_exchange_n(&ivars->requested_rate, &none, requested, false,
+                                    __ATOMIC_RELAXED, __ATOMIC_RELAXED);
+    }
+    while (mailbox.receive([&](const Report & report) {
+        if (report.command != kCommandSampleRate || report.data[0] >= kSampleRateCount) {
+            return;
+        }
+        const double rate = kSampleRates[report.data[0]];
+        if (rate != GetSampleRate()) {
+            ivars->reported_rate = rate;
+            RequestDeviceConfigurationChange(kReportedRateChange, nullptr);
+        }
+    })) {
+    }
+    ivars->mailbox_timer->WakeAtTime(kIOTimerClockMachAbsoluteTime, time + ivars->mailbox_period, 0);
 }

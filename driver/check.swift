@@ -1,5 +1,5 @@
 // Checks the Ensemble CoreAudio device: properties, then 5 s of IO.
-// Usage: swift driver/check.swift
+// Usage: swift driver/check.swift [sample rate to set first]
 import CoreAudio
 import Foundation
 
@@ -51,6 +51,13 @@ func findEnsemble() -> AudioObjectID? {
 guard let device = findEnsemble() else {
     print("no device named Ensemble")
     exit(1)
+}
+if let rate = CommandLine.arguments.dropFirst().first.flatMap(Float64.init) {
+    var value = rate
+    var addr = address(kAudioDevicePropertyNominalSampleRate)
+    let status = AudioObjectSetPropertyData(device, &addr, 0, nil, UInt32(MemoryLayout<Float64>.size), &value)
+    print("set rate \(rate): status \(status)")
+    RunLoop.main.run(until: Date().addingTimeInterval(1))
 }
 let uid = string(device, kAudioDevicePropertyDeviceUID)
 print("device \(device) uid \(uid)")
