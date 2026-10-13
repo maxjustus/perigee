@@ -6,10 +6,14 @@ let webSocketPort: UInt16 = 8738
 var poller: MeterPoller?
 
 do {
-    let device = try Device()
+    let device = try Device(queue: DispatchQueue(label: "device"))
+    device.watchTermination(queue: DispatchQueue(label: "watch")) {
+        FileHandle.standardError.write(Data("ensemble-control: EnsembleDriver terminated\n".utf8))
+        exit(0)
+    }
     let server = Server()
     let controller = Controller(transport: device) { server.broadcast($0) }
-    try device.subscribe(queue: DispatchQueue(label: "reports")) { controller.receive($0) }
+    try device.subscribe { controller.receive($0) }
     let page = try Data(contentsOf: Bundle.module.url(forResource: "index", withExtension: "html",
                                                       subdirectory: "Public")!)
     try server.start(controller: controller, page: page, httpPort: httpPort, webSocketPort: webSocketPort)

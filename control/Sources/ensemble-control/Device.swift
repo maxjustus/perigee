@@ -7,22 +7,40 @@ struct DeviceError: Error, CustomStringConvertible {
 }
 
 final class Device: Transport, @unchecked Sendable {
+    private let service: io_service_t
     private let connect: io_connect_t
-    private var port: IONotificationPortRef?
+    private let port: IONotificationPortRef
     private var onReport: ((Report) -> Void)?
+    private var terminationTimer: DispatchSourceTimer?
 
-    init() throws {
-        let service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceNameMatching("EnsembleDriver"))
+    init(queue: DispatchQueue) throws {
+        service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceNameMatching("EnsembleDriver"))
         guard service != 0 else {
             throw DeviceError(description: "no EnsembleDriver in the IORegistry")
         }
-        defer { IOObjectRelease(service) }
         var connect: io_connect_t = 0
         let kr = IOServiceOpen(service, mach_task_self_, 1, &connect)
         guard kr == KERN_SUCCESS else {
             throw DeviceError(description: String(format: "IOServiceOpen: %#x", kr))
         }
         self.connect = connect
+        guard let port = IONotificationPortCreate(kIOMainPortDefault) else {
+            throw DeviceError(description: "IONotificationPortCreate failed")
+        }
+        self.port = port
+        IONotificationPortSetDispatchQueue(port, queue)
+    }
+
+    func watchTermination(queue: DispatchQueue, _ onTerminated: @escaping @Sendable () -> Void) {
+        let timer = DispatchSource.makeTimerSource(queue: queue)
+        timer.schedule(deadline: .now() + 1, repeating: 1)
+        timer.setEventHandler { [service] in
+            if IORegistryEntryInPlane(service, kIOServicePlane) == 0 {
+                onTerminated()
+            }
+        }
+        timer.resume()
+        terminationTimer = timer
     }
 
     func send(_ words: [UInt32]) throws {
@@ -44,13 +62,8 @@ final class Device: Transport, @unchecked Sendable {
         return UnsafeRawBufferPointer(start: base, count: Int(size))
     }
 
-    func subscribe(queue: DispatchQueue, _ onReport: @escaping (Report) -> Void) throws {
+    func subscribe(_ onReport: @escaping (Report) -> Void) throws {
         self.onReport = onReport
-        guard let port = IONotificationPortCreate(kIOMainPortDefault) else {
-            throw DeviceError(description: "IONotificationPortCreate failed")
-        }
-        self.port = port
-        IONotificationPortSetDispatchQueue(port, queue)
         let machPort = IONotificationPortGetMachPort(port)
         var limits = mach_port_limits_t(mpl_qlimit: mach_port_msgcount_t(MACH_PORT_QLIMIT_MAX))
         withUnsafeMutablePointer(to: &limits) {

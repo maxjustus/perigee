@@ -9,7 +9,9 @@ user client.
     control/run.sh
 
 The script builds a release binary, signs it ad hoc with
-`com.apple.developer.driverkit.userclient-access`, and runs it. The
+`com.apple.developer.driverkit.userclient-access`, and runs it in a loop.
+The service exits when `EnsembleDriver` leaves the IORegistry, for example
+on `driver/reload.sh`, and the loop starts it again after 2 s. The
 signature needs SIP disabled, like the dext build. The dext accepts one
 subscriber: `driver/build/ensemblectl` takes the report stream from a
 running service.
