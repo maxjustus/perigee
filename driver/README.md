@@ -25,7 +25,8 @@ match that the dext wins.
 ## Test
 
 `driver/test.sh` builds and runs the host-side unit tests. They cover the
-PSoC message parser and encoder in `EnsembleDriver/Protocol.h`.
+PSoC message parser and encoder in `EnsembleDriver/Protocol.h`. They run
+under AddressSanitizer and UndefinedBehaviorSanitizer.
 
 ## Check
 
