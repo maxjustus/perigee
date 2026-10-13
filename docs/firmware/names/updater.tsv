@@ -1,0 +1,76 @@
+artifact	architecture	address	name	confidence	evidence
+updater	arm64	0x100002a0c	PSoCBootloaderCommunication_setCheckSumType	verified	ObjC symbol and global store at 0x100030ed0
+updater	arm64	0x100002a18	PSoCBootloaderCommunication_errorDescription	verified	ObjC symbol longDescriptionForPSoCErrorCode
+updater	arm64	0x100002b54	PSoCBootloaderCommunication_packetBuilder	verified	ObjC packet builder entry
+updater	arm64	0x100002c40	PSoCBootloaderCommunication_basicResponseCheck	verified	ObjC symbol basicResponseCheck
+updater	arm64	0x100002ebc	PSoCBootloaderCommunication_verifyRow	verified	ObjC row checksum method
+updater	arm64	0x10000319c	PSoCBootloaderCommunication_sync	verified	ObjC Sync method
+updater	arm64	0x100003258	PSoCBootloaderCommunication_exit	verified	ObjC Exit method
+updater	arm64	0x100003330	PSoCBootloaderCommunication_enter	verified	ObjC Enter method
+updater	arm64	0x100003494	PSoCBootloaderCommunication_programRow	verified	ObjC Program Row method
+updater	arm64	0x10000374c	PSoCBootloaderCommunication_validateRow	verified	ObjC validatePSOCFirmwareRow:withRowNumber:
+updater	arm64	0x100003924	PSoCBootloaderCommunication_checksum	verified	ObjC checksum method
+updater	arm64	0x10000643c	invokeKextutil	verified	NSTask launch path and exit-status test
+updater	arm64	0x100006558	checkKextVersionPrefix	verified	CFBundleShortVersionString hasPrefix 0.8 at 0x100006698
+updater	arm64	0x100009880	performUserAction	verified	Swift symbol and action handler
+updater	arm64	0x10000e08c	isUpToDate	verified	Swift symbol and equality loop 0x10000e194..0x10000e1fc
+updater	arm64	0x10000e314	versionInHardware	verified	Swift symbol and subdevice version dictionary lookup
+updater	arm64	0x10000e470	versionInFileIsForced	verified	Swift symbol and ElementsUpdateVersionInfo lookup
+updater	arm64	0x10000e8bc	versionInFile	verified	Swift symbol and target-version lookup
+updater	arm64	0x10000f33c	startUpdateProcedure	verified	Swift controller entry and phase initialization
+updater	arm64	0x10000f820	setupUpdatePhaseThunderbolt	verified	PSoC-only zero-version case then candidate array 1,2,3
+updater	arm64	0x10000fca8	performUpdatePhase	verified	Swift symbol and dispatch closure
+updater	arm64	0x10000fe88	performUpdatePhaseClosure	verified	Ordered image-array traversal at 0x10000ffd8
+updater	arm64	0x10001117c	updateMainPSoC	verified	Swift symbol and text image update path
+updater	arm64	0x100011f14	updateTimeoutGetter	verified	Returns 30
+updater	arm64	0x100011f1c	updateStartTimeoutGetter	verified	Returns 30
+updater	arm64	0x100011f24	waitUntilUpdateDone	verified	Progress-state wait and timeout path
+updater	arm64	0x10001246c	updateMainResource	verified	Dispatches ElementFirmwareType 3
+updater	arm64	0x1000124d0	updateMainFPGA	verified	Dispatches ElementFirmwareType 2
+updater	arm64	0x100012534	updateBinaryImage	verified	Binary file packet loop
+updater	arm64	0x10001c864	versionEquality	verified	Compares all three version bytes
+updater	arm64	0x10001ca64	firmwareTypeToUpdateSelector	verified	Hardware nil, PSoC 0, FPGA 2, resource 1
+updater	arm64	0x10001d8e0	updatePhaseDelimiterProperty	verified	Shared start-stop AEFU carrier with empty PropertyData
+hal	arm64	0x1484	setFirmwareUpdateDFUMode	verified	Named symbol, command 0x60
+hal	arm64	0x1490	setFirmwareUpdateComplete	verified	Named symbol, command 0x61 and extra argument 1
+hal	arm64	0x14a0	sendFirmwareUpdatePacket	verified	Named symbol, command 0x62 and byte-sized count
+hal	arm64	0x14b4	restartPSocFirmware	verified	Named symbol, command 0x63
+hal	arm64	0x14c0	resumePSocMessagingQueue	verified	Named symbol, miscellaneous request 5
+hal	arm64	0x14f0	prepareForFirmwareUpdate	verified	Named symbol, miscellaneous request 4
+hal	arm64	0x151c	openRemoteI2CConnection	verified	Named symbol, miscellaneous request 0 value 1
+hal	arm64	0x154c	closeRemoteI2Connection	verified	Named symbol, miscellaneous request 0 value 0
+hal	arm64	0x1578	readDataFromRemoteI2C	verified	Named symbol, miscellaneous request 1
+hal	arm64	0x15b4	writeDataToRemoteI2C	verified	Named symbol, miscellaneous request 2 and 28000-us delay
+hal	arm64	0x15ec	readPSOCBootloaderStatus	verified	Named symbol, miscellaneous request 3
+hal	arm64	0x240b0	sendMiscellaneousIOKitCommand	verified	Named symbol, user-client method 5
+hal	arm64	0x24438	callMethodWithRetries	verified	Named symbol _callMethod and loop at 0x2448c..0x244ec
+hal	arm64	0x87aa8	updatePSOCFirmware	verified	Header parse, remote-I2C bootloader entry, rows, exit
+hal	arm64	0x87f18	updateResourceFirmware	verified	Selector 1 and 64-byte mailbox packets
+hal	arm64	0x88070	updateFPGAFirmware	verified	Selector 2 and 64-byte mailbox packets
+hal	arm64	0x881c8	startBootloadOperation	verified	Named symbol and commands 0x38/0x3b
+hal	arm64	0x88398	parsePSOCFirmwareRowData	verified	Named symbol, text row parser
+hal	arm64	0x8852c	programPSOCFirmwareRow	verified	Named symbol, commands 0x37/0x39
+hal	arm64	0x88820	verifyPSOCFirmwareRow	verified	Named symbol, command 0x3a and byte checksum compare
+hal	arm64	0x88a30	validatePSOCFirmwareRow	verified	Named symbol, command 0x32 and defective row-range cache
+hal	arm64	0x88c04	computeCheckSumForPsocFirmwareCommand	verified	Named symbol, additive checksum and defective type-1 path
+kext	x86_64	0x3d24	processMiscellaneousRequest	verified	Request jump table at 0x3d5d, read/write cases at 0x3da0/0x3db3
+kext	x86_64	0x428e	readDataFromRemoteI2C	verified	Named symbol, transfer then 0x3c00 register reads
+kext	x86_64	0x4302	writeDataToRemoteI2C	verified	Named symbol, 0x3c00 register writes then transfer
+kext	x86_64	0x5fa0	performRemoteI2CTransfer	verified	Named symbol, control register 0x18 and log-only timeout
+psoc	Cortex-M3-Thumb	0x12334	setExternalFlashAddress	inferred	Writes 24-bit address to 0x60800031..0x60800033
+psoc	Cortex-M3-Thumb	0x12370	waitExternalFlashNotBusy	inferred	Polls 0x6080002e bit 0 with bounded counter
+psoc	Cortex-M3-Thumb	0x123e0	eraseExternalFlashBlock	inferred	Unlock 0x1e and operation 2
+psoc	Cortex-M3-Thumb	0x12444	programExternalFlashPage	inferred	At most 256 bytes, 0x60800c00 window, operation 10
+psoc	Cortex-M3-Thumb	0x16228	dispatchDeviceCommand	inferred	Cases 0x60,0x61,0x62,0x63
+psoc	Cortex-M3-Thumb	0x17f90	initializeFirmwareUpdateState	inferred	State 3, zero buffer count and error
+psoc	Cortex-M3-Thumb	0x17fb4	enterFirmwareUpdateMode	inferred	Selectors 0 bootloader, 1 resources, 2 FPGA
+psoc	Cortex-M3-Thumb	0x18098	consumeFirmwareUpdateBytes	inferred	256-byte page accumulation and address checks
+psoc	Cortex-M3-Thumb	0x18198	completeFirmwareUpdate	inferred	Partial page, CRC8, report 0x61 and resource refresh
+psoc	Cortex-M3-Thumb	0x18344	handleRestartPSoC	inferred	Command 0x63 argument 0 restore, argument 1 restart request
+psoc	Cortex-M3-Thumb	0x1836c	validateExternalFlashUpdateAddress	inferred	Resource 0x380000..0x7fffff, FPGA 0x1c0000..0x37ffff
+psoc	Cortex-M3-Thumb	0x183f4	firmwareImageFlashBase	inferred	Selector 2 returns 0x1c0000, otherwise 0x380000
+psoc	Cortex-M3-Thumb	0x1c4f4	validateResourceHeaderAndTable	inferred	Signature 0x4642, format 3, CRC8 over header and entries
+psoc	Cortex-M3-Thumb	0x218cc	initializeCRC8	inferred	Sets accumulator to zero
+psoc	Cortex-M3-Thumb	0x218ec	updateCRC8	inferred	MSB-first polynomial 0x07
+psoc	Cortex-M3-Thumb	0x232fc	requestBootloaderReset	inferred	Sets RESET_SR0 to 0x40 then invokes reset helper
+psoc	Cortex-M3-Thumb	0x23ab4	requestSoftwareReset	inferred	Sets RESET_CR2 bit 0

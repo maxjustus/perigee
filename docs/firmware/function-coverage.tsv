@@ -1,0 +1,667 @@
+address	baseline_name	baseline_body_bytes	baseline_callers	baseline_callees	name_status	aliases	source_map_lines
+0x00010010	Reset_Handler	32	0	1	named	Reset	docs/firmware/names/psoc-startup.tsv:3
+0x0001003c	FUN_0001003c	34	1	0	unmapped		
+0x00010074	FUN_00010074	116	1	14	named	Application_StartComponents | AudioHardware_InitDescriptors	docs/firmware/names/psoc-startup.tsv:4 | docs/firmware/names/psoc-audio.tsv:2
+0x000100ec	FUN_000100ec	90	1	4	named	Application_InitialControlSequence | AudioHardware_StartControls	docs/firmware/names/psoc-startup.tsv:5 | docs/firmware/names/psoc-audio.tsv:3
+0x00010148	FUN_00010148	28	11	0	named	AudioHardware_IsReady	docs/firmware/names/psoc-audio.tsv:4
+0x00010168	FUN_00010168	552	1	16	named	Application_AdvancePowerSequence | AudioHardware_ServicePowerSequence	docs/firmware/names/psoc-startup.tsv:6 | docs/firmware/names/psoc-audio.tsv:5
+0x000103cc	FUN_000103cc	38	1	0	named	AudioHardware_RequestStart	docs/firmware/names/psoc-audio.tsv:6
+0x00010414	FUN_00010414	66	2	2	named	AudioHardware_RequestStop	docs/firmware/names/psoc-audio.tsv:7
+0x00010490	FUN_00010490	130	2	7	named	AudioHardware_ConfigureRate	docs/firmware/names/psoc-audio.tsv:8
+0x00010514	FUN_00010514	46	4	2	named	P3_3_SetActive | PanelIdentify_SetPinState	docs/firmware/names/psoc-startup.tsv:7 | docs/firmware/names/front-panel.tsv:2
+0x00010544	FUN_00010544	136	0	1	named	PanelIdentify_TimerCallback	docs/firmware/names/front-panel.tsv:3
+0x000105fc	FUN_000105fc	50	1	0	named	Preamp_InitDescriptor	docs/firmware/names/psoc-audio.tsv:9
+0x00010634	FUN_00010634	92	1	1	named	Preamp_InitRegisters	docs/firmware/names/psoc-audio.tsv:10
+0x00010694	FUN_00010694	34	1	3	named	Preamp_ResetControl	docs/firmware/names/psoc-audio.tsv:11
+0x000106b8	FUN_000106b8	84	2	1	named	Preamp_SetGainCode	docs/firmware/names/psoc-audio.tsv:12
+0x00010710	FUN_00010710	176	2	1	named	Preamp_SetRangeBits	docs/firmware/names/psoc-audio.tsv:13
+0x000107c4	FUN_000107c4	118	2	1	named	Preamp_SetHighPass	docs/firmware/names/psoc-audio.tsv:14
+0x00010840	FUN_00010840	118	2	1	named	Preamp_SetPhantom	docs/firmware/names/psoc-audio.tsv:15
+0x000108bc	FUN_000108bc	84	5	2	named	PreampSPI_SendCommand | Preamp_WriteRegister	docs/firmware/names/psoc-startup.tsv:8 | docs/firmware/names/psoc-audio.tsv:16
+0x00010910	FUN_00010910	36	2	1	named	DisplayControl_SelectCommand | PanelDisplay_SelectCommand	docs/firmware/names/psoc-startup.tsv:9 | docs/firmware/names/front-panel.tsv:4
+0x00010934	FUN_00010934	36	2	1	named	DisplayControl_SelectData | PanelDisplay_SelectData	docs/firmware/names/psoc-startup.tsv:10 | docs/firmware/names/front-panel.tsv:5
+0x00010958	FUN_00010958	48	1	3	named	PanelDisplay_WriteCommand	docs/firmware/names/front-panel.tsv:6
+0x00010988	FUN_00010988	82	20	4	named	PanelDisplay_WriteRegister	docs/firmware/names/front-panel.tsv:7
+0x000109dc	FUN_000109dc	86	3	3	named	PanelDisplay_WriteBytes	docs/firmware/names/front-panel.tsv:8
+0x00010a34	FUN_00010a34	32	1	1	unmapped		
+0x00010a54	FUN_00010a54	32	1	1	unmapped		
+0x00010a74	FUN_00010a74	32	1	1	unmapped		
+0x00010a94	FUN_00010a94	32	1	1	unmapped		
+0x00010ab4	FUN_00010ab4	40	1	1	unmapped		
+0x00010adc	FUN_00010adc	74	1	1	unmapped		
+0x00010b28	FUN_00010b28	74	1	1	unmapped		
+0x00010b74	FUN_00010b74	74	1	1	unmapped		
+0x00010bc0	FUN_00010bc0	32	1	1	unmapped		
+0x00010be0	FUN_00010be0	32	1	1	unmapped		
+0x00010c00	FUN_00010c00	32	1	1	unmapped		
+0x00010c20	FUN_00010c20	32	1	1	unmapped		
+0x00010c40	FUN_00010c40	50	6	1	named	PanelDisplay_SetColumnWindow	docs/firmware/names/front-panel.tsv:9
+0x00010c74	FUN_00010c74	50	6	1	named	PanelDisplay_SetRowWindow	docs/firmware/names/front-panel.tsv:10
+0x00010ca8	FUN_00010ca8	50	7	1	named	PanelDisplay_SetCursor	docs/firmware/names/front-panel.tsv:11
+0x00010cdc	FUN_00010cdc	24	6	1	named	PanelDisplay_SelectPixelPort	docs/firmware/names/front-panel.tsv:12
+0x00010cf4	FUN_00010cf4	32	1	1	unmapped		
+0x00010d14	FUN_00010d14	32	1	1	unmapped		
+0x00010d34	FUN_00010d34	32	1	1	unmapped		
+0x00010d54	FUN_00010d54	120	1	5	named	PanelDisplay_FillScreen	docs/firmware/names/front-panel.tsv:13
+0x00010dcc	FUN_00010dcc	158	9	5	named	PanelDisplay_FillRectangle	docs/firmware/names/front-panel.tsv:14
+0x00010e6c	FUN_00010e6c	32	3	1	named	PanelDisplay_WriteByte	docs/firmware/names/front-panel.tsv:15
+0x00010e8c	FUN_00010e8c	116	1	1	unmapped		
+0x00010f00	FUN_00010f00	114	1	2	named	PanelDisplay_LoadGrayScaleTable	docs/firmware/names/front-panel.tsv:16
+0x00010f78	FUN_00010f78	216	1	20	named	PanelDisplay_Initialize	docs/firmware/names/front-panel.tsv:17
+0x00011050	FUN_00011050	112	6	4	named	AudioI2C_WriteRetry	docs/firmware/names/psoc-audio.tsv:17
+0x000110c0	FUN_000110c0	48	5	1	named	AudioI2C_WriteRegister	docs/firmware/names/psoc-audio.tsv:18
+0x000110f0	FUN_000110f0	116	2	5	named	AudioI2C_ReadRegisterRetry	docs/firmware/names/psoc-audio.tsv:19
+0x00011164	FUN_00011164	130	1	0	named	OutputDAC_InitDescriptor	docs/firmware/names/psoc-audio.tsv:20
+0x000111ec	FUN_000111ec	42	1	2	named	OutputDAC_ResetControl	docs/firmware/names/psoc-audio.tsv:21
+0x00011218	FUN_00011218	358	1	4	named	OutputDAC_ConfigureRate	docs/firmware/names/psoc-audio.tsv:22
+0x0001138c	FUN_0001138c	70	6	1	named	OutputDAC_SetAttenuation	docs/firmware/names/psoc-audio.tsv:23
+0x000113d4	FUN_000113d4	134	3	1	named	OutputDAC_SetGlobalMute	docs/firmware/names/psoc-audio.tsv:24
+0x00011460	FUN_00011460	62	3	3	named	AudioI2C_SelectBranch	docs/firmware/names/psoc-audio.tsv:25
+0x000114a0	FUN_000114a0	86	3	2	named	OutputDAC_WriteRegister	docs/firmware/names/psoc-audio.tsv:26
+0x000114fc	FUN_000114fc	38	1	2	named	ControlRegisters_Init	docs/firmware/names/psoc-startup.tsv:11
+0x0001152c	FUN_0001152c	72	5	1	named	ControlA_UpdateBits | AudioControl_UpdateUDB10	docs/firmware/names/psoc-startup.tsv:12 | docs/firmware/names/psoc-audio.tsv:27
+0x00011578	FUN_00011578	72	5	1	named	ControlB_UpdateBits | AudioControl_UpdateUDB06	docs/firmware/names/psoc-startup.tsv:13 | docs/firmware/names/psoc-audio.tsv:28
+0x000115c4	FUN_000115c4	72	1	0	named	FPGA_RestoreControlDefaults	docs/firmware/names/psoc-audio.tsv:29
+0x00011614	FUN_00011614	74	1	0	unmapped		
+0x00011664	FUN_00011664	20	1	0	unmapped		
+0x0001167c	FUN_0001167c	118	1	0	unmapped		
+0x000116f8	FUN_000116f8	86	1	0	unmapped		
+0x00011754	FUN_00011754	242	1	3	named	FPGA_WaitReady | FPGA_WaitReadyAndRestoreControls	docs/firmware/names/psoc-startup.tsv:14 | docs/firmware/names/psoc-update.tsv:2
+0x00011860	FUN_00011860	108	1	0	named	FPGA_SetSampleRate	docs/firmware/names/psoc-audio.tsv:30
+0x000118e4	FUN_000118e4	32	1	0	named	FPGA_SetClockSource	docs/firmware/names/psoc-audio.tsv:31
+0x0001190c	FUN_0001190c	122	12	0	named	FPGA_UpdateAudioControlBits	docs/firmware/names/psoc-audio.tsv:32
+0x0001198c	FUN_0001198c	124	1	0	named	FPGA_SetInputReferenceBit	docs/firmware/names/psoc-audio.tsv:33
+0x00011a10	FUN_00011a10	124	1	0	named	FPGA_SetLineReferenceBit	docs/firmware/names/psoc-audio.tsv:34
+0x00011a94	FUN_00011a94	124	1	0	named	FPGA_SetSoftLimitBit	docs/firmware/names/psoc-audio.tsv:35
+0x00011b18	FUN_00011b18	48	1	0	unmapped		
+0x00011b4c	FUN_00011b4c	36	2	0	unmapped		
+0x00011b74	FUN_00011b74	112	1	0	unmapped		
+0x00011be4	FUN_00011be4	62	3	1	named	FPGA_WriteMixerCoefficient	docs/firmware/names/psoc-audio.tsv:36
+0x00011c24	FUN_00011c24	56	7	0	named	FPGA_SetRoute	docs/firmware/names/psoc-audio.tsv:37
+0x00011c5c	FUN_00011c5c	60	1	0	named	FPGA_SetRouteControl	docs/firmware/names/psoc-audio.tsv:38
+0x00011c98	FUN_00011c98	92	2	0	named	FPGA_SetPhaseBit	docs/firmware/names/psoc-audio.tsv:39
+0x00011cfc	FUN_00011cfc	40	1	1	unmapped		
+0x00011d24	FUN_00011d24	108	1	0	named	FPGA_SetOpticalFormat	docs/firmware/names/psoc-audio.tsv:40
+0x00011d98	FUN_00011d98	18	1	0	named	ProtocolSignalHost	docs/firmware/names/psoc-protocol.tsv:2
+0x00011db0	FUN_00011db0	122	1	0	named	ProtocolHasTransmitSpace	docs/firmware/names/psoc-protocol.tsv:3
+0x00011e4c	FUN_00011e4c	252	2	2	named	ProtocolTransmitWords	docs/firmware/names/psoc-protocol.tsv:4
+0x00011f68	FUN_00011f68	410	1	1	named	ProtocolReceiveWords	docs/firmware/names/psoc-protocol.tsv:5
+0x00012124	FUN_00012124	12	1	0	unmapped		
+0x00012130	FUN_00012130	26	3	0	unmapped		
+0x00012150	FUN_00012150	448	2	1	named	FPGA_MeasureExternalRate	docs/firmware/names/psoc-audio.tsv:41
+0x00012334	FUN_00012334	46	4	0	named	FlashBridge_SetAddress24	docs/firmware/names/psoc-update.tsv:3
+0x00012370	FUN_00012370	102	4	1	named	FlashBridge_WaitIdle	docs/firmware/names/psoc-update.tsv:4
+0x000123e0	FUN_000123e0	82	2	2	named	FlashBridge_Erase	docs/firmware/names/psoc-update.tsv:5
+0x00012444	FUN_00012444	136	2	2	named	FlashBridge_Program	docs/firmware/names/psoc-update.tsv:6
+0x000124dc	FUN_000124dc	136	2	3	named	FlashBridge_Read	docs/firmware/names/psoc-update.tsv:7
+0x00012570	FUN_00012570	142	1	4	named	FlashBridge_AccumulateCRC8	docs/firmware/names/psoc-update.tsv:8
+0x00012610	FUN_00012610	72	8	0	named	FpgaWriteUint32LE | FPGA_WriteWord32LE	docs/firmware/names/psoc-protocol.tsv:6 | docs/firmware/names/psoc-audio.tsv:42
+0x00012658	FUN_00012658	54	3	0	named	FPGA_WriteWord16LE	docs/firmware/names/psoc-audio.tsv:43
+0x00012690	FUN_00012690	60	1	2	named	GuitarGain_Init	docs/firmware/names/psoc-audio.tsv:44
+0x000126d4	FUN_000126d4	82	2	2	named	GuitarGain_Set	docs/firmware/names/psoc-audio.tsv:45
+0x00012730	FUN_00012730	30	2	0	named	PanelLED_GetPin	docs/firmware/names/front-panel.tsv:18
+0x00012750	FUN_00012750	38	2	1	unmapped		
+0x00012778	FUN_00012778	34	2	1	named	PanelLED_GetBankBit	docs/firmware/names/front-panel.tsv:19
+0x0001279c	FUN_0001279c	56	2	0	named	PanelLED_GetExpanderAddress	docs/firmware/names/front-panel.tsv:20
+0x000127d4	FUN_000127d4	40	5	1	unmapped		
+0x000127fc	FUN_000127fc	46	3	1	unmapped		
+0x0001282c	FUN_0001282c	128	2	2	unmapped		
+0x000128ac	FUN_000128ac	54	1	1	named	PanelGPIO_ResetExpander	docs/firmware/names/front-panel.tsv:21
+0x000128e8	FUN_000128e8	162	1	6	named	PanelGPIO_Initialize	docs/firmware/names/front-panel.tsv:22
+0x0001298c	FUN_0001298c	498	1	4	named	PanelGPIO_ConfigurePin	docs/firmware/names/front-panel.tsv:23
+0x00012b84	FUN_00012b84	74	1	1	named	PanelGPIO_ReadInputs	docs/firmware/names/front-panel.tsv:24
+0x00012bd0	FUN_00012bd0	78	1	2	named	PanelGPIO_ClearInterrupts	docs/firmware/names/front-panel.tsv:25
+0x00012c20	FUN_00012c20	256	11	5	named	PanelLED_SetIntensity	docs/firmware/names/front-panel.tsv:26
+0x00012d28	FUN_00012d28	500	1	4	named	FrontADC_Init	docs/firmware/names/psoc-audio.tsv:46
+0x00012f44	FUN_00012f44	132	2	1	named	FrontADC_SetGain	docs/firmware/names/psoc-audio.tsv:47
+0x00012fd0	FUN_00012fd0	40	1	1	named	FrontADC_EnableGainControl	docs/firmware/names/psoc-audio.tsv:48
+0x00013000	FUN_00013000	40	1	1	named	FrontADC_DisableGainControl	docs/firmware/names/psoc-audio.tsv:49
+0x00013030	FUN_00013030	24	2	0	named	EepromStreamReset	docs/firmware/names/psoc-protocol.tsv:7
+0x00013050	FUN_00013050	80	3	1	named	EepromStreamAppendByte	docs/firmware/names/psoc-protocol.tsv:8
+0x000130ac	FUN_000130ac	148	2	1	named	EepromStreamAppendBlock	docs/firmware/names/psoc-protocol.tsv:9
+0x0001314c	FUN_0001314c	46	2	1	named	EepromStreamFlush	docs/firmware/names/psoc-protocol.tsv:10
+0x00013188	FUN_00013188	206	4	1	named	EepromPatchBytes | EEPROM_WriteBytes	docs/firmware/names/psoc-protocol.tsv:11 | docs/firmware/names/psoc-update.tsv:9
+0x00013258	FUN_00013258	74	1	0	named	EepromReadBytes | EEPROM_ReadBytes	docs/firmware/names/psoc-protocol.tsv:12 | docs/firmware/names/psoc-update.tsv:10
+0x000132a4	FUN_000132a4	46	1	0	named	DSP_InitProtocolState	docs/firmware/names/psoc-audio.tsv:50
+0x000132dc	FUN_000132dc	156	1	1	named	DSP_HaltRange	docs/firmware/names/psoc-audio.tsv:51
+0x00013388	FUN_00013388	24	1	1	named	DSP_ResumeAll	docs/firmware/names/psoc-audio.tsv:52
+0x000133a8	FUN_000133a8	74	1	3	unmapped		
+0x000133f4	FUN_000133f4	100	1	1	named	DSP_EraseCode	docs/firmware/names/psoc-audio.tsv:53
+0x00013460	FUN_00013460	170	1	2	named	DSP_EraseState	docs/firmware/names/psoc-audio.tsv:54
+0x00013520	FUN_00013520	84	1	3	named	DSP_EraseCoefficients	docs/firmware/names/psoc-audio.tsv:55
+0x00013574	FUN_00013574	108	1	1	named	DSP_WriteCode	docs/firmware/names/psoc-audio.tsv:56
+0x000135e8	FUN_000135e8	232	1	2	named	DSP_WriteState	docs/firmware/names/psoc-audio.tsv:57
+0x000136e4	FUN_000136e4	20	1	0	named	DSP_ReadCycleBudget	docs/firmware/names/psoc-audio.tsv:58
+0x000136fc	FUN_000136fc	80	2	1	named	DSP_BeginCoefficients	docs/firmware/names/psoc-audio.tsv:59
+0x00013754	FUN_00013754	114	1	3	named	DSP_WriteCoefficients	docs/firmware/names/psoc-audio.tsv:60
+0x000137c8	FUN_000137c8	80	2	1	named	DSP_EndCoefficients	docs/firmware/names/psoc-audio.tsv:61
+0x00013820	FUN_00013820	58	1	0	unmapped		
+0x00013860	FUN_00013860	352	1	2	named	AudioRoutes_InitFixed	docs/firmware/names/psoc-audio.tsv:62
+0x000139c8	FUN_000139c8	276	2	3	named	AudioRoutes_ResetOutputs	docs/firmware/names/psoc-audio.tsv:63
+0x00013ae0	FUN_00013ae0	172	2	2	named	AudioRoutes_ResetRecord	docs/firmware/names/psoc-audio.tsv:64
+0x00013b90	FUN_00013b90	70	1	1	unmapped		
+0x00013bdc	FUN_00013bdc	102	1	1	unmapped		
+0x00013c48	FUN_00013c48	196	1	1	unmapped		
+0x00013d10	FUN_00013d10	66	1	0	unmapped		
+0x00013d54	FUN_00013d54	74	1	1	unmapped		
+0x00013da4	FUN_00013da4	84	1	0	unmapped		
+0x00013dfc	FUN_00013dfc	540	6	5	named	AudioRoutes_SetOutputPair	docs/firmware/names/psoc-audio.tsv:65
+0x00014020	FUN_00014020	56	1	0	unmapped		
+0x00014058	FUN_00014058	104	2	1	named	AudioRoutes_SetRecordPair	docs/firmware/names/psoc-audio.tsv:66
+0x000140c0	FUN_000140c0	34	1	1	unmapped		
+0x000140e8	FUN_000140e8	94	3	0	named	AudioRoutes_InputSource	docs/firmware/names/psoc-audio.tsv:67
+0x0001414c	FUN_0001414c	58	1	2	named	DSP_RouteInput	docs/firmware/names/psoc-audio.tsv:68
+0x00014188	FUN_00014188	78	1	2	named	DSP_RouteRecord	docs/firmware/names/psoc-audio.tsv:69
+0x000141d8	FUN_000141d8	66	1	2	named	DSP_RouteMixerFeed	docs/firmware/names/psoc-audio.tsv:70
+0x0001421c	FUN_0001421c	40	1	3	named	DSP_ApplyRoutes	docs/firmware/names/psoc-audio.tsv:71
+0x00014244	FUN_00014244	416	2	0	unmapped		
+0x000143e8	FUN_000143e8	186	1	5	named	AudioInputs_RestoreAfterPower	docs/firmware/names/psoc-audio.tsv:72
+0x000144a8	FUN_000144a8	20	1	0	unmapped		
+0x000144c0	FUN_000144c0	118	1	7	named	AudioHardware_ServiceRestore	docs/firmware/names/psoc-audio.tsv:73
+0x0001453c	FUN_0001453c	28	2	1	named	AudioHardware_ArmMuteRelease	docs/firmware/names/psoc-audio.tsv:74
+0x0001455c	FUN_0001455c	60	1	4	named	AudioHardware_SetSampleRate	docs/firmware/names/psoc-audio.tsv:75
+0x0001459c	FUN_0001459c	62	1	3	named	AudioHardware_SetClockSource	docs/firmware/names/psoc-audio.tsv:76
+0x000145e0	FUN_000145e0	88	1	2	unmapped		
+0x0001463c	FUN_0001463c	88	1	2	unmapped		
+0x00014698	FUN_00014698	240	1	3	named	AudioInput_SetPhantom	docs/firmware/names/psoc-audio.tsv:77
+0x0001478c	FUN_0001478c	128	1	2	named	AudioInput_SetHighPass	docs/firmware/names/psoc-audio.tsv:78
+0x00014810	FUN_00014810	528	2	10	named	AudioInput_SetMode	docs/firmware/names/psoc-audio.tsv:79
+0x00014a24	FUN_00014a24	134	2	3	named	AudioInput_SetMicGain	docs/firmware/names/psoc-audio.tsv:80
+0x00014ab0	FUN_00014ab0	146	2	3	named	AudioInput_SetInstrumentGain	docs/firmware/names/psoc-audio.tsv:81
+0x00014b48	FUN_00014b48	80	2	2	named	AudioOutput_SetReference	docs/firmware/names/psoc-audio.tsv:82
+0x00014b98	FUN_00014b98	58	1	1	unmapped		
+0x00014bd8	FUN_00014bd8	80	1	1	unmapped		
+0x00014c2c	FUN_00014c2c	80	1	1	unmapped		
+0x00014c80	FUN_00014c80	160	1	3	unmapped		
+0x00014d28	FUN_00014d28	196	1	3	named	AudioOutput_SetTrim	docs/firmware/names/psoc-audio.tsv:83
+0x00014df8	FUN_00014df8	246	6	2	named	AudioOutput_ApplyMonitorLevel	docs/firmware/names/psoc-audio.tsv:84
+0x00014ef8	FUN_00014ef8	82	3	1	named	AudioOutput_SetGuitarAttenuation	docs/firmware/names/psoc-audio.tsv:85
+0x00014f54	FUN_00014f54	28	3	1	named	Outputs_MuteForUpdate	docs/firmware/names/psoc-update.tsv:11
+0x00014f74	FUN_00014f74	20	1	1	named	Outputs_RestoreAfterUpdate	docs/firmware/names/psoc-update.tsv:12
+0x00014f8c	FUN_00014f8c	142	4	0	named	AudioOutput_MonitorPairRange	docs/firmware/names/psoc-audio.tsv:86
+0x00015038	FUN_00015038	396	3	2	named	AudioInput_ApplyGainRange	docs/firmware/names/psoc-audio.tsv:87
+0x000151d0	FUN_000151d0	176	2	4	named	AudioOutput_RestoreLevels	docs/firmware/names/psoc-audio.tsv:88
+0x00015288	FUN_00015288	100	3	2	named	AudioOutput_MuteAll	docs/firmware/names/psoc-audio.tsv:89
+0x000152f0	FUN_000152f0	98	1	0	named	AudioRate_DelayIndex	docs/firmware/names/psoc-audio.tsv:90
+0x00015364	FUN_00015364	62	1	2	unmapped		
+0x000153a4	FUN_000153a4	22	2	1	named	AudioRate_ApplyADCDelay	docs/firmware/names/psoc-audio.tsv:91
+0x000153c4	FUN_000153c4	36	2	0	named	ProtocolInitialize	docs/firmware/names/psoc-protocol.tsv:13
+0x000153ec	FUN_000153ec	10	1	1	named	ProtocolResetHook	docs/firmware/names/psoc-protocol.tsv:14
+0x000153f8	FUN_000153f8	600	1	2	named	ProtocolParseHostMessage	docs/firmware/names/psoc-protocol.tsv:15
+0x00015668	FUN_00015668	822	2	17	named	ProtocolSendPendingReports	docs/firmware/names/psoc-protocol.tsv:16
+0x000159a4	FUN_000159a4	106	1	1	named	ProtocolSettingRecordWords	docs/firmware/names/psoc-protocol.tsv:17
+0x00015a10	FUN_00015a10	306	1	1	named	ProtocolSerializeSetting	docs/firmware/names/psoc-protocol.tsv:18
+0x00015b48	FUN_00015b48	260	2	0	named	ProtocolSerializeBlock	docs/firmware/names/psoc-protocol.tsv:19
+0x00015c50	FUN_00015c50	364	1	4	named	ProtocolSendIdentityPreamble	docs/firmware/names/psoc-protocol.tsv:20
+0x00015dbc	FUN_00015dbc	92	1	2	named	SettingsCopyStereoPartnerByte	docs/firmware/names/psoc-protocol.tsv:21
+0x00015e18	FUN_00015e18	256	1	2	named	SettingsCopyStereoPartnerState	docs/firmware/names/psoc-protocol.tsv:22
+0x00015f20	FUN_00015f20	18	0	1	unmapped		
+0x00015f34	FUN_00015f34	32	2	0	named	ProtocolEnabled	docs/firmware/names/psoc-protocol.tsv:23
+0x00015f58	FUN_00015f58	496	0	19	named	ProtocolStateTick	docs/firmware/names/psoc-protocol.tsv:24
+0x00016168	FUN_00016168	28	1	1	named	ProtocolStateStart	docs/firmware/names/psoc-protocol.tsv:25
+0x0001618c	FUN_0001618c	18	2	0	named	ProtocolStateSuspend	docs/firmware/names/psoc-protocol.tsv:26
+0x000161a4	FUN_000161a4	26	1	0	named	ProtocolStateResume	docs/firmware/names/psoc-protocol.tsv:27
+0x000161c4	FUN_000161c4	18	1	0	unmapped		
+0x000161dc	FUN_000161dc	74	1	1	named	SettingsSetPartnerGroup	docs/firmware/names/psoc-protocol.tsv:28
+0x00016228	FUN_00016228	2592	3	62	named	ProtocolDispatchCommand	docs/firmware/names/psoc-protocol.tsv:29
+0x00016fbc	FUN_00016fbc	70	8	1	named	ProtocolDispatchByte	docs/firmware/names/psoc-protocol.tsv:31
+0x00017004	FUN_00017004	22	1	0	named	SettingsRequestFactoryReset	docs/firmware/names/psoc-protocol.tsv:32
+0x00017020	FUN_00017020	716	2	6	named	SettingsApplyGroupedGain	docs/firmware/names/psoc-protocol.tsv:33
+0x000172ec	FUN_000172ec	122	1	4	named	ProtocolSetInstrumentGain	docs/firmware/names/psoc-protocol.tsv:34
+0x00017368	FUN_00017368	156	1	4	named	ProtocolSetMicGain	docs/firmware/names/psoc-protocol.tsv:35
+0x00017404	FUN_00017404	244	2	4	named	ProtocolRefreshVersionState	docs/firmware/names/psoc-protocol.tsv:36
+0x00017518	FUN_00017518	30	0	1	unmapped		
+0x00017540	FUN_00017540	116	1	7	unmapped		
+0x000175c4	FUN_000175c4	78	1	5	named	Power_HandleDisconnect	docs/firmware/names/psoc-update.tsv:13
+0x00017630	FUN_00017630	44	1	2	unmapped		
+0x00017660	FUN_00017660	118	1	11	unmapped		
+0x000176e0	FUN_000176e0	18	1	0	named	Power_RequestDeferredRestart	docs/firmware/names/psoc-update.tsv:14
+0x000176f8	FUN_000176f8	12	1	1	named	Power_SetRestartIntent	docs/firmware/names/psoc-update.tsv:15
+0x00017704	FUN_00017704	80	1	1	named	PowerReadPersistentMarker | Power_ReadRestartIntent	docs/firmware/names/psoc-protocol.tsv:37 | docs/firmware/names/psoc-update.tsv:16
+0x00017754	FUN_00017754	58	4	1	named	PowerWritePersistentMarker | Power_WriteRestartIntent	docs/firmware/names/psoc-protocol.tsv:38 | docs/firmware/names/psoc-update.tsv:17
+0x00017790	FUN_00017790	18	4	0	unmapped		
+0x000177a8	FUN_000177a8	58	1	0	unmapped		
+0x000177e8	FUN_000177e8	106	1	3	unmapped		
+0x00017854	FUN_00017854	138	1	3	unmapped		
+0x000178e4	FUN_000178e4	74	1	2	unmapped		
+0x00017930	FUN_00017930	104	1	4	unmapped		
+0x00017998	FUN_00017998	36	1	1	unmapped		
+0x000179bc	FUN_000179bc	46	6	1	unmapped		
+0x000179ec	FUN_000179ec	1224	5	11	named	Mixer_UpdateChannelCoefficients	docs/firmware/names/psoc-audio.tsv:92
+0x00017ebc	FUN_00017ebc	106	1	1	unmapped		
+0x00017f2c	FUN_00017f2c	48	1	1	named	Mixer_StereoLeftBalanceDb	docs/firmware/names/psoc-audio.tsv:93
+0x00017f5c	FUN_00017f5c	50	1	1	named	Mixer_StereoRightBalanceDb	docs/firmware/names/psoc-audio.tsv:94
+0x00017f90	FUN_00017f90	30	1	0	named	FirmwareUpdate_Init	docs/firmware/names/psoc-update.tsv:18
+0x00017fb4	FUN_00017fb4	220	1	5	named	FirmwareUpdate_SelectMode	docs/firmware/names/psoc-update.tsv:19
+0x00018098	FUN_00018098	246	1	3	named	FirmwareUpdate_AppendPacket	docs/firmware/names/psoc-update.tsv:20
+0x00018198	FUN_00018198	420	1	11	named	FirmwareUpdate_Finalize	docs/firmware/names/psoc-update.tsv:21
+0x00018344	FUN_00018344	40	1	2	named	FirmwareUpdate_RestartRequest	docs/firmware/names/psoc-update.tsv:22
+0x0001836c	FUN_0001836c	130	2	0	named	FirmwareUpdate_AddressInRange	docs/firmware/names/psoc-update.tsv:23
+0x000183f4	FUN_000183f4	44	2	0	named	FirmwareUpdate_BaseAddress	docs/firmware/names/psoc-update.tsv:24
+0x00018420	FUN_00018420	68	2	3	named	Mixer_FaderToDb	docs/firmware/names/psoc-audio.tsv:95
+0x00018470	FUN_00018470	192	4	3	named	Mixer_PanToDb	docs/firmware/names/psoc-audio.tsv:96
+0x00018534	FUN_00018534	182	3	4	named	Mixer_DbToCoefficient	docs/firmware/names/psoc-audio.tsv:97
+0x000185fc	FUN_000185fc	12	1	0	unmapped		
+0x00018608	FUN_00018608	46	1	1	unmapped		
+0x00018638	FUN_00018638	432	1	8	named	DAWMixer_UpdateChannel	docs/firmware/names/psoc-audio.tsv:98
+0x000187ec	FUN_000187ec	134	1	2	named	DAWMixer_SetPlaybackPass	docs/firmware/names/psoc-audio.tsv:99
+0x00018874	FUN_00018874	44	2	0	named	PanelBuiltin_GetDescriptor	docs/firmware/names/front-panel.tsv:27
+0x000188a4	FUN_000188a4	42	1	1	named	PanelBuiltin_GetWidth	docs/firmware/names/front-panel.tsv:28
+0x000188d0	FUN_000188d0	290	2	6	named	PanelBuiltin_Draw	docs/firmware/names/front-panel.tsv:29
+0x000189f4	FUN_000189f4	212	1	6	named	PanelUI_Initialize	docs/firmware/names/front-panel.tsv:30
+0x00018adc	FUN_00018adc	22	1	1	unmapped		
+0x00018af8	FUN_00018af8	156	2	4	named	PanelUI_Start	docs/firmware/names/front-panel.tsv:31
+0x00018ba8	FUN_00018ba8	246	1	2	named	PanelUI_DrawVersion	docs/firmware/names/front-panel.tsv:32
+0x00018ca4	FUN_00018ca4	80	1	2	named	PanelUI_DrawBootArtwork	docs/firmware/names/front-panel.tsv:33
+0x00018cf4	FUN_00018cf4	44	3	2	unmapped		
+0x00018d24	FUN_00018d24	292	2	12	named	PanelUI_DrawHome	docs/firmware/names/front-panel.tsv:34
+0x00018e5c	FUN_00018e5c	158	1	4	named	PanelUI_AdjustAttenuation	docs/firmware/names/front-panel.tsv:35
+0x00018f00	FUN_00018f00	262	1	4	named	PanelUI_AdjustInputGain	docs/firmware/names/front-panel.tsv:36
+0x0001900c	FUN_0001900c	36	3	2	named	PanelDraw_DrainQueues	docs/firmware/names/front-panel.tsv:37
+0x00019038	FUN_00019038	426	2	12	named	PanelDraw_ServiceQueues	docs/firmware/names/front-panel.tsv:38
+0x00019208	FUN_00019208	370	2	4	named	PanelMeters_Sample	docs/firmware/names/front-panel.tsv:39
+0x00019390	FUN_00019390	866	1	28	named	Application_ServiceUI | PanelUI_Service	docs/firmware/names/psoc-startup.tsv:15 | docs/firmware/names/front-panel.tsv:40
+0x00019704	FUN_00019704	50	2	1	named	PanelUI_ApplyValue	docs/firmware/names/front-panel.tsv:41
+0x00019738	FUN_00019738	530	2	23	named	PanelUI_ApplyMessage	docs/firmware/names/front-panel.tsv:42
+0x00019ab0	FUN_00019ab0	54	2	2	named	PanelUI_ShowTimedPopup	docs/firmware/names/front-panel.tsv:43
+0x00019aec	FUN_00019aec	90	1	5	named	PanelInput_Press	docs/firmware/names/front-panel.tsv:44
+0x00019b4c	FUN_00019b4c	18	1	0	unmapped		
+0x00019b60	FUN_00019b60	138	3	4	named	PanelInput_Select	docs/firmware/names/front-panel.tsv:45
+0x00019bf4	FUN_00019bf4	102	2	6	named	PanelInput_ToggleMenu	docs/firmware/names/front-panel.tsv:46
+0x00019c64	FUN_00019c64	82	2	1	named	PanelOutput_AllFlagsSet	docs/firmware/names/front-panel.tsv:47
+0x00019cb8	FUN_00019cb8	78	1	2	named	PanelOutput_ToggleAllFlags	docs/firmware/names/front-panel.tsv:48
+0x00019d08	FUN_00019d08	110	1	2	named	PanelOutput_AlternateMute	docs/firmware/names/front-panel.tsv:49
+0x00019d78	FUN_00019d78	700	5	3	named	PanelPad_UpdateLED	docs/firmware/names/front-panel.tsv:50
+0x0001a098	FUN_0001a098	148	1	2	named	PanelPad_SelectSpeakerSet	docs/firmware/names/front-panel.tsv:51
+0x0001a140	FUN_0001a140	108	1	4	named	PanelPad_Release	docs/firmware/names/front-panel.tsv:52
+0x0001a1b0	FUN_0001a1b0	618	1	13	named	PanelPad_Press	docs/firmware/names/front-panel.tsv:53
+0x0001a484	FUN_0001a484	92	1	2	named	PanelPad_PulseLED	docs/firmware/names/front-panel.tsv:54
+0x0001a4e4	FUN_0001a4e4	172	1	2	named	PanelPad_ToggleGuitarMode	docs/firmware/names/front-panel.tsv:55
+0x0001a590	FUN_0001a590	104	2	2	named	PanelOutput_ToggleFlag	docs/firmware/names/front-panel.tsv:56
+0x0001a5f8	FUN_0001a5f8	174	1	5	named	PanelInput_ChangeMenuValue	docs/firmware/names/front-panel.tsv:57
+0x0001a6ac	FUN_0001a6ac	166	5	3	named	PanelOutput_SelectMeterRange	docs/firmware/names/front-panel.tsv:58
+0x0001a778	FUN_0001a778	256	1	10	named	PanelEncoder_Press	docs/firmware/names/front-panel.tsv:59
+0x0001a88c	FUN_0001a88c	68	1	0	named	PanelInput_NextSelector	docs/firmware/names/front-panel.tsv:60
+0x0001a8f0	FUN_0001a8f0	58	10	2	named	PanelUI_DispatchValue	docs/firmware/names/front-panel.tsv:61
+0x0001a92c	FUN_0001a92c	90	1	2	named	PanelMeters_SuppressAfterClockChange	docs/firmware/names/front-panel.tsv:62
+0x0001a994	FUN_0001a994	44	4	1	named	PanelInput_GetMeterIndex	docs/firmware/names/front-panel.tsv:63
+0x0001a9c0	FUN_0001a9c0	206	2	4	named	PanelResource_DrawImage	docs/firmware/names/front-panel.tsv:64
+0x0001aa94	FUN_0001aa94	208	1	4	named	PanelResource_DrawFrame	docs/firmware/names/front-panel.tsv:65
+0x0001ab68	FUN_0001ab68	58	2	2	named	PanelResource_PublishVersion	docs/firmware/names/front-panel.tsv:66
+0x0001aba4	FUN_0001aba4	104	1	1	unmapped		
+0x0001ac0c	FUN_0001ac0c	36	2	0	unmapped		
+0x0001ac30	FUN_0001ac30	264	2	5	named	PanelMeter_DrawColorRows	docs/firmware/names/front-panel.tsv:67
+0x0001ad3c	FUN_0001ad3c	132	1	2	unmapped		
+0x0001adc0	FUN_0001adc0	112	2	1	named	PanelMeter_DrawOverIndicator	docs/firmware/names/front-panel.tsv:68
+0x0001ae30	FUN_0001ae30	522	1	3	named	PanelMeter_DrawDelta	docs/firmware/names/front-panel.tsv:69
+0x0001b03c	FUN_0001b03c	28	1	0	unmapped		
+0x0001b058	FUN_0001b058	36	1	0	unmapped		
+0x0001b07c	FUN_0001b07c	404	4	1	unmapped		
+0x0001b210	FUN_0001b210	166	1	1	unmapped		
+0x0001b2b8	FUN_0001b2b8	166	2	1	unmapped		
+0x0001b360	FUN_0001b360	106	1	1	unmapped		
+0x0001b3cc	FUN_0001b3cc	262	1	2	named	PanelMeters_Initialize	docs/firmware/names/front-panel.tsv:70
+0x0001b4e0	FUN_0001b4e0	252	1	6	unmapped		
+0x0001b5e0	FUN_0001b5e0	316	2	3	named	PanelMeters_SelectRange	docs/firmware/names/front-panel.tsv:71
+0x0001b720	FUN_0001b720	646	2	1	named	PanelMeters_SetLayout	docs/firmware/names/front-panel.tsv:72
+0x0001b9c8	FUN_0001b9c8	142	1	1	named	PanelMeters_SetPeakHold	docs/firmware/names/front-panel.tsv:73
+0x0001ba58	FUN_0001ba58	80	1	0	named	PanelMeters_SetOverHold	docs/firmware/names/front-panel.tsv:74
+0x0001baa8	FUN_0001baa8	172	2	4	named	PanelMeters_Clear	docs/firmware/names/front-panel.tsv:75
+0x0001bb58	FUN_0001bb58	182	1	4	unmapped		
+0x0001bc14	FUN_0001bc14	1254	1	5	named	PanelMeters_Update	docs/firmware/names/front-panel.tsv:76
+0x0001c104	FUN_0001c104	54	2	0	unmapped		
+0x0001c13c	FUN_0001c13c	78	1	0	named	PanelMeter_LevelToPixels	docs/firmware/names/front-panel.tsv:77
+0x0001c190	FUN_0001c190	28	1	0	unmapped		
+0x0001c1ac	FUN_0001c1ac	60	1	1	unmapped		
+0x0001c1e8	FUN_0001c1e8	56	1	1	unmapped		
+0x0001c220	FUN_0001c220	58	4	0	unmapped		
+0x0001c25c	FUN_0001c25c	68	2	0	unmapped		
+0x0001c2a0	FUN_0001c2a0	146	2	4	named	PanelStream_SetWindow	docs/firmware/names/front-panel.tsv:78
+0x0001c334	FUN_0001c334	242	2	5	named	PanelStream_Write	docs/firmware/names/front-panel.tsv:79
+0x0001c428	FUN_0001c428	24	6	0	named	PanelStream_InvalidateCursor	docs/firmware/names/front-panel.tsv:80
+0x0001c440	FUN_0001c440	90	1	2	named	PanelStream_FillRectangle	docs/firmware/names/front-panel.tsv:81
+0x0001c49c	FUN_0001c49c	88	2	1	named	Resource_ReadBytes | PanelResource_Read	docs/firmware/names/psoc-update.tsv:25 | docs/firmware/names/front-panel.tsv:82
+0x0001c4f4	FUN_0001c4f4	162	1	3	named	Resource_LoadHeaderAndTable | PanelResource_LoadIndex	docs/firmware/names/psoc-update.tsv:26 | docs/firmware/names/front-panel.tsv:83
+0x0001c5a4	FUN_0001c5a4	38	3	0	named	Resource_GetVersion | PanelResource_GetVersion	docs/firmware/names/psoc-update.tsv:27 | docs/firmware/names/front-panel.tsv:84
+0x0001c5d4	FUN_0001c5d4	56	1	2	named	Resource_GetCRC8 | PanelResource_GetCRC	docs/firmware/names/psoc-update.tsv:28 | docs/firmware/names/front-panel.tsv:85
+0x0001c61c	FUN_0001c61c	26	1	0	named	Resource_SetCachedCRC8 | PanelResource_SetCRC	docs/firmware/names/psoc-update.tsv:29 | docs/firmware/names/front-panel.tsv:86
+0x0001c63c	FUN_0001c63c	100	7	0	named	Resource_GetDimensions | PanelResource_GetDimensions	docs/firmware/names/psoc-update.tsv:30 | docs/firmware/names/front-panel.tsv:87
+0x0001c6ac	FUN_0001c6ac	104	2	0	named	Resource_GetDimensionsAndByte3 | PanelResource_GetFrameInfo	docs/firmware/names/psoc-update.tsv:31 | docs/firmware/names/front-panel.tsv:88
+0x0001c720	FUN_0001c720	142	2	0	named	Resource_BeginRead | PanelResource_OpenImage	docs/firmware/names/psoc-update.tsv:32 | docs/firmware/names/front-panel.tsv:89
+0x0001c7c0	FUN_0001c7c0	156	1	0	named	Resource_BeginFrameRead | PanelResource_OpenFrame	docs/firmware/names/psoc-update.tsv:33 | docs/firmware/names/front-panel.tsv:90
+0x0001c86c	FUN_0001c86c	132	2	1	named	Resource_ReadChunk | PanelResource_ReadChunk	docs/firmware/names/psoc-update.tsv:34 | docs/firmware/names/front-panel.tsv:91
+0x0001c8f8	FUN_0001c8f8	32	3	1	named	Resource_Reload | PanelResource_Reload	docs/firmware/names/psoc-update.tsv:35 | docs/firmware/names/front-panel.tsv:92
+0x0001c924	FUN_0001c924	42	1	0	named	PanelDrawQueue_Initialize	docs/firmware/names/front-panel.tsv:93
+0x0001c950	FUN_0001c950	82	23	1	named	PanelDrawQueue_FillRectangle	docs/firmware/names/front-panel.tsv:94
+0x0001c9a4	FUN_0001c9a4	68	8	1	named	PanelDrawQueue_Image	docs/firmware/names/front-panel.tsv:95
+0x0001c9e8	FUN_0001c9e8	76	2	1	named	PanelDrawQueue_Frame	docs/firmware/names/front-panel.tsv:96
+0x0001ca34	FUN_0001ca34	68	7	1	named	PanelDrawQueue_MeterLayout	docs/firmware/names/front-panel.tsv:97
+0x0001ca78	FUN_0001ca78	48	2	1	named	PanelDrawQueue_MeterClip	docs/firmware/names/front-panel.tsv:98
+0x0001caa8	FUN_0001caa8	68	4	1	named	PanelDrawQueue_MeterSelection	docs/firmware/names/front-panel.tsv:99
+0x0001caec	FUN_0001caec	42	3	0	named	PanelDrawQueue_HasCommands	docs/firmware/names/front-panel.tsv:100
+0x0001cb18	FUN_0001cb18	100	1	1	named	PanelDrawQueue_Pop	docs/firmware/names/front-panel.tsv:101
+0x0001cb80	FUN_0001cb80	98	6	0	named	PanelDrawQueue_Reserve	docs/firmware/names/front-panel.tsv:102
+0x0001cbe8	FUN_0001cbe8	70	4	1	named	PanelPage_Draw	docs/firmware/names/front-panel.tsv:103
+0x0001cc30	FUN_0001cc30	92	1	2	named	PanelPage_Update	docs/firmware/names/front-panel.tsv:104
+0x0001cc8c	FUN_0001cc8c	70	3	1	named	PanelPage_Clear	docs/firmware/names/front-panel.tsv:105
+0x0001ccd4	FUN_0001ccd4	134	2	1	named	PanelPage_ApplyValue	docs/firmware/names/front-panel.tsv:106
+0x0001cd5c	FUN_0001cd5c	124	5	2	named	PanelPage_LoadValues	docs/firmware/names/front-panel.tsv:107
+0x0001cdd8	FUN_0001cdd8	46	4	0	named	PanelWidget_SetValue	docs/firmware/names/front-panel.tsv:108
+0x0001ce08	FUN_0001ce08	44	4	0	named	PanelWidget_SetMask	docs/firmware/names/front-panel.tsv:109
+0x0001ce34	FUN_0001ce34	102	2	3	named	PanelWidget_Draw	docs/firmware/names/front-panel.tsv:110
+0x0001cea0	FUN_0001cea0	154	2	2	named	PanelWidget_Clear	docs/firmware/names/front-panel.tsv:111
+0x0001cf40	FUN_0001cf40	24	1	0	unmapped		
+0x0001cf58	FUN_0001cf58	122	1	0	named	PanelWidget_SelectResource	docs/firmware/names/front-panel.tsv:112
+0x0001cfd4	FUN_0001cfd4	74	1	0	unmapped		
+0x0001d020	FUN_0001d020	64	1	5	unmapped		
+0x0001d074	FUN_0001d074	144	1	6	unmapped		
+0x0001d10c	FUN_0001d10c	430	2	4	named	PanelOutput_DrawIdentity	docs/firmware/names/front-panel.tsv:113
+0x0001d2e0	FUN_0001d2e0	50	2	1	unmapped		
+0x0001d320	FUN_0001d320	268	2	3	named	PanelOutput_DrawSampleRate	docs/firmware/names/front-panel.tsv:114
+0x0001d444	FUN_0001d444	186	0	5	unmapped		
+0x0001d510	FUN_0001d510	76	0	5	unmapped		
+0x0001d564	FUN_0001d564	100	0	3	unmapped		
+0x0001d780	FUN_0001d780	70	1	0	unmapped		
+0x0001d7d0	FUN_0001d7d0	90	1	1	unmapped		
+0x0001d834	FUN_0001d834	106	1	5	unmapped		
+0x0001d8b0	FUN_0001d8b0	24	1	0	unmapped		
+0x0001d8cc	FUN_0001d8cc	92	2	2	unmapped		
+0x0001d930	FUN_0001d930	88	2	2	unmapped		
+0x0001d990	FUN_0001d990	38	4	2	named	PanelPages_Initialize	docs/firmware/names/front-panel.tsv:115
+0x0001d9c0	FUN_0001d9c0	94	1	2	named	PanelPages_Service	docs/firmware/names/front-panel.tsv:116
+0x0001da30	FUN_0001da30	64	4	4	named	PanelPages_ShowInputHome	docs/firmware/names/front-panel.tsv:117
+0x0001da7c	FUN_0001da7c	66	1	5	named	PanelPages_ShowInputMenu	docs/firmware/names/front-panel.tsv:118
+0x0001dacc	FUN_0001dacc	68	5	4	named	PanelPages_ShowOutputHome	docs/firmware/names/front-panel.tsv:119
+0x0001db1c	FUN_0001db1c	84	1	3	named	PanelPages_ShowOutputPopup	docs/firmware/names/front-panel.tsv:120
+0x0001db7c	FUN_0001db7c	94	4	1	named	PanelPages_ApplyValue	docs/firmware/names/front-panel.tsv:121
+0x0001dbe4	FUN_0001dbe4	20	2	1	unmapped		
+0x0001dbf8	FUN_0001dbf8	30	4	0	unmapped		
+0x0001dc20	FUN_0001dc20	24	1	1	unmapped		
+0x0001dc38	FUN_0001dc38	28	1	2	unmapped		
+0x0001dc54	FUN_0001dc54	222	1	7	named	PanelPages_ShowUpdate	docs/firmware/names/front-panel.tsv:122
+0x0001dd44	FUN_0001dd44	100	1	3	named	PanelPages_ShowReconnect	docs/firmware/names/front-panel.tsv:123
+0x0001ddb4	FUN_0001ddb4	76	1	6	unmapped		
+0x0001de0c	FUN_0001de0c	152	1	3	named	PanelPages_AnimateUpdate	docs/firmware/names/front-panel.tsv:124
+0x0001deb4	FUN_0001deb4	66	2	1	unmapped		
+0x0001df04	FUN_0001df04	32	1	2	unmapped		
+0x0001df30	FUN_0001df30	346	1	7	named	PanelInput_LoadHomeValues	docs/firmware/names/front-panel.tsv:125
+0x0001e0c0	FUN_0001e0c0	24	1	2	unmapped		
+0x0001e0d8	FUN_0001e0d8	36	0	2	unmapped		
+0x0001e108	FUN_0001e108	46	0	3	unmapped		
+0x0001e140	FUN_0001e140	60	0	2	unmapped		
+0x0001e328	FUN_0001e328	180	2	4	unmapped		
+0x0001e3e8	FUN_0001e3e8	136	2	1	named	PanelInput_SelectMenuItem	docs/firmware/names/front-panel.tsv:126
+0x0001e480	FUN_0001e480	18	1	0	unmapped		
+0x0001e498	FUN_0001e498	44	1	0	unmapped		
+0x0001e4d0	FUN_0001e4d0	588	2	3	named	PanelInput_FilterMenu	docs/firmware/names/front-panel.tsv:127
+0x0001e768	FUN_0001e768	24	2	2	unmapped		
+0x0001e780	FUN_0001e780	48	1	1	unmapped		
+0x0001e7b0	FUN_0001e7b0	160	0	4	unmapped		
+0x0001e868	FUN_0001e868	128	2	1	unmapped		
+0x0001e8f8	FUN_0001e8f8	180	2	4	unmapped		
+0x0001e9b8	FUN_0001e9b8	48	0	2	unmapped		
+0x0001e9f4	FUN_0001e9f4	28	0	2	unmapped		
+0x0001ea14	FUN_0001ea14	78	0	1	unmapped		
+0x0001ea6c	FUN_0001ea6c	36	2	0	unmapped		
+0x0001ea90	FUN_0001ea90	34	2	0	unmapped		
+0x0001eab4	FUN_0001eab4	58	2	0	unmapped		
+0x0001eaf0	FUN_0001eaf0	42	4	0	unmapped		
+0x0001eb1c	FUN_0001eb1c	194	1	0	named	PanelGauge_ValueToFrame	docs/firmware/names/front-panel.tsv:128
+0x0001ebe0	FUN_0001ebe0	28	2	1	unmapped		
+0x0001ebfc	FUN_0001ebfc	1114	3	5	named	PanelGauge_Draw	docs/firmware/names/front-panel.tsv:129
+0x0001f064	FUN_0001f064	88	2	1	unmapped		
+0x0001f0c0	FUN_0001f0c0	18	2	0	unmapped		
+0x0001f0d8	FUN_0001f0d8	172	1	6	unmapped		
+0x0001f188	FUN_0001f188	18	1	0	unmapped		
+0x0001f19c	FUN_0001f19c	112	1	2	unmapped		
+0x0001f210	FUN_0001f210	18	1	0	unmapped		
+0x0001f224	FUN_0001f224	66	1	1	unmapped		
+0x0001f26c	FUN_0001f26c	276	1	10	unmapped		
+0x0001f38c	FUN_0001f38c	120	1	1	unmapped		
+0x0001f408	FUN_0001f408	54	1	1	unmapped		
+0x0001f444	FUN_0001f444	264	1	2	unmapped		
+0x0001f558	FUN_0001f558	60	1	0	unmapped		
+0x0001f5a0	FUN_0001f5a0	34	0	1	unmapped		
+0x0001f5c8	FUN_0001f5c8	108	0	2	unmapped		
+0x0001f638	FUN_0001f638	34	0	1	unmapped		
+0x0001f660	FUN_0001f660	564	2	4	unmapped		
+0x0001f8fc	FUN_0001f8fc	184	1	31	named	main | ApplicationMain	docs/firmware/names/psoc-startup.tsv:16 | docs/firmware/names/psoc-protocol.tsv:39
+0x0001f9b8	FUN_0001f9b8	26	0	1	named	IRQ0_Expander70_Handler	docs/firmware/names/psoc-startup.tsv:17
+0x0001f9dc	FUN_0001f9dc	26	0	1	named	IRQ1_Expander71_Handler	docs/firmware/names/psoc-startup.tsv:18
+0x0001fa00	FUN_0001fa00	16	0	1	named	IRQ2_ApplicationEvent_Handler	docs/firmware/names/psoc-startup.tsv:19
+0x0001fa14	FUN_0001fa14	78	1	3	named	Application_StartInputInterrupts	docs/firmware/names/psoc-startup.tsv:20
+0x0001fa94	FUN_0001fa94	648	1	20	named	PanelInputs_Service	docs/firmware/names/front-panel.tsv:130
+0x0001fd48	FUN_0001fd48	58	1	0	unmapped		
+0x0001fd84	FUN_0001fd84	258	0	3	named	IRQ6_FPGAEvent_Handler | FpgaEventISR	docs/firmware/names/psoc-startup.tsv:21 | docs/firmware/names/psoc-protocol.tsv:40
+0x0001feac	FUN_0001feac	18	1	1	named	Application_StartFPGAInterrupt | FpgaEventInstallISR	docs/firmware/names/psoc-startup.tsv:22 | docs/firmware/names/psoc-protocol.tsv:41
+0x0001fec8	FUN_0001fec8	28	1	0	named	ProtocolHostIsReady	docs/firmware/names/psoc-protocol.tsv:42
+0x0001fee8	FUN_0001fee8	112	1	1	named	ProtocolAdvanceHostHandshake	docs/firmware/names/psoc-protocol.tsv:43
+0x0001ff6c	FUN_0001ff6c	356	1	10	named	ProtocolServiceFpgaEvents	docs/firmware/names/psoc-protocol.tsv:44
+0x00020100	FUN_00020100	48	1	2	named	FpgaEventEnableProtocol	docs/firmware/names/psoc-protocol.tsv:45
+0x00020134	FUN_00020134	18	1	0	unmapped		
+0x0002014c	FUN_0002014c	70	1	1	named	SoftwareTimers_Init | SchedulerInitialize	docs/firmware/names/psoc-startup.tsv:23 | docs/firmware/names/psoc-protocol.tsv:46
+0x0002019c	FUN_0002019c	144	3	0	named	SchedulerAddTimer	docs/firmware/names/psoc-protocol.tsv:47
+0x00020230	FUN_00020230	74	2	0	named	SchedulerRemoveTimer	docs/firmware/names/psoc-protocol.tsv:48
+0x00020280	FUN_00020280	220	1	1	named	SoftwareTimers_Service | SchedulerService	docs/firmware/names/psoc-startup.tsv:24 | docs/firmware/names/psoc-protocol.tsv:49
+0x00020364	FUN_00020364	18	21	1	named	TickCounter_Now | SchedulerCounter	docs/firmware/names/psoc-startup.tsv:25 | docs/firmware/names/psoc-protocol.tsv:50
+0x00020378	FUN_00020378	58	7	1	named	TickCounter_Elapsed | SchedulerElapsed	docs/firmware/names/psoc-startup.tsv:26 | docs/firmware/names/psoc-protocol.tsv:51
+0x000203b4	FUN_000203b4	216	1	2	named	SettingsInitialize	docs/firmware/names/psoc-protocol.tsv:52
+0x00020498	FUN_00020498	62	1	4	named	SettingsServiceSave	docs/firmware/names/psoc-protocol.tsv:53
+0x000204dc	FUN_000204dc	22	2	2	named	SettingsFinishActiveSave	docs/firmware/names/psoc-protocol.tsv:54
+0x000204f4	FUN_000204f4	44	3	1	named	SettingsFindDescriptorWrapper	docs/firmware/names/psoc-protocol.tsv:55
+0x00020520	FUN_00020520	76	1	0	named	SettingsDefaultInputRoute	docs/firmware/names/psoc-protocol.tsv:56
+0x0002056c	FUN_0002056c	96	1	0	named	SettingsDefaultOutputRoute	docs/firmware/names/psoc-protocol.tsv:57
+0x000205cc	FUN_000205cc	586	2	3	named	SettingsApplyDefaults	docs/firmware/names/psoc-protocol.tsv:58
+0x00020820	FUN_00020820	186	10	4	named	SettingsWriteByte	docs/firmware/names/psoc-protocol.tsv:59
+0x000208e0	FUN_000208e0	56	4	1	named	ReportsMarkPending	docs/firmware/names/psoc-protocol.tsv:60
+0x00020918	FUN_00020918	196	10	4	named	SettingsWriteCommand	docs/firmware/names/psoc-protocol.tsv:61
+0x000209e0	FUN_000209e0	122	40	2	named	SettingsReadValue	docs/firmware/names/psoc-protocol.tsv:62
+0x00020a5c	FUN_00020a5c	120	6	2	named	SettingsReadCommand	docs/firmware/names/psoc-protocol.tsv:63
+0x00020ad4	FUN_00020ad4	162	1	1	named	EepromReadDescriptor	docs/firmware/names/psoc-protocol.tsv:64
+0x00020b78	FUN_00020b78	402	1	4	named	SettingsValidateEeprom	docs/firmware/names/psoc-protocol.tsv:65
+0x00020d18	FUN_00020d18	408	1	2	named	SettingsNextReplayCommand	docs/firmware/names/psoc-protocol.tsv:66
+0x00020eb8	FUN_00020eb8	52	2	0	named	SettingsCopyDescriptorHeader	docs/firmware/names/psoc-protocol.tsv:67
+0x00020eec	FUN_00020eec	110	3	2	named	EepromAppendDescriptor	docs/firmware/names/psoc-protocol.tsv:68
+0x00020f5c	FUN_00020f5c	316	1	10	named	SettingsSaveSynchronously	docs/firmware/names/psoc-protocol.tsv:69
+0x000210b0	FUN_000210b0	248	1	6	named	SettingsStartSave	docs/firmware/names/psoc-protocol.tsv:70
+0x000211bc	FUN_000211bc	28	3	0	named	SettingsSaveIsActive	docs/firmware/names/psoc-protocol.tsv:71
+0x000211dc	FUN_000211dc	274	2	7	named	SettingsAdvanceSave	docs/firmware/names/psoc-protocol.tsv:72
+0x00021314	FUN_00021314	58	1	0	named	ReportsReset	docs/firmware/names/psoc-protocol.tsv:73
+0x00021358	FUN_00021358	36	1	0	named	ReportsStartGetAll	docs/firmware/names/psoc-protocol.tsv:74
+0x00021380	FUN_00021380	60	1	0	named	ReportsPeekGetAllCommand	docs/firmware/names/psoc-protocol.tsv:75
+0x000213c4	FUN_000213c4	222	1	1	named	ReportsNextGetAllValue	docs/firmware/names/psoc-protocol.tsv:76
+0x000214ac	FUN_000214ac	100	1	0	named	ReportsPeekPendingCommand	docs/firmware/names/psoc-protocol.tsv:77
+0x00021518	FUN_00021518	30	1	0	named	ReportsStartPendingScan	docs/firmware/names/psoc-protocol.tsv:78
+0x0002153c	FUN_0002153c	252	1	2	named	ReportsNextPendingValue	docs/firmware/names/psoc-protocol.tsv:79
+0x00021640	FUN_00021640	42	9	0	named	PanelInput_SelectorToChannel	docs/firmware/names/front-panel.tsv:131
+0x00021670	FUN_00021670	78	3	0	named	SettingsSampleRateHz	docs/firmware/names/psoc-protocol.tsv:80
+0x000216e4	FUN_000216e4	84	5	0	named	SettingsDescriptorSize	docs/firmware/names/psoc-protocol.tsv:81
+0x00021738	FUN_00021738	84	6	0	named	SettingsFindDescriptor	docs/firmware/names/psoc-protocol.tsv:82
+0x00021790	FUN_00021790	190	5	0	named	SettingsValueAddress	docs/firmware/names/psoc-protocol.tsv:83
+0x00021854	FUN_00021854	84	3	0	named	ReportsFindDescriptor	docs/firmware/names/psoc-protocol.tsv:84
+0x000218ac	FUN_000218ac	30	3	1	named	ProtocolCrcAppendByte	docs/firmware/names/psoc-protocol.tsv:85
+0x000218cc	FUN_000218cc	30	6	0	named	ProtocolCrcInitialize | CRC8_Init | CRC8_Reset	docs/firmware/names/psoc-protocol.tsv:86 | docs/firmware/names/psoc-update.tsv:36 | docs/firmware/names/front-panel.tsv:132
+0x000218ec	FUN_000218ec	122	6	0	named	ProtocolCrcAppendBlock | CRC8_Update | CRC8_Update	docs/firmware/names/psoc-protocol.tsv:87 | docs/firmware/names/psoc-update.tsv:37 | docs/firmware/names/front-panel.tsv:133
+0x00021968	vector_02	6	0	0	named	IntDefaultHandler	docs/firmware/names/psoc-startup.tsv:27
+0x00021970	FUN_00021970	140	1	2	named	Start_c	docs/firmware/names/psoc-startup.tsv:28
+0x00021a04	FUN_00021a04	100	1	1	named	initialize_psoc	docs/firmware/names/psoc-startup.tsv:29
+0x00021a90	FUN_00021a90	26	1	1	named	CYMEMZERO	docs/firmware/names/psoc-startup.tsv:30
+0x00021aac	FUN_00021aac	28	1	1	named	CYCONFIGCPY	docs/firmware/names/psoc-startup.tsv:31
+0x00021ac8	FUN_00021ac8	12	1	0	named	CyClockStartupError	docs/firmware/names/psoc-startup.tsv:32
+0x00021ad4	FUN_00021ad4	116	1	0	named	cfg_write_bytes32	docs/firmware/names/psoc-startup.tsv:33
+0x00021b48	FUN_00021b48	240	1	2	named	ClockSetup	docs/firmware/names/psoc-startup.tsv:34
+0x00021c88	FUN_00021c88	50	1	0	named	AnalogSetDefault	docs/firmware/names/psoc-startup.tsv:35
+0x00021ccc	FUN_00021ccc	460	1	5	named	cyfitter_cfg	docs/firmware/names/psoc-startup.tsv:36
+0x00021f20	FUN_00021f20	42	1	0	named	EMIF_Init	docs/firmware/names/psoc-startup.tsv:37
+0x00021f60	FUN_00021f60	76	1	2	named	EMIF_Enable	docs/firmware/names/psoc-startup.tsv:38
+0x00021fb8	FUN_00021fb8	28	1	2	named	EMIF_Start	docs/firmware/names/psoc-startup.tsv:39
+0x00021fd8	FUN_00021fd8	44	1	0	named	DigitalClock0_Start	docs/firmware/names/psoc-startup.tsv:40
+0x0002200c	FUN_0002200c	54	1	0	named	P3_3_Write	docs/firmware/names/psoc-startup.tsv:41
+0x00022048	FUN_00022048	52	1	0	named	P3_3_SetDriveMode	docs/firmware/names/psoc-startup.tsv:42
+0x00022080	FUN_00022080	28	1	0	named	P2_3_ClearInterrupt	docs/firmware/names/psoc-startup.tsv:43
+0x000220a0	FUN_000220a0	34	1	4	named	IRQ6_StartEx	docs/firmware/names/psoc-startup.tsv:44
+0x000220c4	FUN_000220c4	32	1	0	named	IRQ6_SetVector	docs/firmware/names/psoc-startup.tsv:45
+0x000220e8	FUN_000220e8	30	1	0	named	IRQ6_SetPriority	docs/firmware/names/psoc-startup.tsv:46
+0x0002210c	FUN_0002210c	18	3	0	named	IRQ6_Enable	docs/firmware/names/psoc-startup.tsv:47
+0x00022124	FUN_00022124	18	2	0	named	IRQ6_Disable	docs/firmware/names/psoc-startup.tsv:48
+0x0002213c	FUN_0002213c	36	1	3	named	PreampSPI_Init	docs/firmware/names/psoc-startup.tsv:49
+0x0002216c	FUN_0002216c	84	1	4	named	PreampSPI_Enable	docs/firmware/names/psoc-startup.tsv:50
+0x000221cc	FUN_000221cc	28	1	2	named	PreampSPI_Start	docs/firmware/names/psoc-startup.tsv:51
+0x000221ec	FUN_000221ec	12	1	0	unmapped		
+0x000221f8	FUN_000221f8	12	1	0	unmapped		
+0x00022204	FUN_00022204	26	2	0	named	PreampSPI_ReadTxStatus	docs/firmware/names/psoc-startup.tsv:52
+0x00022224	FUN_00022224	26	1	0	named	PreampSPI_ReadRxStatus	docs/firmware/names/psoc-startup.tsv:53
+0x00022244	FUN_00022244	42	1	0	named	PreampSPI_WriteTxData	docs/firmware/names/psoc-startup.tsv:54
+0x00022278	FUN_00022278	112	1	2	named	PreampSPI_ClearFIFO	docs/firmware/names/psoc-startup.tsv:55
+0x000222f8	FUN_000222f8	26	2	0	named	DisplayControl_Write | PanelDisplay_WriteSelector	docs/firmware/names/psoc-startup.tsv:56 | docs/firmware/names/front-panel.tsv:134
+0x00022318	FUN_00022318	72	1	5	named	I2C_Init	docs/firmware/names/psoc-startup.tsv:57
+0x0002237c	FUN_0002237c	60	1	2	named	I2C_Enable	docs/firmware/names/psoc-startup.tsv:58
+0x000223c0	FUN_000223c0	36	1	2	named	I2C_Start	docs/firmware/names/psoc-startup.tsv:59
+0x000223ec	FUN_000223ec	822	0	1	named	I2C_ISR	docs/firmware/names/psoc-startup.tsv:60
+0x0002278c	FUN_0002278c	222	1	0	named	I2C_MasterWriteBuf | I2C_MasterWriteBuf	docs/firmware/names/psoc-startup.tsv:61 | docs/firmware/names/psoc-audio.tsv:100
+0x00022898	FUN_00022898	228	1	0	named	I2C_MasterReadBuf | I2C_MasterReadBuf	docs/firmware/names/psoc-startup.tsv:62 | docs/firmware/names/psoc-audio.tsv:101
+0x000229a8	FUN_000229a8	50	2	0	named	I2C_MasterStatus | I2C_MasterStatus	docs/firmware/names/psoc-startup.tsv:63 | docs/firmware/names/psoc-audio.tsv:102
+0x000229e4	FUN_000229e4	32	3	0	named	I2C_MasterClearStatus | I2C_MasterClearStatus	docs/firmware/names/psoc-startup.tsv:64 | docs/firmware/names/psoc-audio.tsv:103
+0x00022a08	FUN_00022a08	34	1	0	named	I2C_MasterClearReadBuf	docs/firmware/names/psoc-startup.tsv:65
+0x00022a34	FUN_00022a34	34	1	0	named	I2C_MasterClearWriteBuf	docs/firmware/names/psoc-startup.tsv:66
+0x00022a60	FUN_00022a60	12	1	0	unmapped		
+0x00022a6c	FUN_00022a6c	26	2	0	named	ControlA_Write	docs/firmware/names/psoc-startup.tsv:67
+0x00022a8c	FUN_00022a8c	36	1	3	named	DisplaySPI_Init	docs/firmware/names/psoc-startup.tsv:68
+0x00022abc	FUN_00022abc	84	1	4	named	DisplaySPI_Enable	docs/firmware/names/psoc-startup.tsv:69
+0x00022b1c	FUN_00022b1c	28	1	2	named	DisplaySPI_Start	docs/firmware/names/psoc-startup.tsv:70
+0x00022b3c	FUN_00022b3c	12	1	0	unmapped		
+0x00022b48	FUN_00022b48	12	1	0	unmapped		
+0x00022b54	FUN_00022b54	26	4	0	named	DisplaySPI_ReadTxStatus	docs/firmware/names/psoc-startup.tsv:71
+0x00022b74	FUN_00022b74	26	1	0	named	DisplaySPI_ReadRxStatus	docs/firmware/names/psoc-startup.tsv:72
+0x00022b94	FUN_00022b94	42	3	0	named	DisplaySPI_WriteTxData | PanelDisplay_WriteTxByte	docs/firmware/names/psoc-startup.tsv:73 | docs/firmware/names/front-panel.tsv:135
+0x00022bc8	FUN_00022bc8	80	1	2	named	DisplaySPI_ClearFIFO	docs/firmware/names/psoc-startup.tsv:74
+0x00022c24	FUN_00022c24	34	1	4	named	IRQ0_StartEx	docs/firmware/names/psoc-startup.tsv:75
+0x00022c48	FUN_00022c48	32	1	0	named	IRQ0_SetVector	docs/firmware/names/psoc-startup.tsv:76
+0x00022c6c	FUN_00022c6c	30	1	0	named	IRQ0_SetPriority	docs/firmware/names/psoc-startup.tsv:77
+0x00022c90	FUN_00022c90	18	2	0	named	IRQ0_Enable	docs/firmware/names/psoc-startup.tsv:78
+0x00022ca8	FUN_00022ca8	18	2	0	named	IRQ0_Disable	docs/firmware/names/psoc-startup.tsv:79
+0x00022cc0	FUN_00022cc0	34	1	4	named	IRQ1_StartEx	docs/firmware/names/psoc-startup.tsv:80
+0x00022ce4	FUN_00022ce4	32	1	0	named	IRQ1_SetVector	docs/firmware/names/psoc-startup.tsv:81
+0x00022d08	FUN_00022d08	30	1	0	named	IRQ1_SetPriority	docs/firmware/names/psoc-startup.tsv:82
+0x00022d2c	FUN_00022d2c	18	2	0	named	IRQ1_Enable	docs/firmware/names/psoc-startup.tsv:83
+0x00022d44	FUN_00022d44	18	2	0	named	IRQ1_Disable	docs/firmware/names/psoc-startup.tsv:84
+0x00022d5c	FUN_00022d5c	26	2	0	named	ControlB_Write	docs/firmware/names/psoc-startup.tsv:85
+0x00022d7c	FUN_00022d7c	12	1	0	unmapped		
+0x00022d88	FUN_00022d88	50	1	3	unmapped		
+0x00022dc0	FUN_00022dc0	40	1	4	named	SpeakerQuadDec_Start	docs/firmware/names/psoc-startup.tsv:86
+0x00022dec	FUN_00022dec	36	3	1	named	SpeakerQuadDec_GetCounter | PanelEncoder_ReadSpeaker	docs/firmware/names/psoc-startup.tsv:87 | docs/firmware/names/front-panel.tsv:136
+0x00022e10	FUN_00022e10	26	1	0	unmapped		
+0x00022e30	FUN_00022e30	12	1	0	unmapped		
+0x00022e3c	FUN_00022e3c	50	1	3	unmapped		
+0x00022e74	FUN_00022e74	40	1	4	named	InputQuadDec_Start	docs/firmware/names/psoc-startup.tsv:88
+0x00022ea0	FUN_00022ea0	36	3	1	named	InputQuadDec_GetCounter | PanelEncoder_ReadInput	docs/firmware/names/psoc-startup.tsv:89 | docs/firmware/names/front-panel.tsv:137
+0x00022ec4	FUN_00022ec4	26	1	0	unmapped		
+0x00022ee4	FUN_00022ee4	12	1	0	unmapped		
+0x00022ef0	FUN_00022ef0	50	1	3	unmapped		
+0x00022f28	FUN_00022f28	40	1	4	named	Headphone1QuadDec_Start	docs/firmware/names/psoc-startup.tsv:90
+0x00022f54	FUN_00022f54	36	3	1	named	Headphone1QuadDec_GetCounter | PanelEncoder_ReadHeadphone1	docs/firmware/names/psoc-startup.tsv:91 | docs/firmware/names/front-panel.tsv:138
+0x00022f78	FUN_00022f78	26	1	0	unmapped		
+0x00022f98	FUN_00022f98	12	1	0	unmapped		
+0x00022fa4	FUN_00022fa4	50	1	3	unmapped		
+0x00022fdc	FUN_00022fdc	40	1	4	named	Headphone2QuadDec_Start	docs/firmware/names/psoc-startup.tsv:92
+0x00023008	FUN_00023008	36	3	1	named	Headphone2QuadDec_GetCounter | PanelEncoder_ReadHeadphone2	docs/firmware/names/psoc-startup.tsv:93 | docs/firmware/names/front-panel.tsv:139
+0x0002302c	FUN_0002302c	26	1	0	unmapped		
+0x0002304c	FUN_0002304c	10	1	1	unmapped		
+0x00023058	FUN_00023058	10	1	1	named	EEPROM_Start	docs/firmware/names/psoc-startup.tsv:94
+0x00023064	FUN_00023064	230	3	5	named	EEPROM_Write | EepromProgramRow | EEPROM_WriteRow	docs/firmware/names/psoc-startup.tsv:95 | docs/firmware/names/psoc-protocol.tsv:88 | docs/firmware/names/psoc-update.tsv:38
+0x00023154	FUN_00023154	140	1	3	named	TickCounter_Init	docs/firmware/names/psoc-startup.tsv:96
+0x000231f0	FUN_000231f0	60	1	0	named	TickCounter_Enable	docs/firmware/names/psoc-startup.tsv:97
+0x00023238	FUN_00023238	28	1	2	named	TickCounter_Start	docs/firmware/names/psoc-startup.tsv:98
+0x00023258	FUN_00023258	26	1	0	named	TickCounter_SetInterruptMode	docs/firmware/names/psoc-startup.tsv:99
+0x00023278	FUN_00023278	58	1	0	named	TickCounter_WriteCounter	docs/firmware/names/psoc-startup.tsv:100
+0x000232bc	FUN_000232bc	24	3	0	named	TickCounter_ReadCounter	docs/firmware/names/psoc-startup.tsv:101
+0x000232dc	FUN_000232dc	26	1	0	named	TickCounter_WritePeriod	docs/firmware/names/psoc-startup.tsv:102
+0x000232fc	FUN_000232fc	16	1	1	named	Bootloadable_Reset | Bootloadable_Load	docs/firmware/names/psoc-startup.tsv:103 | docs/firmware/names/psoc-update.tsv:39
+0x00023310	FUN_00023310	34	1	4	named	IRQ2_StartEx	docs/firmware/names/psoc-startup.tsv:104
+0x00023334	FUN_00023334	32	1	0	named	IRQ2_SetVector	docs/firmware/names/psoc-startup.tsv:105
+0x00023358	FUN_00023358	30	1	0	named	IRQ2_SetPriority	docs/firmware/names/psoc-startup.tsv:106
+0x0002337c	FUN_0002337c	18	2	0	named	IRQ2_Enable	docs/firmware/names/psoc-startup.tsv:107
+0x00023394	FUN_00023394	18	2	0	named	IRQ2_Disable	docs/firmware/names/psoc-startup.tsv:108
+0x000233ac	FUN_000233ac	118	1	8	named	SpeakerCounter_Init	docs/firmware/names/psoc-startup.tsv:109
+0x0002342c	FUN_0002342c	28	1	0	unmapped		
+0x0002344c	FUN_0002344c	28	1	2	named	SpeakerCounter_Start	docs/firmware/names/psoc-startup.tsv:110
+0x0002346c	FUN_0002346c	26	1	0	unmapped		
+0x0002348c	FUN_0002348c	20	2	0	unmapped		
+0x000234a4	FUN_000234a4	26	2	0	named	SpeakerCounter_WriteCounter	docs/firmware/names/psoc-startup.tsv:111
+0x000234c4	FUN_000234c4	24	1	0	named	SpeakerCounter_ReadCounter	docs/firmware/names/psoc-startup.tsv:112
+0x000234e4	FUN_000234e4	20	1	0	unmapped		
+0x000234fc	FUN_000234fc	26	1	0	unmapped		
+0x0002351c	FUN_0002351c	26	1	0	unmapped		
+0x0002353c	FUN_0002353c	26	1	2	unmapped		
+0x00023558	FUN_00023558	118	1	8	named	InputCounter_Init	docs/firmware/names/psoc-startup.tsv:113
+0x000235d8	FUN_000235d8	28	1	0	unmapped		
+0x000235f8	FUN_000235f8	28	1	2	named	InputCounter_Start	docs/firmware/names/psoc-startup.tsv:114
+0x00023618	FUN_00023618	26	1	0	unmapped		
+0x00023638	FUN_00023638	20	2	0	unmapped		
+0x00023650	FUN_00023650	26	2	0	named	InputCounter_WriteCounter	docs/firmware/names/psoc-startup.tsv:115
+0x00023670	FUN_00023670	24	1	0	named	InputCounter_ReadCounter	docs/firmware/names/psoc-startup.tsv:116
+0x00023690	FUN_00023690	20	1	0	unmapped		
+0x000236a8	FUN_000236a8	26	1	0	unmapped		
+0x000236c8	FUN_000236c8	26	1	0	unmapped		
+0x000236e8	FUN_000236e8	26	1	2	unmapped		
+0x00023704	FUN_00023704	118	1	8	named	Headphone1Counter_Init	docs/firmware/names/psoc-startup.tsv:117
+0x00023784	FUN_00023784	28	1	0	unmapped		
+0x000237a4	FUN_000237a4	28	1	2	named	Headphone1Counter_Start	docs/firmware/names/psoc-startup.tsv:118
+0x000237c4	FUN_000237c4	26	1	0	unmapped		
+0x000237e4	FUN_000237e4	20	2	0	unmapped		
+0x000237fc	FUN_000237fc	26	2	0	named	Headphone1Counter_WriteCounter	docs/firmware/names/psoc-startup.tsv:119
+0x0002381c	FUN_0002381c	24	1	0	named	Headphone1Counter_ReadCounter	docs/firmware/names/psoc-startup.tsv:120
+0x0002383c	FUN_0002383c	20	1	0	unmapped		
+0x00023854	FUN_00023854	26	1	0	unmapped		
+0x00023874	FUN_00023874	26	1	0	unmapped		
+0x00023894	FUN_00023894	26	1	2	unmapped		
+0x000238b0	FUN_000238b0	118	1	8	named	Headphone2Counter_Init	docs/firmware/names/psoc-startup.tsv:121
+0x00023930	FUN_00023930	28	1	0	unmapped		
+0x00023950	FUN_00023950	28	1	2	named	Headphone2Counter_Start	docs/firmware/names/psoc-startup.tsv:122
+0x00023970	FUN_00023970	26	1	0	unmapped		
+0x00023990	FUN_00023990	20	2	0	unmapped		
+0x000239a8	FUN_000239a8	26	2	0	named	Headphone2Counter_WriteCounter	docs/firmware/names/psoc-startup.tsv:123
+0x000239c8	FUN_000239c8	24	1	0	named	Headphone2Counter_ReadCounter	docs/firmware/names/psoc-startup.tsv:124
+0x000239e8	FUN_000239e8	20	1	0	unmapped		
+0x00023a00	FUN_00023a00	26	1	0	unmapped		
+0x00023a20	FUN_00023a20	26	1	0	unmapped		
+0x00023a40	FUN_00023a40	26	1	2	unmapped		
+0x00023a60	FUN_00023a60	16	4	0	named	CyDelayCycles	docs/firmware/names/psoc-startup.tsv:125
+0x00023a70	FUN_00023a70	8	17	0	named	CyEnterCriticalSection	docs/firmware/names/psoc-startup.tsv:126
+0x00023a78	FUN_00023a78	6	17	0	named	CyExitCriticalSection	docs/firmware/names/psoc-startup.tsv:127
+0x00023a80	FUN_00023a80	44	1	0	named	CyEEPROM_Start	docs/firmware/names/psoc-startup.tsv:128
+0x00023ab4	FUN_00023ab4	28	1	0	named	CySoftwareReset | CySoftwareReset	docs/firmware/names/psoc-startup.tsv:129 | docs/firmware/names/psoc-update.tsv:40
+0x00023ad4	FUN_00023ad4	58	6	1	named	CyDelay | CyDelay | CyDelay	docs/firmware/names/psoc-startup.tsv:130 | docs/firmware/names/psoc-audio.tsv:104 | docs/firmware/names/psoc-update.tsv:41
+0x00023b18	FUN_00023b18	32	17	1	named	CyDelayUs | CyDelayUs | CyDelayUs	docs/firmware/names/psoc-startup.tsv:131 | docs/firmware/names/psoc-audio.tsv:105 | docs/firmware/names/psoc-update.tsv:42
+0x00023b3c	FUN_00023b3c	68	1	0	named	CyIntSetVector	docs/firmware/names/psoc-startup.tsv:132
+0x00023b84	FUN_00023b84	48	1	0	named	CyIntSetPriority	docs/firmware/names/psoc-startup.tsv:133
+0x00023bb4	FUN_00023bb4	60	1	2	unmapped		
+0x00023bf8	FUN_00023bf8	130	1	0	unmapped		
+0x00023c84	FUN_00023c84	142	1	0	unmapped		
+0x00023d1c	FUN_00023d1c	90	1	2	unmapped		
+0x00023d84	FUN_00023d84	66	1	2	unmapped		
+0x00023ddc	FUN_00023ddc	4	1	0	unmapped		
+0x00023de0	FUN_00023de0	630	2	0	unmapped		
+0x0002409c	FUN_0002409c	58	2	0	unmapped		
+0x00024144	FUN_00024144	412	1	1	unmapped		
+0x00024320	FUN_00024320	184	1	0	unmapped		
+0x00024398	FUN_00024398	360	0	1	unmapped		
+0x00024506	FUN_00024506	98	1	0	unmapped		
+0x00024578	FUN_00024578	122	1	0	unmapped		
+0x00024604	FUN_00024604	16	1	1	unmapped		
+0x00024628	FUN_00024628	18	1	1	unmapped		
+0x00024678	FUN_00024678	78	1	0	unmapped		
+0x000246d0	FUN_000246d0	4	2	0	unmapped		
+0x000246d4	FUN_000246d4	352	1	0	unmapped		
+0x00024834	FUN_00024834	108	2	0	unmapped		
+0x000248e4	FUN_000248e4	360	1	0	unmapped		
+0x00024a4c	FUN_00024a4c	310	1	0	unmapped		
+0x00024b84	FUN_00024b84	48	1	1	unmapped		
+0x00024bb4	FUN_00024bb4	48	0	1	unmapped		
+0x00024be4	FUN_00024be4	48	1	1	unmapped		
+0x00024c18	FUN_00024c18	682	1	0	unmapped		
+0x00024ec4	FUN_00024ec4	622	1	0	unmapped		
+0x00025134	FUN_00025134	60	1	3	named	__libc_init_array	docs/firmware/names/psoc-startup.tsv:134
+0x00025180	FUN_00025180	22	3	0	named	memcpy	docs/firmware/names/psoc-startup.tsv:135
+0x00025196	FUN_00025196	16	1	0	named	memset	docs/firmware/names/psoc-startup.tsv:136
+0x000253a0	FUN_000253a0	12	1	0	unmapped		

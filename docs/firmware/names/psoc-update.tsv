@@ -1,0 +1,65 @@
+address	name	kind	evidence
+0x00011754	FPGA_WaitReadyAndRestoreControls	function	Verified: 0x1179C tests signature 0xAB, 0x117AE tests offset 0x35 bit 1, 0x11826 restores controls
+0x00012334	FlashBridge_SetAddress24	function	Verified: 0x12342/0x1234C/0x12356 write low 24 address bits to FPGA 0x31..0x33
+0x00012370	FlashBridge_WaitIdle	function	Verified: 0x1238E masks FPGA 0x2E bit 0, loop delays 100 microseconds up to approximately two seconds
+0x000123E0	FlashBridge_Erase	function	Verified: 0x1240E writes FPGA command 0x02 after address, timeout does not abort
+0x00012444	FlashBridge_Program	function	Verified: 0x1246C caps count at 256, 0x124A8 writes FPGA command 0x0A, no length register write
+0x000124DC	FlashBridge_Read	function	Verified: 0x124EE caps count at 1024, 0x12514 writes length, 0x1251C issues command 0x12
+0x00012570	FlashBridge_AccumulateCRC8	function	Verified: 0x125C6 applies CRC to FPGA buffer, 0x125DC..0x125F0 abort on timeout with CRC zero
+0x00013188	EEPROM_WriteBytes	function	Verified: read-modify-write of 16-byte rows through 0x23064, return codes ignored
+0x00013258	EEPROM_ReadBytes	function	Verified: byte copy from CYREG_EE_DATA_MBASE plus offset
+0x00014F54	Outputs_MuteForUpdate	function	Verified: calls 0x15288 only if 0x1FFF912F is nonzero
+0x00014F74	Outputs_RestoreAfterUpdate	function	Verified: calls 0x151D0 only if 0x1FFF912F is nonzero
+0x000175C4	Power_HandleDisconnect	function	Verified: state 5 writes EEPROM flag, calls 0x204DC, clears UDB06 bit 2, selects state 4
+0x000176E0	Power_RequestDeferredRestart	function	Verified: sets 0x1FFF8F1C to 5, no CPU reset instruction or call
+0x000176F8	Power_SetRestartIntent	function	Verified: calls 0x17754 with 1 before bootloader entry
+0x00017704	Power_ReadRestartIntent	function	Verified: reads EEPROM 0x7F0 and accepts 0xABCD with nonzero byte 2
+0x00017754	Power_WriteRestartIntent	function	Verified: writes CD AB boolean 00 at EEPROM offset 0x7F0
+0x00017F90	FirmwareUpdate_Init	function	Verified: sets mode 3, count 0, error 0 without explicit address initialization
+0x00017FB4	FirmwareUpdate_SelectMode	function	Verified: command 0x60 target at 0x16F30, modes 0 bootloader request, 1 resources, 2 FPGA
+0x00018098	FirmwareUpdate_AppendPacket	function	Verified: command 0x62 target at 0x16F56, count comes from p1, not payload length
+0x00018198	FirmwareUpdate_Finalize	function	Verified: command 0x61 target at 0x16F3C, tail program then readback CRC report without comparison
+0x00018344	FirmwareUpdate_RestartRequest	function	Verified: command 0x63 target at 0x16F68, value 0 restores outputs, value 1 selects deferred state 5
+0x0001836C	FirmwareUpdate_AddressInRange	function	Verified: mode 1 [0x380000,0x800000), mode 2 [0x1C0000,0x380000), current address only
+0x000183F4	FirmwareUpdate_BaseAddress	function	Verified: mode 2 returns 0x1C0000, every other mode returns 0x380000
+0x0001C49C	Resource_ReadBytes	function	Verified: adds external base 0x380000 and reads in chunks up to 1024 bytes
+0x0001C4F4	Resource_LoadHeaderAndTable	function	Verified: magic 0x4642, format 3, count-driven copies before header/table CRC comparison
+0x0001C5A4	Resource_GetVersion	function	Verified: returns header version only when 0x1FFF8F34 is nonzero
+0x0001C5D4	Resource_GetCRC8	function	Verified: computes and caches CRC over header extent without expected-value comparison
+0x0001C61C	Resource_SetCachedCRC8	function	Verified: stores byte at 0x1FFF8F3C
+0x0001C63C	Resource_GetDimensions	function	Verified: checks resource validity and index, returns entry bytes 1 and 2
+0x0001C6AC	Resource_GetDimensionsAndByte3	function	Verified: returns entry bytes 1, 2, and 3 after index/validity checks
+0x0001C720	Resource_BeginRead	function	Verified: derives external-relative offset from entry word 4 plus header payload offset
+0x0001C7C0	Resource_BeginFrameRead	function	Verified: adds frame times width times height times 2 without partition bounds
+0x0001C86C	Resource_ReadChunk	function	Verified: reads up to 64 bytes and advances resource state
+0x0001C8F8	Resource_Reload	function	Verified: clears valid flag and read state then loads header, cached-CRC flag remains
+0x000218CC	CRC8_Init	function	Verified: sets CRC byte to zero at 0x218DE
+0x000218EC	CRC8_Update	function	Verified: polynomial 0x07 equivalence checked against 0x21922..0x21934 for all 256 XOR states
+0x00023064	EEPROM_WriteRow	function	Verified: programs EEPROM array 0x40 with 16-byte input, waits without timeout, returns status
+0x000232FC	Bootloadable_Load	function	Inferred API identity: PSoC Bootloadable pattern. Verified 0x23304 writes RESET_SR0=0x40 then 0x23306 calls CySoftwareReset
+0x00023AB4	CySoftwareReset	function	Verified: 0x23AC6 sets bit 0 of CYREG_RESET_CR2, PSoC software reset primitive
+0x00023AD4	CyDelay	function	Verified: millisecond count multiplied by calibrated cycle factor, split for large counts
+0x00023B18	CyDelayUs	function	Verified: 16-bit microsecond count multiplied by calibrated cycle factor then delay loop
+0x1FFF8EF8	flashBridgeErrorPhase	data	Verified: erase/program/read timeout writes in 0x123E0/0x12444/0x124DC, separate from update report
+0x1FFF8EFC	flashBridgeErrorOperation	data	Verified: values 1 erase, 2 program, 3 read, 4 FPGA readiness at 0x11836
+0x1FFF8F24	firmwareUpdateMode	data	Verified: byte modes 0..3 at 0x17FB4 and 0x1836C
+0x1FFF8F28	firmwareUpdateNextAddress	data	Verified: 32-bit external address initialized at 0x17FFA and advanced at 0x1814E
+0x1FFF8F2C	firmwareUpdateBufferedBytes	data	Verified: 32-bit byte count read at 0x180A4 and updated at 0x180F8
+0x1FFF8F30	firmwareUpdateError	data	Verified: final report reads low byte at 0x182C2..0x182C6
+0x1FFF8F34	resourceHeaderValid	data	Verified: set only after magic/format/header-table CRC checks at 0x1C586
+0x1FFF8F38	resourceCRCComputed	data	Verified: 0x1C5D4 uses one-shot flag, 0x1C8F8 does not clear it
+0x1FFF8F3C	resourceCachedCRC8	data	Verified: 0x1C5D4 computes and 0x1C61C overwrites the cached CRC
+0x1FFF9170	firmwareUpdateBuffer	data	Verified: 256-byte page buffer referenced by 0x18098 and 0x18198
+0x1FFF9B64	resourceHeader	table	Verified: 20 bytes from external 0x380000 at 0x1C504
+0x1FFF9B78	resourceEntries	table	Verified: entries are 8 bytes, index 126 reaches read state at 0x1FFF9F68, no parser count cap
+0x1FFF9F68	resourceReadActive	data	Verified: 0x1C720 sets 1, 0x1C86C clears at end, 0x1C8F8 clears before header reload
+0x6080002D	FPGA_ApplicationModeControl	fpga_reg	Verified: 0x1F92A writes 1, 0x17FD4 writes 0 before bootloader reset. Unknown hardware meaning
+0x6080002E	FPGA_FlashCommandStatus	fpga_reg	Verified: bit 0 busy, requests 0x02 erase, 0x0A program, 0x12 read. Physical opcodes unknown
+0x6080002F	FPGA_FlashReadLengthLow	fpga_reg	Verified: 0x12514 writes little-endian length through 0x12658
+0x60800030	FPGA_FlashReadLengthHigh	fpga_reg	Verified: second byte of 0x12514 length write
+0x60800031	FPGA_FlashAddressLow	fpga_reg	Verified: 0x12342 writes address bits 7..0
+0x60800032	FPGA_FlashAddressMiddle	fpga_reg	Verified: 0x1234C writes address bits 15..8
+0x60800033	FPGA_FlashAddressHigh	fpga_reg	Verified: 0x12356 writes address bits 23..16
+0x60800034	FPGA_FlashWriteGate	fpga_reg	Inferred role: 0x1E before erase/program and 0 afterward at 0x123E0/0x12444. Hardware semantics unknown
+0x60800035	FPGA_ReadinessStatus	fpga_reg	Verified: 0x117AE tests bit 1 after signature 0xAB
+0x60800C00	FPGA_FlashTransferBuffer	data	Verified: 0x12444 copies program bytes here, 0x124DC reads bytes here

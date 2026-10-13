@@ -1,0 +1,17 @@
+address	name	kind	evidence
+0x00010000	Bootloadable_ApplicationVectorTable	table	Verified: CYACD line 2 payload offset 0, ASCII offset 0x18, flash.bin offset 0. Words 0x20008000,0x10011,0x21969,0x21969.
+0x0003FF00	Bootloadable_MetadataRow	data	Verified: CYACD line 356 at ASCII offset 0x32FE9, array 3 row 255, flash.bin offset 0x2FF00. First 192 bytes zero.
+0x0003FFC0	Bootloadable_Metadata	table	Verified: final 64 main-flash bytes, CYACD ASCII offset 0x33174, flash.bin offset 0x2FFC0. Cypress layout sources in docs/firmware/image-format.md.
+0x0003FFC0	Bootloadable_ApplicationChecksum	data	Verified: byte 0x73, CYACD ASCII offset 0x33174. Complement of app main-flash sum 0x2A plus auxiliary sum 0x63.
+0x0003FFC1	Bootloadable_ApplicationEntryPoint	data	Verified: little-endian 0x10011, CYACD ASCII offset 0x33176. Equals reset vector at 0x10004.
+0x0003FFC5	Bootloadable_BootloaderLastRow	data	Verified: little-endian uint16 0x00FF, CYACD ASCII offset 0x3317E. Global row boundary, no array-zero data supplied.
+0x0003FFC9	Bootloadable_ApplicationLength	data	Verified: little-endian uint32 0x16200, CYACD ASCII offset 0x33186. Covers main flash 0x10000 through 0x261FF.
+0x0003FFCD	Bootloadable_ApplicationRunType	data	Verified byte 0 at CYACD ASCII offset 0x3318E. Classic Cypress field name, vendor bootloader behavior unknown.
+0x0003FFD0	Bootloadable_ApplicationActive	data	Verified byte 0 at CYACD ASCII offset 0x33194. Vendor bootloader policy unknown.
+0x0003FFD1	Bootloadable_ApplicationVerified	data	Verified byte 0 at CYACD ASCII offset 0x33196. Excluded from application checksum.
+0x0003FFD2	Bootloadable_BootloaderVersion	data	Verified little-endian uint16 0 at CYACD ASCII offset 0x33198. Does not identify the absent bootloader version.
+0x0003FFD4	Bootloadable_ApplicationId	data	Verified little-endian uint16 0 at CYACD ASCII offset 0x3319C.
+0x0003FFD6	Bootloadable_ApplicationVersion	data	Verified little-endian uint16 0 at CYACD ASCII offset 0x331A0. Not the product firmware version.
+0x0003FFD8	Bootloadable_ApplicationCustomerId	data	Verified little-endian uint32 0 at CYACD ASCII offset 0x331A4.
+0x48002000	Application_ConfigAddressTable	table	Verified: function 0x21CCC passes address to loader 0x21AD4. config.bin offset 0x2000, first application row auxiliary payload.
+0x480020B0	Application_ConfigByteTable	table	Verified: function 0x21CCC passes address to loader 0x21AD4. config.bin offset 0x20B0.

@@ -1,0 +1,152 @@
+address	name	kind	evidence
+0x00011d98	ProtocolSignalHost	function	Verified: writes 0xA2 to FPGA byte 0x03
+0x00011db0	ProtocolHasTransmitSpace	function	Verified: compares masked next RX write index with RX read index
+0x00011e4c	ProtocolTransmitWords	function	Verified: copies RX slot words then publishes state and write index
+0x00011f68	ProtocolReceiveWords	function	Verified: copies state&31 TX words then clears state and advances index
+0x00012610	FpgaWriteUint32LE	function	Verified: four low-byte-first EMIF stores
+0x00013030	EepromStreamReset	function	Verified: clears buffered count and EEPROM offset
+0x00013050	EepromStreamAppendByte	function	Verified: appends byte and programs each full 16-byte row
+0x000130ac	EepromStreamAppendBlock	function	Verified: fills 16-byte row buffer from byte span
+0x0001314c	EepromStreamFlush	function	Verified: patches final partial row
+0x00013188	EepromPatchBytes	function	Verified: EEPROM row read-modify-write loop
+0x00013258	EepromReadBytes	function	Verified: reads bytes from 0x40008000+offset
+0x000153c4	ProtocolInitialize	function	Verified: clears protocol counters and completion state
+0x000153ec	ProtocolResetHook	function	Verified: function immediately returns
+0x000153f8	ProtocolParseHostMessage	function	Verified: parses types 1-4 and dispatches source 1
+0x00015668	ProtocolSendPendingReports	function	Verified: sends pending reports and Get-all sequence
+0x000159a4	ProtocolSettingRecordWords	function	Verified: computes serialized size from settings descriptor
+0x00015a10	ProtocolSerializeSetting	function	Verified: emits type 1 or descriptor-sized type 2
+0x00015b48	ProtocolSerializeBlock	function	Verified: writes type 2 block but rounds returned size down
+0x00015c50	ProtocolSendIdentityPreamble	function	Verified: sends 40x4, D2, and truncated 41 record
+0x00015dbc	SettingsCopyStereoPartnerByte	function	Verified: propagates even stereo channel state except source 2
+0x00015e18	SettingsCopyStereoPartnerState	function	Verified: copies flags and per-mixer mute/fader to next channel
+0x00015f34	ProtocolEnabled	function	Verified: constant return 1
+0x00015f58	ProtocolStateTick	function	Verified: settings replay and lock/cycle reports
+0x00016168	ProtocolStateStart	function	Verified: state 0 and callback registration with period 500
+0x0001618c	ProtocolStateSuspend	function	Verified: writes state 4
+0x000161a4	ProtocolStateResume	function	Verified: state 4 becomes 0
+0x000161dc	SettingsSetPartnerGroup	function	Verified: sets partner channel group except source 2
+0x00016228	ProtocolDispatchCommand	function	Verified: command jump table plus settings/UI hooks
+0x0001625c	ProtocolCommandTargets	table	Verified: 215 Thumb targets indexed by command minus one
+0x00016fbc	ProtocolDispatchByte	function	Verified: constructs command with p2 zero and caller-selected source
+0x00017004	SettingsRequestFactoryReset	function	Verified: selects protocol state 2
+0x00017020	SettingsApplyGroupedGain	function	Verified: relative grouped gain change and state updates
+0x000172ec	ProtocolSetInstrumentGain	function	Verified: channel checks and grouped/direct gain path
+0x00017368	ProtocolSetMicGain	function	Verified: channel checks and grouped/direct gain path
+0x00017404	ProtocolRefreshVersionState	function	Verified: populates 40 and D2 descriptors
+0x00017704	PowerReadPersistentMarker	function	Verified: reads EEPROM 0x7F0 and tests CD AB plus byte 2
+0x00017754	PowerWritePersistentMarker	function	Verified: writes CD AB bool 00 at EEPROM 0x7F0
+0x0001f8fc	ApplicationMain	function	Verified: initialization and endless cooperative service loop
+0x0001fd84	FpgaEventISR	function	Verified: latches FPGA event bits 0,1,2,3,5 and clears them
+0x0001feac	FpgaEventInstallISR	function	Verified: registers 0x1FD85 interrupt target
+0x0001fec8	ProtocolHostIsReady	function	Verified: tests host state equals 2
+0x0001fee8	ProtocolAdvanceHostHandshake	function	Verified: status bit, ten passes, and reset acknowledgement gate state 2
+0x0001ff6c	ProtocolServiceFpgaEvents	function	Verified: resets report state and drains up to eight host messages
+0x00020100	FpgaEventEnableProtocol	function	Verified: enables event bits 1,2,3,5
+0x0002014c	SchedulerInitialize	function	Verified: initializes ten timer entries
+0x0002019c	SchedulerAddTimer	function	Verified: installs callback argument and 16-bit period in free entry
+0x00020230	SchedulerRemoveTimer	function	Verified: clears callback and enabled field for handle 1-10
+0x00020280	SchedulerService	function	Verified: accumulates counter delta and invokes due callbacks
+0x00020364	SchedulerCounter	function	Verified: complements 16-bit hardware counter
+0x00020378	SchedulerElapsed	function	Verified: computes 16-bit elapsed counter with wrap branch
+0x000203b4	SettingsInitialize	function	Verified: assigns descriptor offsets and applies defaults
+0x00020498	SettingsServiceSave	function	Verified: progresses save then tests dirty age greater than 3000
+0x000204dc	SettingsFinishActiveSave	function	Verified: loops until active save completes
+0x000204f4	SettingsFindDescriptorWrapper	function	Verified: wrapper around 0x21738
+0x00020520	SettingsDefaultInputRoute	function	Verified: computes default input-pair route byte
+0x0002056c	SettingsDefaultOutputRoute	function	Verified: computes default output-pair route byte
+0x000205cc	SettingsApplyDefaults	function	Verified: initializes each value with descriptor-specific overrides
+0x00020820	SettingsWriteByte	function	Verified: one-byte setter with change-sensitive dirty/report logic
+0x000208e0	ReportsMarkPending	function	Verified: ORs register-shifted p1 bit without dimension check
+0x00020918	SettingsWriteCommand	function	Verified: descriptor-width copy and dirty/report logic
+0x000209e0	SettingsReadValue	function	Verified: copies descriptor width into caller buffer
+0x00020a5c	SettingsReadCommand	function	Verified: fills internal command data from state pool
+0x00020ad4	EepromReadDescriptor	function	Verified: copies four descriptor bytes and updates CRC
+0x00020b78	SettingsValidateEeprom	function	Verified: validates AE 02 count size and CRC
+0x00020d18	SettingsNextReplayCommand	function	Verified: unchecked descriptor-width EEPROM copy before dispatch
+0x00020eb8	SettingsCopyDescriptorHeader	function	Verified: copies descriptor bytes 0-3
+0x00020eec	EepromAppendDescriptor	function	Verified: appends four bytes and updates CRC
+0x00020f5c	SettingsSaveSynchronously	function	Verified: serializes all persistent descriptors and values
+0x000210b0	SettingsStartSave	function	Verified: initializes async save and writes header plus three descriptors
+0x000211bc	SettingsSaveIsActive	function	Verified: tests save state nonzero
+0x000211dc	SettingsAdvanceSave	function	Verified: descriptor, payload, final CRC states
+0x00021314	ReportsReset	function	Verified: clears iterators and 28 pending masks
+0x00021358	ReportsStartGetAll	function	Verified: activates persistent descriptor iterator
+0x00021380	ReportsPeekGetAllCommand	function	Verified: returns current persistent descriptor command
+0x000213c4	ReportsNextGetAllValue	function	Verified: p1-fastest iteration with volatile descriptor exclusion
+0x000214ac	ReportsPeekPendingCommand	function	Verified: skips zero masks in report table
+0x00021518	ReportsStartPendingScan	function	Verified: resets pending table and p1 cursors
+0x0002153c	ReportsNextPendingValue	function	Verified: copies value with p2 zero and clears pending bit
+0x00021670	SettingsSampleRateHz	function	Verified: indices 0-5, default 44100 for all other bytes
+0x000216e4	SettingsDescriptorSize	function	Verified: width times nonzero-normalized dimensions
+0x00021738	SettingsFindDescriptor	function	Verified: linear search of sixty command descriptors
+0x00021790	SettingsValueAddress	function	Verified: checks dimensions then start offset against 0x672
+0x00021854	ReportsFindDescriptor	function	Verified: linear search of 28 report descriptors
+0x000218ac	ProtocolCrcAppendByte	function	Verified: single-byte wrapper around 0x218EC
+0x000218cc	ProtocolCrcInitialize	function	Verified: sets CRC byte to zero
+0x000218ec	ProtocolCrcAppendBlock	function	Verified: unreflected CRC-8 polynomial 0x07
+0x00023064	EepromProgramRow	function	Verified: programs 16 bytes through SPC and returns status
+0x00025ebc	SettingsDescriptorInitializer	table	Verified: sixty eight-byte records copied to 0x1FFF8BEC
+0x0002609c	ReportDescriptorInitializer	table	Verified: twenty-eight eight-byte records copied to 0x1FFF8DCC
+0x0002617c	TouchAssignmentDefaults	table	Verified: 13 12 16 04 copied to 0x1FFF8EAC
+0x1fff8bec	SettingsDescriptors	table	Verified: searched by 0x21738 and offset-assigned by 0x203B4
+0x1fff8dcc	ReportDescriptors	table	Verified: command and pending mask entries used by 0x2153C
+0x1fff8f0c	ProtocolState	data	Verified: states 0-4 in 0x15F58 and suspend/resume helpers
+0x1fff8f14	ExternalClockLocked	data	Verified: lock transition state in 0x15F58
+0x1fff8fa8	FpgaEventWorkPending	data	Verified: ISR sets and deferred service clears
+0x1fff8fbc	FpgaLatchedEvents	data	Verified: event bit mask shared by 0x1FD84 and 0x1FF6C
+0x1fff8fc0	ProtocolReceiveWorkPending	data	Verified: receive-drain continuation flag
+0x1fff8fc4	ProtocolHostState	data	Verified: states 0 disconnected,1 initial,2 ready
+0x1fff8fc8	ProtocolHostResetAcknowledged	data	Verified: event 2 sets and ready transition clears
+0x1fff8fcc	ProtocolHostHandshakePasses	data	Verified: counts to ten in 0x1FEE8
+0x1fff8fd0	ProtocolDisconnectPending	data	Verified: disconnect flag consumed by 0x1FF6C
+0x1fff8fdc	PendingReportScanActive	data	Verified: report iterator state in 0x21518 and 0x2153C
+0x1fff8fe0	PendingReportIndex	data	Verified: pending descriptor index
+0x1fff8fe4	PendingReportParameter	data	Verified: pending p1 cursor
+0x1fff8fe8	GetAllScanActive	data	Verified: persistent report iterator state
+0x1fff8fec	GetAllParameter1	data	Verified: persistent iterator p1 cursor
+0x1fff8ff0	GetAllParameter2	data	Verified: persistent iterator p2 cursor
+0x1fff8ff4	GetAllDescriptorIndex	data	Verified: persistent descriptor cursor
+0x1fff8ff8	EepromReplayActive	data	Verified: validation and replay state
+0x1fff8ffc	EepromReplayDescriptorIndex	data	Verified: descriptor cursor in 0x20D18
+0x1fff9008	EepromPayloadOffset	data	Verified: 4+4*descriptor_count in validator
+0x1fff900c	EepromComputedCrc	data	Verified: validator/save CRC byte
+0x1fff900d	EepromStoredCrc	data	Verified: EEPROM header byte 3
+0x1fff9010	EepromDescriptorCount	data	Verified: header count and save count
+0x1fff9014	SettingsDirty	data	Verified: save trigger flag
+0x1fff9018	SettingsLastWriteCounter	data	Verified: dirty-age timestamp
+0x1fff902c	SettingsSaveState	data	Verified: async save states 0-3
+0x1fff9030	EepromCrcFailures	data	Verified: incremented on CRC mismatch
+0x1fff9034	EepromHeaderFailures	data	Verified: incremented on invalid header
+0x1fff9038	EepromRangeFailures	data	Verified: incremented on payload or replay range rejection
+0x1fff9084	EepromRowBufferedBytes	data	Verified: row buffer count
+0x1fff9086	EepromStreamOffset	data	Verified: current row byte offset
+0x1fff9088	EepromRowBuffer	data	Verified: sixteen-byte EEPROM row buffer
+0x1fff9110	MonitorOutputState	table	Verified: three stride-3 entries: dim,mute,attenuation
+0x1fff9138	IdentityPreamblePending	data	Verified: Get-all preamble flag in 0x15668
+0x1fff913c	ProtocolCommandCount	data	Verified: incremented by parser accepted records
+0x1fff9140	GetAllRequested	data	Verified: type-4 request flag
+0x1fff9144	GetAllCompletionPending	data	Verified: completion record flag
+0x1fff9148	GetAllCompletionAuxiliary	data	Unknown: second completion byte, no nonzero writer found
+0x1fffa030	ProtocolReceiveBuffer	data	Verified: 120-byte receive buffer immediately before timer table
+0x1fffa0a8	SchedulerTimers	table	Verified: ten 16-byte callback entries
+0x1fffa148	SettingsValues	data	Verified: 0x66C used bytes, descriptor allocator limit 0x672
+0x1fffa7bc	EepromSaveValueOffsets	table	Verified: offsets into live settings pool for persistent values
+0x1fffa870	EepromDescriptors	table	Verified: runtime eight-byte descriptors from four-byte EEPROM records
+0x40008000	EepromSettingsHeader	data	Verified: AE 02 count CRC header
+0x40008004	EepromSettingsDescriptors	table	Verified: current image uses 42 four-byte descriptors
+0x400080ac	EepromSettingsValues	data	Verified: current image layout ends at 0x4000850B exclusive
+0x400087f0	EepromPowerMarker	data	Verified: CD AB bool 00
+0x60800002	FpgaProtocolStatus	fpga_reg	Verified: bit0 host-state input, bit6 PLL-unlocked input
+0x60800003	FpgaHostReportSignal	fpga_reg	Verified: firmware writes A2 after reports
+0x6080001c	FpgaEventStatus	fpga_reg	Verified: read by 0x116F8
+0x60800020	FpgaEventEnable	fpga_reg	Verified: read-modify-write by 0x1167C
+0x60800024	FpgaEventClear	fpga_reg	Verified: write-one bit by 0x11614
+0x60800400	FpgaHostRxSlots	fpga_reg	Verified: eight 120-byte PSoC-to-host slots
+0x608007c0	FpgaHostRxSlotStates	fpga_reg	Verified: eight word states
+0x60800800	FpgaHostTxSlots	fpga_reg	Verified: eight 120-byte host-to-PSoC slots
+0x60800bc0	FpgaHostTxSlotStates	fpga_reg	Verified: eight word states
+0x60800be4	FpgaHostRxWriteIndex	fpga_reg	Verified: PSoC producer index
+0x60800be8	FpgaHostRxReadIndex	fpga_reg	Verified: host consumer index
+0x60800bec	FpgaHostTxWriteIndex	fpga_reg	Verified: host producer index
+0x60800bf0	FpgaHostTxReadIndex	fpga_reg	Verified: PSoC consumer index

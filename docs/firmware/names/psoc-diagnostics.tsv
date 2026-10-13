@@ -1,0 +1,55 @@
+address	name	kind	evidence
+0x00012fd0	FrontADC_EnableAGC	function	Verified: 0x12FE2 selects I2C 0x18 page 0. 0x12FEC writes 0x56=0x80 if 0x1FFF8F08!=0. 0x12FF4 stores flag 1. Inferred AGC: TLV320ADC3101 SLAS553B p59 table 72.
+0x00013000	FrontADC_DisableAGC	function	Verified: 0x13012 selects I2C 0x18 page 0. 0x1301C writes 0x56=0 if 0x1FFF8F08!=0. 0x13024 stores flag 0. Inferred AGC: TLV320ADC3101 SLAS553B p59 table 72.
+0x0001e0c0	PanelInputHome_LoadState	function	Verified: 0x1E0C8 calls 0x1DF30. 0x1E0CE refreshes page widgets through 0x1CD5C.
+0x0001e0d8	PanelInputHome_Update	function	Verified: 0x1E0E8 compares selected and drawn input. 0x1E0EC redraws label. 0x1E0F2 updates dirty gauge. Callback pointer at flash 0x25C2C.
+0x0001e108	PanelInputHome_Draw	function	Verified: 0x1E110/0x1E116 draw label/gauge. 0x1E12C draws separator. Callback pointer at flash 0x25C28.
+0x0001e140	PanelInputHome_Clear	function	Verified: 0x1E158/0x1E172 clear label/separator. 0x1E15E clears gauge. Callback pointer at flash 0x25C30.
+0x0001e184	PanelInputHome_OnCommand	function	Verified: absent from baseline functions.tsv. Flash 0x25C34 holds pointer 0x1E185. Table 0x1E1B0 handles 0x01/02/03/05/23. Return at 0x1E31E.
+0x0001e1b0	PanelInputHome_CommandTargets	table	Verified: 35 little-endian Thumb pointers indexed by command-1 at 0x1E1A0..0x1E1AA. Only IDs 1,2,3,5,0x23 have nondefault targets.
+0x0001e328	PanelInputHome_DrawInputLabel	function	Verified: 0x1E33E maps selector to channel. 0x1E368/0x1E392 draw IN/G and digit resources at y=16.
+0x0001e480	PanelInputMenu_GetSelection	function	Verified: returns word 0x1FFF8F60. Return instruction at 0x1E490.
+0x0001e498	PanelInputMenu_GetSelectedCommand	function	Verified: indexes 0x1FFF8998 with 0x1FFF8F60, then reads command byte at 0x1FFF8A55+16*(item+7). Return at 0x1E4C2.
+0x0001e768	PanelInputMenu_LoadState	function	Verified: 0x1E770 calls filter 0x1E4D0. 0x1E776 refreshes page widgets through 0x1CD5C.
+0x0001e780	PanelInputMenu_SelectorIsGuitar	function	Verified: 0x1E78E maps selector. 0x1E798/0x1E79E compare mapped channel with 10/11.
+0x0001e7b0	PanelInputMenu_OnCommand	function	Verified: 0x1E7CC/0x1E7D0 compare IDs 1/0x23. 0x1E80C/0x1E844 rebuild menu. Callback pointer at flash 0x25E18.
+0x0001e868	PanelInputMenu_ClearObsoleteAreas	function	Verified: 0x1E896/0x1E8B6 clear shortened menu columns. 0x1E8D8 clears guitar-transition area. Flag clears at 0x1E8BE/0x1E8E0.
+0x0001e8f8	PanelInputMenu_DrawInputLabel	function	Verified: 0x1E90E maps selector. 0x1E938/0x1E962 draw IN/G and digit resources at y=0.
+0x0001e9b8	PanelInputMenu_Update	function	Verified: 0x1E9C0 clears obsolete areas. 0x1E9DE updates changed label. 0x1E9D0 clears unresolved flag 0x1FFF8F64. Callback at flash 0x25E10.
+0x0001e9f4	PanelInputMenu_Draw	function	Verified: 0x1E9FC/0x1EA00 clear obsolete areas and draw label. 0x1EA08 clears unresolved flag. Callback at flash 0x25E0C.
+0x0001ea14	PanelInputMenu_Clear	function	Verified: calls to 0x1C950 at 0x1EA2E/0x1EA44/0x1EA58 clear two columns and label. Callback at flash 0x25E14.
+0x0001ea6c	PanelGauge_SetQueueAndStyle	function	Verified: 0x1EA7E stores queue at object+0x1C. 0x1EA84 stores style byte at object+0x19.
+0x0001ea90	PanelGauge_SetPosition	function	Verified: 0x1EAA0/0x1EAA6 store x/y at object+0/+4.
+0x0001eab4	PanelGauge_SetRangeAndSign	function	Verified: 0x1EAD6/0x1EADC store range endpoints. 0x1EAE2 stores sign style. Only a changed first endpoint sets dirty at 0x1EAD0.
+0x0001eaf0	PanelGauge_SetValue	function	Verified: compares value at object+0x10, then stores value and dirty word at +0x14 if changed. Code at 0x1EAF0..0x1EB18.
+0x0001ebe0	PanelGauge_Update	function	Verified: tests dirty word at object+0x14 and calls 0x1EBFC only when nonzero. Code at 0x1EBE0..0x1EBFA.
+0x0001f064	PanelGauge_Clear	function	Verified: clears rectangle through 0x1C950. Dimensions derive from the 20-byte style table at 0x1FFF8B4C, initialized at flash 0x25E1C.
+0x0001f0c0	FunctionalTest_InitMode	function	Verified: 0x1F0C8 writes only zero to mode byte 0x1FFFA020. No ADC access.
+0x0001f0d8	FunctionalTest_Service	function	Verified: mode 1 polls encoders at 0x1F0EC/0x1F10E/0x1F130/0x1F152. Mode 2 calls meter service at 0x1F178.
+0x0001f188	FunctionalTest_SelectorPadPressNoOp	function	Verified: caller 0x1FA94 uses indices 0..13. 0x1F18E stores argument only on stack. 0x1F198 returns.
+0x0001f19c	FunctionalTest_ToggleLEDOnRelease	function	Verified: mode-1 check at 0x1F1A8. Toggles mask at 0x1FFFA022. LED writes at 0x1F1E2/0x1F1FE. Report call at 0x1F202.
+0x0001f210	FunctionalTest_EncoderPressNoOp	function	Verified: caller at 0x1FBC0. 0x1F216 stores argument only on stack. 0x1F220 returns.
+0x0001f224	FunctionalTest_ReportEncoderRelease	function	Verified: mode-1 and index<=3 checks at 0x1F230/0x1F236. Stores report 0x53 data [index,2,1]. Source-0 store call at 0x1F25C.
+0x0001f26c	FunctionalTest_OnModeCommand	function	Verified: command checks at 0x1F278/0x1F27C. Mode equality check at 0x1F28A. Calls 0x13000 at 0x1F2F8/0x1F35C and 0x12FD0 at 0x1F362/0x1F374.
+0x0001f38c	FunctionalTest_ReportEncoderDelta	function	Verified: signed 16-bit difference at 0x1F3A6..0x1F3AA. Direction at 0x1F3C4..0x1F3D0. Magnitude narrows at 0x1F3E2. Report store at 0x1F3EE.
+0x0001f408	FunctionalTest_ReportLEDMask	function	Verified: 0x1F420/0x1F42C store low/high mask bytes. Report-0x52 source-0 store at 0x1F434.
+0x0001f444	FunctionalTest_DrawColorBars	function	Verified: 0x1F452/0x1F45E disable meters. Draws four 40x128 stripes per display. Loads colors at 0x1F48C. Border calls at 0x1F4CA/0x1F4EE/0x1F512/0x1F536.
+0x0001f558	PanelPopup_SetActionState	function	Verified: compares action byte/value at 0x1F56A/0x1F574. Stores dirty/action/value at 0x1F57C/0x1F582/0x1F588.
+0x0001f5a0	PanelPopup_Update	function	Verified: 0x1F5AC tests dirty. 0x1F5B4 clears it. 0x1F5B8 draws popup. Callback at flash 0x25E8C.
+0x0001f5c8	PanelPopup_Draw	function	Verified: rectangle calls at 0x1F5E2/0x1F5F8/0x1F60E/0x1F624 draw border. 0x1F62A draws content. Callback at flash 0x25E88.
+0x0001f638	PanelPopup_Clear	function	Verified: 0x1F650 clears x=4,y=45,w=152,h=59. Callback at flash 0x25E90.
+0x0001f660	PanelPopup_DrawContent	function	Verified: selects bitmap IDs from 23 triples at 0x1FFF8B68, initialized at 0x25E38. Reads stored mute/speaker state. Clears dirty at 0x1F8BC. Returns at 0x1F8C2.
+0x0001f8d8	PanelPopup_OnCommandNoOp	function	Verified: absent from baseline functions.tsv. Flash 0x25E94 holds pointer 0x1F8D9. Code 0x1F8D8..0x1F8FA stores arguments on stack then returns.
+0x0001fd48	PanelInputs_FirstSetBit16	function	Verified: scans mask bits 0..15. Returns 16 for zero mask. Long-press caller at 0x1FD04.
+0x1fff8184	FrontADC_AGCRequested	data	Verified: 32-bit flag initialized to 1 at flash 0x25454. Stores at 0x12FF4/0x13024. Inferred register role from 0x12F44 and TLV320ADC3101 p59/60/68.
+0x1fff8950	PanelInputHome_PageCallbacks	table	Verified: flash 0x25C20 words 1FFF88E4,6,1E109,1E0D9,1E141,1E185. Callback consumers at 0x1CBE8/0x1CC30/0x1CC8C/0x1CCD4 use offsets +8/+12/+16/+20.
+0x1fff8b34	PanelInputMenu_PageCallbacks	table	Verified: flash 0x25E04 words 1FFF8A54,14,1E9F5,1E9B9,1EA15,1E7B1. Fourteen widgets and four Thumb callbacks.
+0x1fff8b60	FunctionalTest_RGB565Colors	table	Verified: flash 0x25E30 halfwords 0000,F800,07E0,001F. Color load at 0x1F48C.
+0x1fff8b68	PanelPopup_ResourceTriples	table	Verified: 69 bytes at flash 0x25E38. Consumer 0x1F660 uses 23 triples [icon,nonzero-text,zero-text]. Value 0x7F means no resource.
+0x1fff8bb0	PanelPopup_PageCallbacks	table	Verified: flash 0x25E80 words 0,0,1F5C9,1F5A1,1F639,1F8D9. No widgets and four callbacks.
+0x1fff8f08	FrontADC_AnalogRevisionPath	data	Verified: 0x104E4 compares hardware revision with 2. 0x104EE passes selector to 0x12D28. Mode helpers skip I2C when selector is zero.
+0x1fff8f64	PanelInputMenu_UnresolvedFlag_8f64	data	Verified: 0x1E9B8/0x1E9F4 clear this word. Unknown original purpose. No nonzero writer in supplied decompile.
+0x1fff95d4	Panel_SpecialModeGate	data	Verified: word at 0x1FFF9588+0x4C. 0x199FC/0x19A10 clear/set for 0x50. 0x19A34 sets for update. 0x19A58 clears for restore.
+0x1fffa020	FunctionalTest_Mode	data	Verified: 0x1F0C8 clears the byte. 0x1F36E stores any changed 0x50 value. Only values 1/2 have service actions.
+0x1fffa022	FunctionalTest_LEDToggleMask	data	Verified: 0x1F2C6 clears the 16-bit mask. 0x1F19C toggles bits. 0x1F408 serializes report 0x52 in little-endian order.
+0x1fffa024	FunctionalTest_EncoderSnapshots	table	Verified: four signed 16-bit positions for input/speaker/headphone1/headphone2. Stores at 0x1F2D2/0x1F2DE/0x1F2EA/0x1F2F6. Delta consumer at 0x1F38C.

@@ -1,0 +1,163 @@
+address	name	kind	evidence
+0x00010000	RomVectors	table	Verified: four words 20008000 00010011 00021969 00021969; Cm3Start.c RomVectors
+0x00010010	Reset	function	Verified: branch at 0x10014 to Start_c; no bootloader reset path in image
+0x00010074	Application_StartComponents	function	Verified: EMIF I2C two SPI EEPROM counter and four encoder Start calls
+0x000100ec	Application_InitialControlSequence	function	Verified: control A/B writes and CyDelayUs 6000 5 2; board signal identities unknown
+0x00010168	Application_AdvancePowerSequence	function	Verified: state machine and GPIO/UDB controls; board power identities unknown
+0x00010514	P3_3_SetActive	function	Verified: 0x22048 sets drive mode then 0x2200c writes data; physical net unknown
+0x000108bc	PreampSPI_SendCommand	function	Inferred preamp role from application calls; verified 16-bit SPI word construction
+0x00010910	DisplayControl_SelectCommand	function	Inferred display role; verified B1_UDB05_CTL value 0 or 1 through 0x222f8
+0x00010934	DisplayControl_SelectData	function	Inferred display role; verified B1_UDB05_CTL value 2 or 3 through 0x222f8
+0x000114fc	ControlRegisters_Init	function	Verified: control A=01 B=04; shadows 1fff810c and 1fff810d
+0x0001152c	ControlA_UpdateBits	function	Verified: shadow mask update then 0x22a6c
+0x00011578	ControlB_UpdateBits	function	Verified: shadow mask update then 0x22d5c
+0x00011754	FPGA_WaitReady	function	Verified: polls EMIF window 60800000 and status 60800035
+0x00019390	Application_ServiceUI	function	Verified: consumes four encoder counters; physical encoder role inferred
+0x0001f8fc	main	function	Verified: Start_c calls this after constructors; enables interrupts and enters application loop
+0x0001f9b8	IRQ0_Expander70_Handler	function	Verified vector from 1fa14; inferred expander role from deferred I2C 70 read at 1fa94
+0x0001f9dc	IRQ1_Expander71_Handler	function	Verified vector from 1fa14; inferred expander role from deferred I2C 71 read at 1fa94
+0x0001fa00	IRQ2_ApplicationEvent_Handler	function	Verified vector from 1fa14; sets flag and disables IRQ2
+0x0001fa14	Application_StartInputInterrupts	function	Verified: installs IRQ0 IRQ1 IRQ2 handlers
+0x0001fd84	IRQ6_FPGAEvent_Handler	function	Verified: installed by 1feac; clears PICU2 and reads FPGA events
+0x0001feac	Application_StartFPGAInterrupt	function	Verified: installs handler 1fd85 through 220a0
+0x0002014c	SoftwareTimers_Init	function	Verified: clears ten software timer slots and samples complemented fixed counter
+0x00020280	SoftwareTimers_Service	function	Verified: polls counter and advances ten callback slots
+0x00020364	TickCounter_Now	function	Verified: returns uint16 complement of 232bc; 1ms unit inferred
+0x00020378	TickCounter_Elapsed	function	Verified: now-start with extra minus one if now less than start; 1ms unit inferred
+0x00021968	IntDefaultHandler	function	Verified: infinite loop; NMI HardFault and all initial non-reset vectors
+0x00021970	Start_c	function	Verified: Cm3Start.c region-copy and zero algorithm; calls libc constructors then main
+0x00021a04	initialize_psoc	function	Verified: Cm3Start.c RAM vectors AIRCR CCR reset-status VTOR and fitter sequence
+0x00021a90	CYMEMZERO	function	Verified: wrapper memset(dest,0,size); public cyfitter_cfg.c
+0x00021aac	CYCONFIGCPY	function	Verified: wrapper memcpy; public cyfitter_cfg.c
+0x00021ac8	CyClockStartupError	function	Verified: PLL exhaustion calls this with code3; infinite loop; public cyfitter_cfg.c
+0x00021ad4	cfg_write_bytes32	function	Verified: 44 base/count words and offset/value pairs; public cyfitter_cfg.c format
+0x00021b48	ClockSetup	function	Verified: IMO PLL bus and four digital divider register writes; public cyfitter_cfg.c structure
+0x00021c88	AnalogSetDefault	function	Verified: bandgap factory trim and PUMP_CR0=44; public cyfitter_cfg.c structure
+0x00021ccc	cyfitter_cfg	function	Verified: startup call and configuration descriptor consumer; public cyfitter_cfg.c structure
+0x00021f20	EMIF_Init	function	Verified: EMIF_NO_UDB EM_TYPE wait-state and divider writes; instance prefix reconstructed
+0x00021f60	EMIF_Enable	function	Verified: PM active/standby bit40 and EMIF_CLOCK_EN bit1
+0x00021fb8	EMIF_Start	function	Verified: one-time Init then Enable
+0x00021fd8	DigitalClock0_Start	function	Verified: PM_ACT_CFG2 and PM_STBY_CFG2 bit0
+0x0002200c	P3_3_Write	function	Verified: PRT3_DR bit3 update; Creator pin API shape
+0x00022048	P3_3_SetDriveMode	function	Verified: PRT3_PC3 mask0e update; cypins.h shifted drive-mode encoding
+0x00022080	P2_3_ClearInterrupt	function	Verified: reads PICU2_INTSTAT then extracts bit3
+0x000220a0	IRQ6_StartEx	function	Verified: disable vector priority4 enable; matches public interrupt component
+0x000220c4	IRQ6_SetVector	function	Verified: writes VTOR+58
+0x000220e8	IRQ6_SetPriority	function	Verified: writes NVIC_PRI_6 with argument shifted5
+0x0002210c	IRQ6_Enable	function	Verified: NVIC_SETENA0=40
+0x00022124	IRQ6_Disable	function	Verified: NVIC_CLRENA0=40
+0x0002213c	PreampSPI_Init	function	Inferred SPI component identity; verified status masks and FIFO clear sequence
+0x0002216c	PreampSPI_Enable	function	Inferred SPI API name; verified B0 UDB13 14 15 auxiliary-control updates
+0x000221cc	PreampSPI_Start	function	Inferred component role from 108bc; verified one-time Init then Enable
+0x00022204	PreampSPI_ReadTxStatus	function	Verified: B0_UDB15_ST
+0x00022224	PreampSPI_ReadRxStatus	function	Verified: B0_UDB14_ST
+0x00022244	PreampSPI_WriteTxData	function	Verified: waits TX status mask04 then writes 16-bit B0_UDB14_F0
+0x00022278	PreampSPI_ClearFIFO	function	Verified: drains RX and toggles FIFO clear bits
+0x000222f8	DisplayControl_Write	function	Verified: B1_UDB05_CTL byte write; physical pins unknown
+0x00022318	I2C_Init	function	Verified: CFG06 XCFG81 divider0015 and IRQ15 handler installation
+0x0002237c	I2C_Enable	function	Verified: PM_ACT_CFG5 and PM_STBY_CFG5 bit04
+0x000223c0	I2C_Start	function	Verified: one-time Init Enable and IRQ15 enable
+0x000223ec	I2C_ISR	function	Verified: installed at IRQ15; fixed master state machine and buffer transfers
+0x0002278c	I2C_MasterWriteBuf	function	Verified semantic match: public I2C_1_MASTER.c MasterWriteBuf; store order differs
+0x00022898	I2C_MasterReadBuf	function	Verified semantic match: public I2C_1_MASTER.c MasterReadBuf; store order differs
+0x000229a8	I2C_MasterStatus	function	Verified: adds transfer-in-progress flag to master status
+0x000229e4	I2C_MasterClearStatus	function	Verified: returns then clears 1fffa9de
+0x00022a08	I2C_MasterClearReadBuf	function	Verified: clears read index and completion bit
+0x00022a34	I2C_MasterClearWriteBuf	function	Verified: clears write index and completion bit
+0x00022a6c	ControlA_Write	function	Verified: B0_UDB10_CTL byte write; physical pins unknown
+0x00022a8c	DisplaySPI_Init	function	Inferred SPI component identity; verified masks and FIFO clear
+0x00022abc	DisplaySPI_Enable	function	Inferred SPI API name; verified B0 status auxiliary-control writes
+0x00022b1c	DisplaySPI_Start	function	Inferred component role from 10958 10988 109dc; verified Init then Enable
+0x00022b54	DisplaySPI_ReadTxStatus	function	Verified: B0_UDB10_ST
+0x00022b74	DisplaySPI_ReadRxStatus	function	Verified: B0_UDB09_ST
+0x00022b94	DisplaySPI_WriteTxData	function	Verified: waits TX status mask04 then writes B1_UDB09_F0 byte
+0x00022bc8	DisplaySPI_ClearFIFO	function	Verified: drains B1_UDB09_F1 and toggles auxiliary clear bit
+0x00022c24	IRQ0_StartEx	function	Verified: disable vector priority5 enable; public interrupt component shape
+0x00022c48	IRQ0_SetVector	function	Verified: VTOR+40
+0x00022c6c	IRQ0_SetPriority	function	Verified: NVIC_PRI_0 argument shifted5
+0x00022c90	IRQ0_Enable	function	Verified: NVIC_SETENA0=1
+0x00022ca8	IRQ0_Disable	function	Verified: NVIC_CLRENA0=1
+0x00022cc0	IRQ1_StartEx	function	Verified: disable vector priority5 enable; public interrupt component shape
+0x00022ce4	IRQ1_SetVector	function	Verified: VTOR+44
+0x00022d08	IRQ1_SetPriority	function	Verified: NVIC_PRI_1 argument shifted5
+0x00022d2c	IRQ1_Enable	function	Verified: NVIC_SETENA0=2
+0x00022d44	IRQ1_Disable	function	Verified: NVIC_CLRENA0=2
+0x00022d5c	ControlB_Write	function	Verified: B0_UDB06_CTL byte write; physical pins unknown
+0x00022dc0	SpeakerQuadDec_Start	function	Inferred quadrature role from 19390; verified counter center8000
+0x00022dec	SpeakerQuadDec_GetCounter	function	Inferred instance name; verified signed counter minus8000
+0x00022e74	InputQuadDec_Start	function	Inferred quadrature role from 19390; verified counter center8000
+0x00022ea0	InputQuadDec_GetCounter	function	Inferred instance name; verified signed counter minus8000
+0x00022f28	Headphone1QuadDec_Start	function	Inferred quadrature role from 19390; verified counter center8000
+0x00022f54	Headphone1QuadDec_GetCounter	function	Inferred instance name; verified signed counter minus8000
+0x00022fdc	Headphone2QuadDec_Start	function	Inferred quadrature role from 19390; verified counter center8000
+0x00023008	Headphone2QuadDec_GetCounter	function	Inferred instance name; verified signed counter minus8000
+0x00023058	EEPROM_Start	function	Verified: wrapper calls CyEEPROM_Start through 2304c
+0x00023064	EEPROM_Write	function	Inferred API name; verified supervisory 16-byte row write
+0x00023154	TickCounter_Init	function	Verified Counter_Init fixed-function branch match; TMR0 periodffff
+0x000231f0	TickCounter_Enable	function	Verified: TMR0 power and CFG0 enable
+0x00023238	TickCounter_Start	function	Verified: one-time Init then Enable
+0x00023258	TickCounter_SetInterruptMode	function	Verified: TMR0_SR0 write
+0x00023278	TickCounter_WriteCounter	function	Verified: gates TMR0 power around CNT_CMP0 write
+0x000232bc	TickCounter_ReadCounter	function	Verified Counter_ReadCounter match; forced capture then TMR0_CAP0 read
+0x000232dc	TickCounter_WritePeriod	function	Verified: TMR0_PER0 write
+0x000232fc	Bootloadable_Reset	function	Inferred component name; verified RESET_SR0=40 then CySoftwareReset
+0x00023310	IRQ2_StartEx	function	Verified: disable vector priority7 enable; public interrupt component shape
+0x00023334	IRQ2_SetVector	function	Verified: VTOR+48
+0x00023358	IRQ2_SetPriority	function	Verified: NVIC_PRI_2 argument shifted5
+0x0002337c	IRQ2_Enable	function	Verified: NVIC_SETENA0=4
+0x00023394	IRQ2_Disable	function	Verified: NVIC_CLRENA0=4
+0x000233ac	SpeakerCounter_Init	function	Verified UDB Counter_Init shape; B1 UDB06/07; speaker role inferred
+0x0002344c	SpeakerCounter_Start	function	Verified: Init then Enable
+0x000234a4	SpeakerCounter_WriteCounter	function	Verified: B1_UDB06_A0_A1 halfword
+0x000234c4	SpeakerCounter_ReadCounter	function	Verified: forced capture then B1_UDB06_F0_F1
+0x00023558	InputCounter_Init	function	Verified UDB Counter_Init shape; B0 UDB00/01; input role inferred
+0x000235f8	InputCounter_Start	function	Verified: Init then Enable
+0x00023650	InputCounter_WriteCounter	function	Verified: B0_UDB00_A0_A1 halfword
+0x00023670	InputCounter_ReadCounter	function	Verified: forced capture then B0_UDB00_F0_F1
+0x00023704	Headphone1Counter_Init	function	Verified UDB Counter_Init shape; B0 UDB02/03; headphone role inferred
+0x000237a4	Headphone1Counter_Start	function	Verified: Init then Enable
+0x000237fc	Headphone1Counter_WriteCounter	function	Verified: B0_UDB02_A0_A1 halfword
+0x0002381c	Headphone1Counter_ReadCounter	function	Verified: forced capture then B0_UDB02_F0_F1
+0x000238b0	Headphone2Counter_Init	function	Verified UDB Counter_Init shape; B0 UDB04/05; headphone role inferred
+0x00023950	Headphone2Counter_Start	function	Verified: Init then Enable
+0x000239a8	Headphone2Counter_WriteCounter	function	Verified: B0_UDB04_A0_A1 halfword
+0x000239c8	Headphone2Counter_ReadCounter	function	Verified: forced capture then B0_UDB04_F0_F1
+0x00023a60	CyDelayCycles	function	Verified: cycle loop; public CyLib API
+0x00023a70	CyEnterCriticalSection	function	Verified: saves PRIMASK and disables IRQs; public CyLib API
+0x00023a78	CyExitCriticalSection	function	Verified: restores PRIMASK; public CyLib API
+0x00023a80	CyEEPROM_Start	function	Verified: EEPROM active and standby power enables
+0x00023ab4	CySoftwareReset	function	Verified: RESET_CR2 bit0; public CyLib API
+0x00023ad4	CyDelay	function	Verified: millisecond count and 33000-cycle multiplier; public CyLib shape
+0x00023b18	CyDelayUs	function	Verified: uint16 count and 33-cycle multiplier; public CyLib shape
+0x00023b3c	CyIntSetVector	function	Verified: VTOR indexed IRQ vector replacement and previous value return
+0x00023b84	CyIntSetPriority	function	Verified: indexed NVIC_PRI write with priority shifted5
+0x00025134	__libc_init_array	function	Verified: preinit and init array loops; calls 253a0
+0x00025180	memcpy	function	Verified: byte-copy loop called by CYCONFIGCPY
+0x00025196	memset	function	Verified: byte-fill loop called by CYMEMZERO
+0x00025344	cfg_memset_list	table	Verified: ten packed six-byte zero descriptors consumed by 21ccc
+0x00025380	cfg_memcpy_list	table	Verified: three packed ten-byte copy descriptors consumed by 21ccc
+0x000253ac	__init_array	table	Verified: 1003d and21a05 constructor pointers
+0x000253c4	__cy_regions	table	Verified: source253d8 destination1fff8108 copydc8 zero1b28
+0x000253d8	Application_DataInitializers	data	Verified: region descriptor source; lengthdc8
+0x1fff8000	CyRamVectors	table	Verified: 48 entries built by initialize_psoc; VTOR=1fff8000
+0x1fff8100	cySysNoInitDataValid	data	Verified: cleared after fitter; matches Cm3Start.c
+0x1fff8104	CyResetStatus	data	Verified: copied from PHUB_CFGMEM23_CFG1 at21a04
+0x1fff810c	ControlA_Shadow	data	Verified: 114fc initializes01; 1152c updates
+0x1fff810d	ControlB_Shadow	data	Verified: 114fc initializes04; 11578 updates
+0x1fff8ec0	cydelayFreqKhz	data	Verified: initializer33000 consumed by CyDelay
+0x1fff8ec4	cydelayFreqMhz	data	Verified: initializer33 consumed by CyDelayUs
+0x1fff8ec8	cydelay32kMs	data	Verified: initializer40740000 consumed by CyDelay chunk loop
+0x48002000	cy_cfg_addr_table	table	Verified: 44 base/count words consumed by21ad4
+0x480020b0	cy_cfg_data_table	table	Verified: 2060 offset/value pairs through480030c7
+0x480030c8	cfg_B0_P7_U0	table	Verified: 128-byte bulk copy to40010e00
+0x48003148	cfg_B1_P3_U1	table	Verified: 128-byte bulk copy to40011680
+0x480031c8	cfg_B1_P4_U1	table	Verified: 128-byte bulk copy to40011880
+0x48003248	BS_IOPINS_P0_VAL	table	Verified: eight bytes copied to PRT0_DM0
+0x48003250	BS_IOPINS_P12_VAL	table	Verified: ten bytes copied to PRT12_DR
+0x4800325c	BS_IOPINS_P15_VAL	table	Verified: ten bytes copied to PRT15_DR; USBIO mode requires separate decode
+0x48003268	BS_IOPINS_P1_VAL	table	Verified: ten bytes copied to PRT1_DR
+0x48003274	BS_IOPINS_P2_VAL	table	Verified: eight bytes copied to PRT2_DM0
+0x4800327c	BS_IOPINS_P3_VAL	table	Verified: ten bytes copied to PRT3_DR
+0x48003288	BS_IOPINS_P4_VAL	table	Verified: eight bytes copied to PRT4_DM0
+0x48003290	BS_IOPINS_P5_VAL	table	Verified: eight bytes copied to PRT5_DM0
+0x48003298	BS_IOPINS_P6_VAL	table	Verified: eight bytes copied to PRT6_DM0

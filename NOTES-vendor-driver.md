@@ -694,7 +694,7 @@ source is 2. The table has entries for 0x01 to 0x0A, 0x0D to 0x16, 0x19,
 | 0x38 | 0x167BC | none | Hidden (0) also clears 0x34 and 0x3A of p1 |
 | 0x39 | 0x168AA | p1 even | A change sets the flag of p1 + 1 and the pan of both channels to 64 in all 4 mixers. It also copies 0x38, 0x3A, 0x34, and the 0x35 and 0x32 of each mixer to p1 + 1 (0x15E18) |
 | 0x51 | 0x16F1A | data[0] = 0xAB | Resets all settings to their defaults (0x205CC) and saves them |
-| 0x60 to 0x63 | 0x17FB4, 0x18198, 0x18098, 0x18344 | | Firmware update through FPGA 0x2D to 0x34 and the buffer at 0x0C00. 0x63 data 1 restarts the PSoC. Not analyzed further |
+| 0x60 to 0x63 | 0x17FB4, 0x18198, 0x18098, 0x18344 | | Firmware update and deferred power-state request. 0x60 mode 0 requests CPU reset into the bootloader. 0x63 data 1 sets power state 5, not a direct CPU reset. See [update and recovery boundaries](docs/firmware/psoc-update.md) |
 | 0x66 | 0x16722 | none | data[0] = 0 clears 0x34 of channel 46. data[0] and data[1] ≠ 0: output routes of destinations 0 to 6, 15, and 16 replace codes 0x60 to 0x67 with 0x10 to 0x17 |
 | 0x90 | 0x16AB4 | p1 = 0 ignored | Recomputes the mixer gains on a change |
 | 0x91 to 0x93 | 0x18638 | none | DAW mixer p2, channel p1. FPGA 0x1400 + 0x100 p2 (5.13) |
@@ -830,7 +830,11 @@ exist only in `ElementAudioDevice`.
 
 `_Ensemble2Group` (command 0x07): 0 = Off, 1 to 5 = group number.
 
-`_Ensemble2TouchButtonFunction` (command 0x25, remote button assignment):
+`_Ensemble2TouchButtonFunction` (host remote-button enum, not command 0x25):
+
+Command 0x25 uses local pad values 0–22 at PSoC `0x1A1B0`.
+See the [local pad actions](docs/firmware/front-panel.md#pad-assignments).
+The table below describes the separate host enum.
 
 | Value | Name | Value | Name |
 |-------|------|-------|------|
@@ -1191,11 +1195,14 @@ Transfer (`_performRemoteI2CTransfer(isWrite, bytes)`):
 1. For a write, copy the data into `0x3C00` as 32-bit words.
 2. `ctrl = (ctrl & 0xBFFFFF7F) | (bytes << 8) | ((!isWrite) << 7) | 0x40000000`.
    Bit 30 = start. Bit 7 = read. Bits 15:8 = byte count.
-3. `IOSleep((9 * bytes + 9) / 1000)`.
+3. `IOSleep((9 * bytes + 9) / 150)` (x86_64 `0x5FF6`, integer division).
 4. Poll bit 31 (busy) at 1 ms until clear. Give up after 999 tries.
 5. For a read, copy the words out of `0x3C00`.
 
 Maximum transfer is 1024 bytes.
+The helper logs a timeout, but the miscellaneous request still returns success.
+The read helper also copies the buffer after timeout.
+See the [independent transport review](docs/firmware/verify-update-transport.md).
 
 ---
 

@@ -9,6 +9,8 @@ this model.
 - `control/`: the control service. It gives a web UI on port 8737 and
   JSON-RPC on port 8738. See `control/README.md`.
 - `NOTES-vendor-driver.md`: the device protocol.
+- [Firmware map](docs/firmware/README.md): offline analysis, image checks,
+  and unresolved recovery requirements.
 
 ## Requirements
 

@@ -1,0 +1,35 @@
+{
+  "scope": "Local Ensemble Thunderbolt artifacts, not a device backup",
+  "source_files": [
+    {"path": "/Applications/Utilities/Apogee Firmware Updater.app/Contents/Resources/EnsemblePSoC.cyacd", "bytes": 209463, "sha256": "7dd0ab0a7e7d1637309d48684b250c4f8a69a1cafa215b5a9c682ad4673a3a24"},
+    {"path": "/Applications/Utilities/Apogee Firmware Updater.app/Contents/Resources/E2FPGA.bin", "bytes": 1813864, "sha256": "b3ef52ae2d1e255307e286d92f2dc92f8dccc06f0f58f7eb1c55a6cbbc4ffdf2"},
+    {"path": "/Applications/Utilities/Apogee Firmware Updater.app/Contents/Resources/EnsembleResourceData.bin", "bytes": 230036, "sha256": "3febcf6f14123ca9767fe651a87fc6fd5ba875dbe52fadf0b3160ce73bdb290b"},
+    {"path": "/Applications/Utilities/Apogee Firmware Updater.app/Contents/Resources/ElementsUpdateVersionInfo.plist", "bytes": 3091, "sha256": "19b338a60ee83ea98a97300508f0fd12c782ce0adf11e4da171ce999cc06e7de"},
+    {"path": "/Applications/Utilities/Apogee Firmware Updater.app/Contents/MacOS/Apogee Firmware Updater", "bytes": 1388256, "sha256": "5a7cc6f89b61d954a3b41a3a7b80373ebcc80a7ba6fe94865e4f4f7d77e348d2"},
+    {"path": "/Library/Extensions/ApogeeElementEnsemble.kext/Contents/MacOS/ApogeeElementEnsemble", "bytes": 380656, "sha256": "4ecc3889b80f27b150307ca2ed299a070e402cb6aff0a8f6234da8e34062eb01"},
+    {"path": "/Library/Audio/Plug-Ins/HAL-disabled/ApogeeElementEnsemble.driver/Contents/MacOS/ApogeeElementEnsemble", "bytes": 3354688, "sha256": "f23805d2e8a32b04aa135dd392f7f99d1b81751b0365c8f13f5a935147933809"}
+  ],
+  "analysis": {
+    "tool": "Ghidra 12.1.4",
+    "language": "ARM:LE:32:Cortex",
+    "script_commit": "6e22f92",
+    "register_header": {
+      "source_commit": "https://github.com/Infineon/CyScope/commit/0c0053d2f99b15c87bbfe410d49d4f091237d0f9",
+      "path": "ScopePSoC/Scope.cydsn/Generated_Source/PSoC5/cydevice_trm.h",
+      "sha256": "eb5c25543ce7b1ff0a4c23b73e6e50f21aa965c0849d0125181567fb7c41e42f"
+    },
+    "derived_files": [
+      {"path": "/tmp/apogee-fw/flash.bin", "bytes": 196608, "sha256": "a5e8e2c752255e627fdd4549408ed4f1a5fe1f76f7352799614a3eb386f1b9a8"},
+      {"path": "/tmp/apogee-fw/config.bin", "bytes": 32768, "sha256": "7f6b8abed75862dd5ec93365dc972be00b7b133eaf6d6e3d94603dc8955e9479"},
+      {"path": "/tmp/apogee-fw/decompiled.c", "bytes": 375460, "sha256": "b2419650eea38074f2d187337e8f001beb0f48c40280f537a9f08cdae99e312b"},
+      {"path": "/tmp/apogee-fw/functions.tsv", "bytes": 19610, "sha256": "f302cb79ae01fde3feec7b1d7183b61136420d973f48352cfe678d7d90735815"}
+    ],
+    "limitations": [
+      "The flash extractor substitutes 0xFF for absent rows. These bytes are not device observations.",
+      "The configuration extractor substitutes zero for absent rows. These bytes are not device observations.",
+      "Ghidra function discovery does not prove complete executable coverage.",
+      "A decompiler output file is an analysis aid, not recovered source code.",
+      "The register header comes from another PSoC project. Board connections require separate evidence."
+    ]
+  }
+}

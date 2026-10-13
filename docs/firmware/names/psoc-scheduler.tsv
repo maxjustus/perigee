@@ -1,0 +1,83 @@
+address	name	kind	evidence
+0x00010544	Identify_TimerCallback	function	Verified: 0x16ec4 registers pointer 0x10545 with descriptor 0x1fff82e4 and period 30. Nested calls at 0x10578 and 0x10588.
+0x000105cc	Identify_PhaseIsHigh	function	Verified: omitted baseline entry. Pointer 0x105cd at flash 0x255b4. Instructions 0x105dc-0x105ee return phase < (limit >> 1).
+0x00011614	FPGA_ClearEventBit	function	Verified: write one selected bit to 0x60800024 + bit/8. Caller 0x1fd84.
+0x00011664	FPGA_ReadPowerStartupByte	function	Verified: return byte at 0x60800004. Inferred role from power initializer 0x17540. Unknown physical bit definitions.
+0x0001167c	FPGA_SetEventBitEnabled	function	Verified: read/modify/write selected bit at 0x60800020 + bit/8. Caller 0x20100.
+0x000116f8	FPGA_IsEventBitSet	function	Verified: test selected bit at 0x6080001c + bit/8. Caller 0x1fd84.
+0x00012124	FPGA_HostResetNoOp	function	Verified: empty function called by event-2 service in 0x1ff6c. Unknown original purpose.
+0x00015f20	Identify_CancelOnCountdown	function	Verified: dispatch local command 0x27 value zero. Pointer 0x15f21 at flash 0x255c0 reaches 0x10578.
+0x00015f58	ProtocolState_TimerCallback	function	Verified: pointer 0x15f59 at 0x16188 registered by 0x1617a with period 500.
+0x00015f70	ProtocolState_BranchTable	table	Verified: four Thumb targets loaded by indexed PC instruction at 0x15f6c.
+0x00016168	ProtocolState_RegisterTimer	function	Verified: register period-500 callback at 0x1617a. Allocation result ignored before return one at 0x16180.
+0x000161c4	ProtocolState_GetExternalLock	function	Verified: return 0x1fff8f14. Inferred lock meaning from callback 0x15f58.
+0x00017518	Power_ClearInitialInhibit	function	Verified: clear 0x1fff82f8 at 0x17524 then remove handle from 0x1fff914c at 0x1752c.
+0x00017540	Power_InitializeState	function	Verified: branch on FPGA byte 0x60800004 and EEPROM marker. Register period-1000 callback at 0x17596.
+0x000175c4	Power_HandleDisconnect	function	Verified: states 3 and 5 drain only active saves through 0x204dc before control-B mask 4 clear.
+0x000175d8	Power_DisconnectBranchTable	table	Verified: five targets indexed by power state minus one at 0x175d4.
+0x00017630	Power_HandleHostReady	function	Verified: state 2 becomes 1. State 3 suspends protocol state. Caller 0x1fee8.
+0x00017660	Power_HandlePanelRequest	function	Verified: foreground IRQ2 consumer from 0x1fa94. State 2 tests inhibit, state 3 starts hardware, state 1 requests stop.
+0x000176e0	Power_RequestDeferredRestart	function	Verified: store state 5 at 0x1fff8f1c. Caller 0x18344.
+0x00017790	Power_GetState	function	Verified: return word at 0x1fff8f1c.
+0x0001f8fc	ApplicationMain	function	Verified: cooperative loop calls 0x20498 only with hardware ready and calls 0x20280 every pass.
+0x0001f9b8	IRQ0_Expander70_Handler	function	Verified: flag 0x1fff8f88, count 0x1fff8f94, disable IRQ0. Installed pointer 0x1f9b9 at 0x1fff8040.
+0x0001f9dc	IRQ1_Expander71_Handler	function	Verified: flag 0x1fff8f8c, count 0x1fff8f98, disable IRQ1. Installed pointer 0x1f9dd at 0x1fff8044.
+0x0001fa00	IRQ2_PanelPower_Handler	function	Verified: flag 0x1fff8f90 and disable IRQ2. Inferred panel-power role from foreground call 0x17660. Unknown physical route.
+0x0001fa94	PanelInputs_ServiceDeferred	function	Verified: consume IRQ2 first, then IRQ0/1 when hardware ready. Re-enable each source after service.
+0x0001fd48	PanelInputs_FirstSetBit16	function	Verified: scan bits 0-15 and return first set index or 16. Caller 0x1fa94.
+0x0001fd84	IRQ6_FPGAEvent_Handler	function	Verified: sample event bits 0,1,2,3,5, update flag word and link state, clear hardware events.
+0x0001fee8	Protocol_AdvanceHostHandshake	function	Verified: state 1 requires ten service increments and acknowledgement before state 2. Called under IRQ6 mask.
+0x0001ff6c	FPGA_ServiceDeferredEvents	function	Verified: disable IRQ6, service handshake/disconnect/events and at most eight messages, then enable IRQ6.
+0x00020134	FPGA_GetEvent5ServiceCount	function	Verified: return 0x1fff8fb8. Foreground 0x1ff6c increments it for latched event bit 5.
+0x0002014c	SchedulerInitialize	function	Verified: clear callbacks and enabled fields in ten 16-byte slots, sample complemented counter.
+0x0002019c	SchedulerAddTimer	function	Verified: first free slot. Return index plus one or zero. No duplicate, callback, or period validation.
+0x00020230	SchedulerRemoveTimer	function	Verified: accept handles 1-10, clear pointer and enabled flag, return one even for empty slot.
+0x00020280	SchedulerService	function	Verified: one counter sample, 16-bit elapsed accumulation, synchronous call at 0x2033a, clear elapsed after return.
+0x00020364	SchedulerCounter	function	Verified: complement Counter_ReadCounter and zero-extend 16-bit result at 0x20370.
+0x00020378	SchedulerElapsed	function	Verified: unsigned 16-bit difference with extra decrement when now < start. Return ldrh at 0x203a8.
+0x00020498	SettingsServiceSave	function	Verified: advance active save once. Independently start dirty save when elapsed >3000. No exclusion for active phase.
+0x000204dc	SettingsFinishActiveSave	function	Verified: 0x204e2 calls advance and 0x204e6 tests active. No dirty test or start call.
+0x00020f5c	SettingsSaveSynchronously	function	Verified: shared descriptors, CRC and stream. Clear dirty but leave active phase and async descriptor cursor unchanged.
+0x000210b0	SettingsStartSave	function	Verified: build descriptors, write zero-CRC header and three descriptors, set active phase 1 and clear dirty.
+0x000211bc	SettingsSaveIsActive	function	Verified: return 0x1fff902c != 0.
+0x000211dc	SettingsAdvanceSave	function	Verified: descriptor phase, at-most-16-byte payload phase, then header patch. Return active predicate.
+0x000211f4	SettingsSave_BranchTable	table	Verified: four targets indexed by active phase at 0x211ee.
+0x000223ec	I2C_ISR	function	Verified: IRQ15 state machine reads/writes transfer buffers and completion flags. Installed pointer 0x223ed.
+0x0002242c	I2C_ISR_BranchTable	table	Verified: six targets indexed by state minus 0x45 at 0x22426.
+0x0002278c	I2C_MasterWriteBuf	function	Verified: pointer and length publication precede START. Stores at 0x22818/0x2281e precede 0x22842.
+0x00022898	I2C_MasterReadBuf	function	Verified: pointer and length publication precede START. Stores at 0x2292a/0x22930 precede 0x22954.
+0x000229e4	I2C_MasterClearStatus	function	Verified: unguarded status load at 0x229ec followed by zero store at 0x229f4. Runtime lost-bit schedule unknown.
+0x00022a60	I2C_WriteCompleteNoOp	function	Verified: empty function called from IRQ15 write-complete path. Unknown original API symbol.
+0x00023a70	CyEnterCriticalSection	function	Verified: mrs r0,primask at 0x23a70 and cpsid i at 0x23a74.
+0x00023a78	CyExitCriticalSection	function	Verified: msr primask,r0 at 0x23a78.
+0x00023bb4	SPC_EnablePower	function	Verified: set active and alternate-active power bit 3 inside saved-PRIMASK critical section. Inferred descriptive name.
+0x00023bf8	SPC_LoadRowBuffer	function	Verified: command sequence b6,d5,02 then array selector and buffer bytes. Inferred descriptive name, original API unknown.
+0x00023c84	SPC_RequestWriteRow	function	Verified: command sequence b6,d8,05 then array, row, and two trailing bytes. Inferred descriptive name. Original API and trailing-byte semantics unknown.
+0x00023d1c	SPC_TryAcquire	function	Verified: guarded lock byte at 0x1fff904c and wait-pipeline bit clear. Return zero or 4. Inferred descriptive name.
+0x00023d84	SPC_Release	function	Verified: guarded lock clear and conditional wait-pipeline restore. Inferred descriptive name.
+0x000255b4	Identify_DescriptorInitializer	table	Verified: copied to 0x1fff82e4 by 0x21970. Callback 0x105cd and completion 0x15f21.
+0x1fff82e4	Identify_Descriptor	data	Verified: callback, phase, limit, countdown, reload, completion fields consumed by 0x10544. Initialized from 0x255b4.
+0x1fff82f8	Power_InitialRequestInhibit	data	Verified: set by 0x17540, cleared by callback 0x17518, tested by 0x17660.
+0x1fff8f0c	ProtocolState_Phase	data	Verified: states 0-3 at 0x15f58, state 4 selected by suspend 0x1618c.
+0x1fff8f18	Identify_LatestTimerHandle	data	Verified: overwritten on every nonzero Identify request at 0x16ecc. Zero request removes only this handle.
+0x1fff8f1c	Power_State	data	Verified: startup 0x17540 and transitions 0x175c4/0x17630/0x17660/0x176e0.
+0x1fff8fbc	FPGA_LatchedEventBits	data	Verified: IRQ6 OR operations in 0x1fd84 and foreground clears in 0x1ff6c under IRQ6 mask.
+0x1fff8fc4	Protocol_HostHandshakeState	data	Verified: IRQ6 disconnect/connect updates and foreground handshake at 0x1fee8. States 0,1,2.
+0x1fff8fd0	Power_DisconnectPending	data	Verified: IRQ6 sets on transition from nonzero host state to disconnected. Foreground 0x1ff6c consumes it.
+0x1fff8fd4	Scheduler_PreviousCounter	data	Verified: complemented counter sample, 16 bits. Initialized 0x2014c, updated 0x202c2.
+0x1fff900c	Settings_SharedCRC	data	Verified: shared by validation 0x20b78 and both save paths 0x20f5c/0x210b0.
+0x1fff9014	Settings_Dirty	data	Verified: setters 0x20820/0x20918 mark save request. Separate from active phase.
+0x1fff9018	Settings_LastDirtyCounter	data	Verified: 16-bit timestamp from 0x20364. Tested by 0x20498 against strict >3000.
+0x1fff901c	Settings_SaveDescriptorIndex	data	Verified: set to three by save start, advanced by 0x211dc. Synchronous save does not reset it.
+0x1fff9020	Settings_SavePayloadOffset	data	Verified: offset within current persistent descriptor payload, advanced at 0x212aa.
+0x1fff902c	Settings_SavePhase	data	Verified: 0 idle, 1 descriptors, 2 payload, 3 CRC patch. Active predicate 0x211bc.
+0x1fff904c	SPC_Lock	data	Verified: critical-section access in 0x23d1c and 0x23d84.
+0x1fff9050	SPC_RestoreWaitPipeline	data	Verified: set if acquisition clears wait-pipeline bit, consumed on release.
+0x1fff9084	EEPROM_StreamBufferedBytes	data	Verified: 16-bit count used by 0x13050/0x130ac. Reset with stream offset after partial flush 0x1314c.
+0x1fff9086	EEPROM_StreamOffset	data	Verified: 16-bit offset in 0x13050/0x130ac. Partial flush resets it at 0x13170.
+0x1fff9088	EEPROM_StreamRowBuffer	data	Verified: 16-byte buffer consumed by EEPROM row writer 0x23064.
+0x1fff914c	Power_InhibitTimerHandle	data	Verified: stored at 0x1759e and consumed by self-removal callback at 0x17528.
+0x1fffa0a8	Scheduler_TimerTable	table	Verified: ten 16-byte entries initialized by 0x2014c. Computed call at 0x2033a. Adjacent to mailbox buffer.
+0x1fffa9d8	I2C_MasterState	data	Verified: ISR 0x223ec and transfer starters 0x2278c/0x22898. Byte state values 0x10,0x45,0x46,0x49,0x4a,0x60.
+0x1fffa9de	I2C_MasterStatusBits	data	Verified: ISR updates and unguarded read-clear at 0x229e4. Physical lost-update occurrence unknown.
+0x60800004	FPGA_PowerStartupByte	fpga_reg	Verified: read by 0x11664 and interpreted as zero/nonzero by 0x17540. Unknown physical bit definitions.

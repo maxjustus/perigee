@@ -1,0 +1,302 @@
+address	name	kind	evidence
+0x00010514	PanelIdentify_SetPinState	function	Verified: P3[3] data and drive mode through 0x2200C and 0x22048
+0x00010544	PanelIdentify_TimerCallback	function	Verified: command 0x27 installs this callback with period 30 ticks
+0x00010910	PanelDisplay_SelectCommand	function	Verified: writes selector 0 or 1 through 0x222F8
+0x00010934	PanelDisplay_SelectData	function	Verified: writes selector 2 or 3 through 0x222F8
+0x00010958	PanelDisplay_WriteCommand	function	Verified: waits for transmit state and sends one command byte
+0x00010988	PanelDisplay_WriteRegister	function	Verified: command then one parameter through 0x22B94
+0x000109DC	PanelDisplay_WriteBytes	function	Verified: data selector then byte loop
+0x00010C40	PanelDisplay_SetColumnWindow	function	Verified: SEPS525 registers 0x17 and 0x18
+0x00010C74	PanelDisplay_SetRowWindow	function	Verified: SEPS525 registers 0x19 and 0x1A
+0x00010CA8	PanelDisplay_SetCursor	function	Verified: SEPS525 registers 0x20 and 0x21
+0x00010CDC	PanelDisplay_SelectPixelPort	function	Verified: selects register 0x22
+0x00010D54	PanelDisplay_FillScreen	function	Verified: 160 by 128 two-byte pixels
+0x00010DCC	PanelDisplay_FillRectangle	function	Verified: inclusive rectangle with high-byte-first pixel color
+0x00010E6C	PanelDisplay_WriteByte	function	Verified: one-byte wrapper around 0x109DC
+0x00010F00	PanelDisplay_LoadGrayScaleTable	function	Verified: 96 index/data writes to 0x50/0x51 from flash 0x251B4
+0x00010F78	PanelDisplay_Initialize	function	Verified: controller setup for display 0 or 1
+0x00012730	PanelLED_GetPin	function	Verified: low nibble of packed expander/pin code
+0x00012778	PanelLED_GetBankBit	function	Verified: low three bits of pin
+0x0001279C	PanelLED_GetExpanderAddress	function	Verified: high nibble 0 maps 0x70 and 1 maps 0x71
+0x000128AC	PanelGPIO_ResetExpander	function	Inferred SX1509: register 0x7D receives 0x12 then 0x34
+0x000128E8	PanelGPIO_Initialize	function	Verified: setup devices 0x70 and 0x71 plus fourteen LEDs
+0x0001298C	PanelGPIO_ConfigurePin	function	Verified: data direction interrupt and LED mode bits
+0x00012B84	PanelGPIO_ReadInputs	function	Verified: reads registers 0x11 and 0x10 as a 16-bit word
+0x00012BD0	PanelGPIO_ClearInterrupts	function	Verified: reads 0x18/0x19 then writes 0xFF to each
+0x00012C20	PanelLED_SetIntensity	function	Verified: per-LED register table and active-low data control
+0x00018874	PanelBuiltin_GetDescriptor	function	Verified: fourteen pointers at RAM 0x1FFF853C
+0x000188A4	PanelBuiltin_GetWidth	function	Verified: descriptor word at offset 4
+0x000188D0	PanelBuiltin_Draw	function	Verified: least-significant-bit-first monochrome expansion
+0x000189F4	PanelUI_Initialize	function	Verified: two draw queues resource init and UI state
+0x00018AF8	PanelUI_Start	function	Verified: ten input and sixteen output meters plus startup timer
+0x00018BA8	PanelUI_DrawVersion	function	Verified: resident digit glyphs render 1.5.3
+0x00018CA4	PanelUI_DrawBootArtwork	function	Verified: resources 0x5B 0x5C 0x78 and version
+0x00018D24	PanelUI_DrawHome	function	Verified: clears both screens and selects home pages
+0x00018E5C	PanelUI_AdjustAttenuation	function	Verified: command 0x11 bounded 0 through 64
+0x00018F00	PanelUI_AdjustInputGain	function	Verified: Mic or Instrument gain limits 75 65 45
+0x0001900C	PanelDraw_DrainQueues	function	Verified: loop until both queues are empty
+0x00019038	PanelDraw_ServiceQueues	function	Verified: at most three commands per display
+0x00019208	PanelMeters_Sample	function	Verified: 26 words from FPGA 0x40 and bit15 to bit14 over conversion
+0x00019390	PanelUI_Service	function	Verified: encoder deltas meter updates timeouts and draw service
+0x00019704	PanelUI_ApplyValue	function	Verified: constructs message for 0x19738
+0x00019738	PanelUI_ApplyMessage	function	Verified: command-specific display and LED effects
+0x00019AB0	PanelUI_ShowTimedPopup	function	Verified: popup selector value and timestamp
+0x00019AEC	PanelInput_Press	function	Verified: select input or toggle menu
+0x00019B60	PanelInput_Select	function	Verified: selector state LED intensity and meter highlight
+0x00019BF4	PanelInput_ToggleMenu	function	Verified: switches input page and menu flag
+0x00019C64	PanelOutput_AllFlagsSet	function	Verified: aggregate command value across outputs 0 through 2
+0x00019CB8	PanelOutput_ToggleAllFlags	function	Verified: applies inverse aggregate state to three outputs
+0x00019D08	PanelOutput_AlternateMute	function	Verified: speaker mute opposite both headphone mutes
+0x00019D78	PanelPad_UpdateLED	function	Verified: action-dependent LED state for assignment 0 through 22
+0x0001A098	PanelPad_SelectSpeakerSet	function	Verified: pad values 14 through 17
+0x0001A140	PanelPad_Release	function	Verified: assignment 19 releases talkback
+0x0001A1B0	PanelPad_Press	function	Verified: local assignment dispatch 0 through 22
+0x0001A484	PanelPad_PulseLED	function	Verified: intensity 0x70 and timeout mask
+0x0001A4E4	PanelPad_ToggleGuitarMode	function	Verified: assignments 20 through 22 dispatch command 0x16
+0x0001A590	PanelOutput_ToggleFlag	function	Verified: toggles one command for an output
+0x0001A5F8	PanelInput_ChangeMenuValue	function	Verified: type cycle group assignment and boolean changes
+0x0001A6AC	PanelOutput_SelectMeterRange	function	Verified: speaker mode and headphone range selection
+0x0001A778	PanelEncoder_Press	function	Verified: input selection/menu action or output mute
+0x0001A88C	PanelInput_NextSelector	function	Verified: cycle 0 1 2 3 5 6 7 8 4 9
+0x0001A8F0	PanelUI_DispatchValue	function	Verified: source-zero command and page notification
+0x0001A92C	PanelMeters_SuppressAfterClockChange	function	Verified: clears samples and starts suppression timer
+0x0001A994	PanelInput_GetMeterIndex	function	Verified: selector to channel map then excludes front mic slots
+0x0001A9C0	PanelResource_DrawImage	function	Verified: resource open and 64-byte chunk stream
+0x0001AA94	PanelResource_DrawFrame	function	Verified: indexed frame open and chunk stream
+0x0001AB68	PanelResource_PublishVersion	function	Verified: report 0x40 parameter 3 with high/low version and zero
+0x0001AC30	PanelMeter_DrawColorRows	function	Verified: row thresholds plus RGB565 colors at RAM 0x1FFF86A8
+0x0001ADC0	PanelMeter_DrawOverIndicator	function	Verified: background 0x18C3 or over color 0xF0C1
+0x0001AE30	PanelMeter_DrawDelta	function	Verified: level peak and over indicator changes
+0x0001B3CC	PanelMeters_Initialize	function	Verified: count period hold thresholds and state
+0x0001B5E0	PanelMeters_SelectRange	function	Verified: selected range with green border
+0x0001B720	PanelMeters_SetLayout	function	Verified: ten/eight-pixel or sixteen/five-pixel normal meter layouts
+0x0001B9C8	PanelMeters_SetPeakHold	function	Verified: updates state offset 0x230
+0x0001BA58	PanelMeters_SetOverHold	function	Verified: updates state offset 0x231
+0x0001BAA8	PanelMeters_Clear	function	Verified: reset meter state and redraw backgrounds
+0x0001BC14	PanelMeters_Update	function	Verified: decay peak hold over hold and incremental draw
+0x0001C13C	PanelMeter_LevelToPixels	function	Verified: nine thresholds times seven pixels
+0x0001C2A0	PanelStream_SetWindow	function	Verified: inclusive window and zero pixel cursor
+0x0001C334	PanelStream_Write	function	Verified: restore interrupted window then transmit raw bytes
+0x0001C428	PanelStream_InvalidateCursor	function	Verified: clears active-window flag
+0x0001C440	PanelStream_FillRectangle	function	Verified: invalidates cursor and calls 0x10DCC
+0x0001C49C	PanelResource_Read	function	Verified: external flash base 0x380000 and at most 1024-byte chunks
+0x0001C4F4	PanelResource_LoadIndex	function	Verified: BF magic format 3 header/index CRC
+0x0001C5A4	PanelResource_GetVersion	function	Verified: validated header version word
+0x0001C5D4	PanelResource_GetCRC	function	Verified: lazy full-file CRC from header length
+0x0001C61C	PanelResource_SetCRC	function	Verified: replaces cached CRC byte
+0x0001C63C	PanelResource_GetDimensions	function	Verified: record bytes 1 and 2
+0x0001C6AC	PanelResource_GetFrameInfo	function	Verified: record bytes 1 through 3
+0x0001C720	PanelResource_OpenImage	function	Verified: width times height times two and relative payload offset
+0x0001C7C0	PanelResource_OpenFrame	function	Verified: frame index times pixel byte extent without frame bound check
+0x0001C86C	PanelResource_ReadChunk	function	Verified: at most 64 bytes per call
+0x0001C8F8	PanelResource_Reload	function	Verified: clear validity and load external index
+0x0001C924	PanelDrawQueue_Initialize	function	Verified: display selector and producer/consumer indices
+0x0001C950	PanelDrawQueue_FillRectangle	function	Verified: queue opcode 2
+0x0001C9A4	PanelDrawQueue_Image	function	Verified: queue opcode 1
+0x0001C9E8	PanelDrawQueue_Frame	function	Verified: queue opcode 6
+0x0001CA34	PanelDrawQueue_MeterLayout	function	Verified: queue opcode 3
+0x0001CA78	PanelDrawQueue_MeterClip	function	Verified: queue opcode 5
+0x0001CAA8	PanelDrawQueue_MeterSelection	function	Verified: queue opcode 4
+0x0001CAEC	PanelDrawQueue_HasCommands	function	Verified: compares producer and consumer indices
+0x0001CB18	PanelDrawQueue_Pop	function	Verified: copies eight bytes and advances modulo 48
+0x0001CB80	PanelDrawQueue_Reserve	function	Verified: full test and producer advance modulo 48
+0x0001CBE8	PanelPage_Draw	function	Verified: page callback and all widgets
+0x0001CC30	PanelPage_Update	function	Verified: update callback and dirty widgets
+0x0001CC8C	PanelPage_Clear	function	Verified: callback and widget rectangles
+0x0001CCD4	PanelPage_ApplyValue	function	Verified: command/channel match and value update
+0x0001CD5C	PanelPage_LoadValues	function	Verified: current values through 0x209E0
+0x0001CDD8	PanelWidget_SetValue	function	Verified: byte 5 and dirty flag byte 7
+0x0001CE08	PanelWidget_SetMask	function	Verified: byte 6 and dirty flag byte 7
+0x0001CE34	PanelWidget_Draw	function	Verified: choice lookup then queued image or erase
+0x0001CEA0	PanelWidget_Clear	function	Verified: resource dimensions determine clear rectangle
+0x0001CF58	PanelWidget_SelectResource	function	Verified: value/mask choice entries and 0x7F sentinel
+0x0001D10C	PanelOutput_DrawIdentity	function	Verified: speaker/headphone icons and set number
+0x0001D320	PanelOutput_DrawSampleRate	function	Verified: decimal digits from resource 0x53
+0x0001D990	PanelPages_Initialize	function	Verified: initial page pointers and popup state
+0x0001D9C0	PanelPages_Service	function	Verified: updates pages only when their draw queues are empty
+0x0001DA30	PanelPages_ShowInputHome	function	Verified: selects page 0x1FFF8950
+0x0001DA7C	PanelPages_ShowInputMenu	function	Verified: selects page 0x1FFF8B34
+0x0001DACC	PanelPages_ShowOutputHome	function	Verified: selects page 0x1FFF8874
+0x0001DB1C	PanelPages_ShowOutputPopup	function	Verified: selects page 0x1FFF8BB0 and saves previous page
+0x0001DB7C	PanelPages_ApplyValue	function	Verified: forwards command value to current or saved page
+0x0001DC54	PanelPages_ShowUpdate	function	Verified: resident update text and three-square progress state
+0x0001DD44	PanelPages_ShowReconnect	function	Verified: resources 0x60 and 0x61
+0x0001DE0C	PanelPages_AnimateUpdate	function	Verified: advance one of three squares after more than 2000 ticks
+0x0001DF30	PanelInput_LoadHomeValues	function	Verified: input type gain phantom and widget masks
+0x0001E3E8	PanelInput_SelectMenuItem	function	Verified: switches selected state masks
+0x0001E4D0	PanelInput_FilterMenu	function	Verified: input type channel and partner filters
+0x0001EB1C	PanelGauge_ValueToFrame	function	Verified: bounded value interpolation over frame count
+0x0001EBFC	PanelGauge_Draw	function	Verified: arc parts and numeric glyphs
+0x0001FA94	PanelInputs_Service	function	Verified: expander edge dispatch and long-press timer
+0x00021640	PanelInput_SelectorToChannel	function	Verified: lookup at RAM 0x1FFF8EB0
+0x000218CC	CRC8_Reset	function	Verified: initial accumulator zero
+0x000218EC	CRC8_Update	function	Verified: polynomial 0x07 no reflection
+0x000222F8	PanelDisplay_WriteSelector	function	Verified: writes CYREG_B1_UDB05_CTL
+0x00022B94	PanelDisplay_WriteTxByte	function	Verified: transmit FIFO status wait and CYREG_B1_UDB09_F0 write
+0x00022DEC	PanelEncoder_ReadSpeaker	function	Verified: signed counter offset via 0x234C4
+0x00022EA0	PanelEncoder_ReadInput	function	Verified: signed counter offset via 0x23670
+0x00022F54	PanelEncoder_ReadHeadphone1	function	Verified: signed counter offset via 0x2381C
+0x00023008	PanelEncoder_ReadHeadphone2	function	Verified: signed counter offset via 0x239C8
+0x000251B4	PanelDisplay_GrayScaleTable	table	Verified: 96 words copied by 0x10F00
+0x1FFF811C	PanelLED_PinMap	table	Verified: 32 packed expander/pin entries flash initializer 0x253EC
+0x1FFF813C	PanelLED_RegisterMap	table	Verified: five bytes per LED flash initializer 0x2540C
+0x1FFF853C	PanelBuiltin_Descriptors	table	Verified: fourteen pointers flash initializer 0x2580C
+0x1FFF86A8	PanelMeter_RowColors	table	Verified: threshold/color triples flash initializer 0x25978
+0x1FFF87E4	PanelMeter_LevelThresholds	table	Verified: nine little-endian words flash initializer 0x25AB4
+0x1FFF8874	PanelPage_OutputHome	data	Verified: selected by 0x1DACC
+0x1FFF8950	PanelPage_InputHome	data	Verified: selected by 0x1DA30
+0x1FFF8A54	PanelPage_InputMenuWidgets	table	Verified: fourteen 16-byte widgets accessed by 0x1E4D0
+0x1FFF8B34	PanelPage_InputMenu	data	Verified: selected by 0x1DA7C
+0x1FFF8B4C	PanelGauge_Layout	table	Verified: resources 0x4F 0x50 0x51 0x4E and geometry
+0x1FFF8BB0	PanelPage_OutputPopup	data	Verified: selected by 0x1DB1C
+0x1FFF8BC8	PanelInput_SelectorMasks	table	Verified: ten active-low masks read by 0x1FA94
+0x1FFF8BDC	PanelInput_PadMasks	table	Verified: four active-low masks read by 0x1FA94
+0x1FFF8BE4	PanelInput_EncoderPushMasks	table	Verified: four active-low masks read by 0x1FA94
+0x1FFF8EB0	PanelInput_ChannelMap	table	Verified: bytes 00 01 02 03 0A 04 05 06 07 0B
+0x1FFF8F34	PanelResource_Valid	data	Verified: gates all resource dimension and open calls
+0x1FFF9270	PanelDrawQueue_Input	data	Verified: 48 command slots with display selector 0
+0x1FFF93FC	PanelDrawQueue_Output	data	Verified: 48 command slots with display selector 1
+0x1FFF958C	PanelInput_Selected	data	Verified: logical selector index used by 0x19390
+0x1FFF95BC	PanelUI_StartupGate	data	Verified: cleared after more than 2000 ticks
+0x1FFF95D4	PanelUI_SpecialMode	data	Verified: update/test mode gates normal controls
+0x1FFF9610	PanelMeters_Input	data	Verified: ten input meter state records and layout
+0x1FFF989C	PanelMeters_Output	data	Verified: sixteen output meter state records and layout
+0x1FFF9B28	PanelStream_Input	data	Verified: display 0 cursor state
+0x1FFF9B3C	PanelStream_Output	data	Verified: display 1 cursor state
+0x1FFF9B64	PanelResource_Header	data	Verified: twenty bytes read from external flash 0x380000
+0x1FFF9B78	PanelResource_Index	table	Verified: 126 eight-byte records precede stream state at 0x1FFF9F68
+0x1FFF9F68	PanelResource_Stream	data	Verified: active index offset consumed bytes and size
+0x1FFF9FE8	PanelPage_CurrentInput	data	Verified: current input page pointer
+0x1FFF9FEC	PanelPage_CurrentOutput	data	Verified: current output page pointer
+0x1FFF9FF0	PanelPage_PreviousOutput	data	Verified: output page behind popup
+0x60800040	FPGA_PanelMeterWords	fpga_reg	Verified: 26 little-endian words read by 0x19208
+0x60800080	FPGA_PanelMeterControl	fpga_reg	Verified: 0x12130 writes 3, exact latch/clear semantics Unknown
+external_flash:0x00380000	PanelResource_File	data	Verified: 0x1C49C external flash base
+resource:0x00000000	PanelResource_FileHeader	data	Verified: BF magic format 3 version 6 count 126
+resource:0x00000014	PanelResource_FileIndex	table	Verified: 126 eight-byte records through 0x403
+resource:0x00000404	PanelAsset_00_ConnectionBlue	data	Verified: resource index 0x00 at 0x14, 17x14, 1 frames, offline pixel inspection, name is descriptive
+resource:0x000005E0	PanelAsset_01_GroupBright	data	Verified: resource index 0x01 at 0x1C, 45x15, 1 frames, offline pixel inspection, name is descriptive
+resource:0x00000B26	PanelAsset_02_GroupDim	data	Verified: resource index 0x02 at 0x24, 45x15, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000106C	PanelAsset_03_HighPassBright	data	Verified: resource index 0x03 at 0x2C, 44x15, 1 frames, offline pixel inspection, name is descriptive
+resource:0x00001594	PanelAsset_04_HighPassDim	data	Verified: resource index 0x04 at 0x34, 44x15, 1 frames, offline pixel inspection, name is descriptive
+resource:0x00001ABC	PanelAsset_05_InputBright	data	Verified: resource index 0x05 at 0x3C, 45x15, 1 frames, offline pixel inspection, name is descriptive
+resource:0x00002002	PanelAsset_06_InputDim	data	Verified: resource index 0x06 at 0x44, 45x15, 1 frames, offline pixel inspection, name is descriptive
+resource:0x00002548	PanelAsset_07_InsertBright	data	Verified: resource index 0x07 at 0x4C, 48x15, 1 frames, offline pixel inspection, name is descriptive
+resource:0x00002AE8	PanelAsset_08_InsertDim	data	Verified: resource index 0x08 at 0x54, 48x15, 1 frames, offline pixel inspection, name is descriptive
+resource:0x00003088	PanelAsset_09_PhantomBright	data	Verified: resource index 0x09 at 0x5C, 44x15, 1 frames, offline pixel inspection, name is descriptive
+resource:0x000035B0	PanelAsset_0A_PhantomDim	data	Verified: resource index 0x0A at 0x64, 44x15, 1 frames, offline pixel inspection, name is descriptive
+resource:0x00003AD8	PanelAsset_0B_PhaseBright	data	Verified: resource index 0x0B at 0x6C, 41x15, 1 frames, offline pixel inspection, name is descriptive
+resource:0x00003FA6	PanelAsset_0C_PhaseDim	data	Verified: resource index 0x0C at 0x74, 41x15, 1 frames, offline pixel inspection, name is descriptive
+resource:0x00004474	PanelAsset_0D_SoftLimitBright	data	Verified: resource index 0x0D at 0x7C, 70x15, 1 frames, offline pixel inspection, name is descriptive
+resource:0x00004CA8	PanelAsset_0E_SoftLimitDim	data	Verified: resource index 0x0E at 0x84, 70x15, 1 frames, offline pixel inspection, name is descriptive
+resource:0x000054DC	PanelAsset_0F_InstrumentBright	data	Verified: resource index 0x0F at 0x8C, 60x15, 1 frames, offline pixel inspection, name is descriptive
+resource:0x00005BE4	PanelAsset_10_InstrumentDim	data	Verified: resource index 0x10 at 0x94, 60x15, 1 frames, offline pixel inspection, name is descriptive
+resource:0x000062EC	PanelAsset_11_MicrophoneBright	data	Verified: resource index 0x11 at 0x9C, 60x15, 1 frames, offline pixel inspection, name is descriptive
+resource:0x000069F4	PanelAsset_12_MicrophoneDim	data	Verified: resource index 0x12 at 0xA4, 60x15, 1 frames, offline pixel inspection, name is descriptive
+resource:0x000070FC	PanelAsset_13_MicrophoneAlternate	data	Verified: resource index 0x13 at 0xAC, 60x15, 1 frames, offline pixel inspection, name is descriptive
+resource:0x00007804	PanelAsset_14_Minus10dBVBright	data	Verified: resource index 0x14 at 0xB4, 60x15, 1 frames, offline pixel inspection, name is descriptive
+resource:0x00007F0C	PanelAsset_15_Minus10dBVDim	data	Verified: resource index 0x15 at 0xBC, 60x15, 1 frames, offline pixel inspection, name is descriptive
+resource:0x00008614	PanelAsset_16_OffBright	data	Verified: resource index 0x16 at 0xC4, 30x15, 1 frames, offline pixel inspection, name is descriptive
+resource:0x00008998	PanelAsset_17_OffDim	data	Verified: resource index 0x17 at 0xCC, 30x15, 1 frames, offline pixel inspection, name is descriptive
+resource:0x00008D1C	PanelAsset_18_OnBright	data	Verified: resource index 0x18 at 0xD4, 30x15, 1 frames, offline pixel inspection, name is descriptive
+resource:0x000090A0	PanelAsset_19_OnDim	data	Verified: resource index 0x19 at 0xDC, 30x15, 1 frames, offline pixel inspection, name is descriptive
+resource:0x00009424	PanelAsset_1A_Plus4dBuBright	data	Verified: resource index 0x1A at 0xE4, 60x15, 1 frames, offline pixel inspection, name is descriptive
+resource:0x00009B2C	PanelAsset_1B_Plus4dBuDim	data	Verified: resource index 0x1B at 0xEC, 60x15, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000A234	PanelAsset_1C_InputPrefix	data	Verified: resource index 0x1C at 0xF4, 16x14, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000A3F4	PanelAsset_1D_GuitarPrefix	data	Verified: resource index 0x1D at 0xFC, 13x14, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000A560	PanelAsset_1E_Digit0	data	Verified: resource index 0x1E at 0x104, 10x14, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000A678	PanelAsset_1F_Digit1	data	Verified: resource index 0x1F at 0x10C, 10x14, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000A790	PanelAsset_20_Digit2	data	Verified: resource index 0x20 at 0x114, 10x14, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000A8A8	PanelAsset_21_Digit3	data	Verified: resource index 0x21 at 0x11C, 10x14, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000A9C0	PanelAsset_22_Digit4	data	Verified: resource index 0x22 at 0x124, 10x14, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000AAD8	PanelAsset_23_Digit5	data	Verified: resource index 0x23 at 0x12C, 10x14, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000ABF0	PanelAsset_24_Digit6	data	Verified: resource index 0x24 at 0x134, 10x14, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000AD08	PanelAsset_25_Digit7	data	Verified: resource index 0x25 at 0x13C, 10x14, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000AE20	PanelAsset_26_Digit8	data	Verified: resource index 0x26 at 0x144, 10x14, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000AF38	PanelAsset_27_Digit9	data	Verified: resource index 0x27 at 0x14C, 10x14, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000B050	PanelAsset_28_Minus	data	Verified: resource index 0x28 at 0x154, 5x12, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000B0C8	PanelAsset_29_Plus	data	Verified: resource index 0x29 at 0x15C, 7x12, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000B170	PanelAsset_2A_GroupSmallBright	data	Verified: resource index 0x2A at 0x164, 17x10, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000B2C4	PanelAsset_2B_GroupSmallDim	data	Verified: resource index 0x2B at 0x16C, 17x10, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000B418	PanelAsset_2C_PhaseSmallBright	data	Verified: resource index 0x2C at 0x174, 11x10, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000B4F4	PanelAsset_2D_PhaseSmallDim	data	Verified: resource index 0x2D at 0x17C, 11x10, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000B5D0	PanelAsset_2E_SoftLimitSmallBright	data	Verified: resource index 0x2E at 0x184, 14x10, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000B6E8	PanelAsset_2F_SoftLimitSmallDim	data	Verified: resource index 0x2F at 0x18C, 14x10, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000B800	PanelAsset_30_HighPassSmallDim	data	Verified: resource index 0x30 at 0x194, 14x9, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000B8FC	PanelAsset_31_MicTypeBadge	data	Verified: resource index 0x31 at 0x19C, 12x10, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000B9EC	PanelAsset_32_LineTypeBadge	data	Verified: resource index 0x32 at 0x1A4, 12x10, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000BADC	PanelAsset_33_InstrumentTypeBadge	data	Verified: resource index 0x33 at 0x1AC, 12x10, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000BBCC	PanelAsset_34_LetterH	data	Verified: resource index 0x34 at 0x1B4, 8x12, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000BC8C	PanelAsset_35_LetterS	data	Verified: resource index 0x35 at 0x1BC, 8x12, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000BD4C	PanelAsset_36_ClockInternalGreen	data	Verified: resource index 0x36 at 0x1C4, 23x10, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000BF18	PanelAsset_37_ClockWordGreen	data	Verified: resource index 0x37 at 0x1CC, 23x10, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000C0E4	PanelAsset_38_ClockWordRed	data	Verified: resource index 0x38 at 0x1D4, 23x10, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000C2B0	PanelAsset_39_ClockCoaxGreen	data	Verified: resource index 0x39 at 0x1DC, 23x10, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000C47C	PanelAsset_3A_ClockCoaxRed	data	Verified: resource index 0x3A at 0x1E4, 23x10, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000C648	PanelAsset_3B_ClockOptical1Green	data	Verified: resource index 0x3B at 0x1EC, 23x10, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000C814	PanelAsset_3C_ClockOptical1Red	data	Verified: resource index 0x3C at 0x1F4, 23x10, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000C9E0	PanelAsset_3D_ClockOptical2Green	data	Verified: resource index 0x3D at 0x1FC, 23x10, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000CBAC	PanelAsset_3E_ClockOptical2Red	data	Verified: resource index 0x3E at 0x204, 23x10, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000CD78	PanelAsset_3F_HighPassSmallBright	data	Verified: resource index 0x3F at 0x20C, 14x9, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000CE74	PanelAsset_40_Group1Bright	data	Verified: resource index 0x40 at 0x214, 30x15, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000D1F8	PanelAsset_41_Group1Dim	data	Verified: resource index 0x41 at 0x21C, 30x15, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000D57C	PanelAsset_42_Group2Bright	data	Verified: resource index 0x42 at 0x224, 30x15, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000D900	PanelAsset_43_Group2Dim	data	Verified: resource index 0x43 at 0x22C, 30x15, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000DC84	PanelAsset_44_Group3Bright	data	Verified: resource index 0x44 at 0x234, 30x15, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000E008	PanelAsset_45_Group3Dim	data	Verified: resource index 0x45 at 0x23C, 30x15, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000E38C	PanelAsset_46_Group4Bright	data	Verified: resource index 0x46 at 0x244, 30x15, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000E710	PanelAsset_47_Group4Dim	data	Verified: resource index 0x47 at 0x24C, 30x15, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000EA94	PanelAsset_48_Group5Bright	data	Verified: resource index 0x48 at 0x254, 30x15, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000EE18	PanelAsset_49_Group5Dim	data	Verified: resource index 0x49 at 0x25C, 30x15, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000F19C	PanelAsset_4A_MicrophoneIcon	data	Verified: resource index 0x4A at 0x264, 20x32, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000F69C	PanelAsset_4B_PhantomMicrophoneIcon	data	Verified: resource index 0x4B at 0x26C, 20x32, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0000FB9C	PanelAsset_4C_GuitarIcon	data	Verified: resource index 0x4C at 0x274, 20x32, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0001009C	PanelAsset_4D_LineConnectorIcon	data	Verified: resource index 0x4D at 0x27C, 20x32, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0001059C	PanelAsset_4E_GaugeInterior	data	Verified: resource index 0x4E at 0x284, 18x9, 1 frames, offline pixel inspection, name is descriptive
+resource:0x000106E0	PanelAsset_4F_GaugeArcTop	data	Verified: resource index 0x4F at 0x28C, 38x14, 31 frames, offline pixel inspection, name is descriptive
+resource:0x000187B8	PanelAsset_50_GaugeArcLeft	data	Verified: resource index 0x50 at 0x294, 11x19, 31 frames, offline pixel inspection, name is descriptive
+resource:0x0001BA56	PanelAsset_51_GaugeArcRight	data	Verified: resource index 0x51 at 0x29C, 11x19, 31 frames, offline pixel inspection, name is descriptive
+resource:0x0001ECF4	PanelAsset_52_SmallDigits	data	Verified: resource index 0x52 at 0x2A4, 8x10, 10 frames, offline pixel inspection, name is descriptive
+resource:0x0001F334	PanelAsset_53_SampleRateDigits	data	Verified: resource index 0x53 at 0x2AC, 11x14, 10 frames, offline pixel inspection, name is descriptive
+resource:0x0001FF3C	PanelAsset_54_SpeakerIcon	data	Verified: resource index 0x54 at 0x2B4, 23x20, 1 frames, offline pixel inspection, name is descriptive
+resource:0x000202D4	PanelAsset_55_MutedSpeakerIcon	data	Verified: resource index 0x55 at 0x2BC, 23x20, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0002066C	PanelAsset_56_HeadphoneIcon	data	Verified: resource index 0x56 at 0x2C4, 23x20, 1 frames, offline pixel inspection, name is descriptive
+resource:0x00020A04	PanelAsset_57_OutputNumber1	data	Verified: resource index 0x57 at 0x2CC, 10x20, 1 frames, offline pixel inspection, name is descriptive
+resource:0x00020B94	PanelAsset_58_OutputNumber2	data	Verified: resource index 0x58 at 0x2D4, 10x20, 1 frames, offline pixel inspection, name is descriptive
+resource:0x00020D24	PanelAsset_59_OutputNumber3	data	Verified: resource index 0x59 at 0x2DC, 10x20, 1 frames, offline pixel inspection, name is descriptive
+resource:0x00020EB4	PanelAsset_5A_StatusAmber	data	Verified: resource index 0x5A at 0x2E4, 17x14, 1 frames, offline pixel inspection, name is descriptive
+resource:0x00021090	PanelAsset_5B_ApogeeLogo	data	Verified: resource index 0x5B at 0x2EC, 73x61, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0002335A	PanelAsset_5C_ApogeeWordmark	data	Verified: resource index 0x5C at 0x2F4, 90x18, 1 frames, offline pixel inspection, name is descriptive
+resource:0x00024002	PanelAsset_5D_WebsiteText	data	Verified: resource index 0x5D at 0x2FC, 112x13, 1 frames, offline pixel inspection, name is descriptive
+resource:0x00024B62	PanelAsset_5E_UpdateText	data	Verified: resource index 0x5E at 0x304, 72x15, 1 frames, offline pixel inspection, name is descriptive
+resource:0x000253D2	PanelAsset_5F_WaitText	data	Verified: resource index 0x5F at 0x30C, 88x12, 1 frames, offline pixel inspection, name is descriptive
+resource:0x00025C12	PanelAsset_60_ReconnectText	data	Verified: resource index 0x60 at 0x314, 133x58, 1 frames, offline pixel inspection, name is descriptive
+resource:0x00029856	PanelAsset_61_ThunderboltCable	data	Verified: resource index 0x61 at 0x31C, 29x106, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0002B05A	PanelAsset_62_InsertSmallBright	data	Verified: resource index 0x62 at 0x324, 19x10, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0002B1D6	PanelAsset_63_InsertSmallDim	data	Verified: resource index 0x63 at 0x32C, 19x10, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0002B352	PanelAsset_64_PopupHeadphones	data	Verified: resource index 0x64 at 0x334, 32x32, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0002BB52	PanelAsset_65_PopupSpeaker	data	Verified: resource index 0x65 at 0x33C, 32x32, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0002C352	PanelAsset_66_PopupSpeakerAndHeadphones	data	Verified: resource index 0x66 at 0x344, 72x32, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0002D552	PanelAsset_67_PopupMutedSpeakerAndHeadphones	data	Verified: resource index 0x67 at 0x34C, 72x32, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0002E752	PanelAsset_68_PopupMutedSpeaker	data	Verified: resource index 0x68 at 0x354, 32x32, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0002EF52	PanelAsset_69_DimOffText	data	Verified: resource index 0x69 at 0x35C, 58x11, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0002F44E	PanelAsset_6A_DimOnText	data	Verified: resource index 0x6A at 0x364, 58x11, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0002F94A	PanelAsset_6B_MetersClearedText	data	Verified: resource index 0x6B at 0x36C, 107x12, 1 frames, offline pixel inspection, name is descriptive
+resource:0x00030352	PanelAsset_6C_MonoText	data	Verified: resource index 0x6C at 0x374, 39x11, 1 frames, offline pixel inspection, name is descriptive
+resource:0x000306AC	PanelAsset_6D_MutedText	data	Verified: resource index 0x6D at 0x37C, 44x12, 1 frames, offline pixel inspection, name is descriptive
+resource:0x00030ACC	PanelAsset_6E_SetText	data	Verified: resource index 0x6E at 0x384, 23x10, 1 frames, offline pixel inspection, name is descriptive
+resource:0x00030C98	PanelAsset_6F_Set1Text	data	Verified: resource index 0x6F at 0x38C, 37x10, 1 frames, offline pixel inspection, name is descriptive
+resource:0x00030F7C	PanelAsset_70_Set2Text	data	Verified: resource index 0x70 at 0x394, 37x10, 1 frames, offline pixel inspection, name is descriptive
+resource:0x00031260	PanelAsset_71_Set3Text	data	Verified: resource index 0x71 at 0x39C, 37x10, 1 frames, offline pixel inspection, name is descriptive
+resource:0x00031544	PanelAsset_72_StereoText	data	Verified: resource index 0x72 at 0x3A4, 48x11, 1 frames, offline pixel inspection, name is descriptive
+resource:0x00031964	PanelAsset_73_UnmutedText	data	Verified: resource index 0x73 at 0x3AC, 65x12, 1 frames, offline pixel inspection, name is descriptive
+resource:0x00031F7C	PanelAsset_74_Headphone1Text	data	Verified: resource index 0x74 at 0x3B4, 29x12, 1 frames, offline pixel inspection, name is descriptive
+resource:0x00032234	PanelAsset_75_Headphone2Text	data	Verified: resource index 0x75 at 0x3BC, 29x12, 1 frames, offline pixel inspection, name is descriptive
+resource:0x000324EC	PanelAsset_76_TalkbackOnText	data	Verified: resource index 0x76 at 0x3C4, 92x12, 1 frames, offline pixel inspection, name is descriptive
+resource:0x00032D8C	PanelAsset_77_TalkbackOffText	data	Verified: resource index 0x77 at 0x3CC, 92x12, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0003362C	PanelAsset_78_EnsembleWordmark	data	Verified: resource index 0x78 at 0x3D4, 138x28, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0003545C	PanelAsset_79_Guitar1Text	data	Verified: resource index 0x79 at 0x3DC, 33x32, 1 frames, offline pixel inspection, name is descriptive
+resource:0x00035C9C	PanelAsset_7A_Guitar2Text	data	Verified: resource index 0x7A at 0x3E4, 33x32, 1 frames, offline pixel inspection, name is descriptive
+resource:0x000364DC	PanelAsset_7B_GuitarBothText	data	Verified: resource index 0x7B at 0x3EC, 69x32, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0003761C	PanelAsset_7C_ThruText	data	Verified: resource index 0x7C at 0x3F4, 34x12, 1 frames, offline pixel inspection, name is descriptive
+resource:0x0003794C	PanelAsset_7D_FromSoftwareText	data	Verified: resource index 0x7D at 0x3FC, 99x12, 1 frames, offline pixel inspection, name is descriptive

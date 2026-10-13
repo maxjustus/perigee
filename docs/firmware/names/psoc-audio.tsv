@@ -1,0 +1,166 @@
+address	name	kind	evidence
+0x00010074	AudioHardware_InitDescriptors	function	Verified: initializes DAC descriptors at 0x49 and eight preamp SPI addresses
+0x000100EC	AudioHardware_StartControls	function	Verified: UDB control writes and fixed microsecond delays
+0x00010148	AudioHardware_IsReady	function	Verified: state 0x1FFF8EEC equals 6
+0x00010168	AudioHardware_ServicePowerSequence	function	Verified: startup and shutdown state machine with elapsed-tick waits
+0x000103CC	AudioHardware_RequestStart	function	Verified: changes power sequence state
+0x00010414	AudioHardware_RequestStop	function	Verified: chooses shutdown state based on current state
+0x00010490	AudioHardware_ConfigureRate	function	Verified: clock bits then front ADC and DAC initialization
+0x000105FC	Preamp_InitDescriptor	function	Verified: SPI address and register-2 cache per channel
+0x00010634	Preamp_InitRegisters	function	Verified: register 3=1 then 2=0 then 1=0
+0x00010694	Preamp_ResetControl	function	Inferred: UDB10 mask 4 pulse before SPI initialization
+0x000106B8	Preamp_SetGainCode	function	Verified: register 1 gain code with zero and 8..63 limits
+0x00010710	Preamp_SetRangeBits	function	Verified: register 2 bits 0 and 1
+0x000107C4	Preamp_SetHighPass	function	Verified: register 2 bit 2 from input filter control
+0x00010840	Preamp_SetPhantom	function	Verified: register 2 bit 3 from phantom control
+0x000108BC	Preamp_WriteRegister	function	Verified: 16-bit SPI word address<<13 | 0x1000 | register<<9 | data
+0x00011050	AudioI2C_WriteRetry	function	Verified: repeats buffered writes until status 2
+0x000110C0	AudioI2C_WriteRegister	function	Verified: two-byte register/value write
+0x000110F0	AudioI2C_ReadRegisterRetry	function	Verified: register-address write then repeated reads until status 1
+0x00011164	OutputDAC_InitDescriptor	function	Inferred DAC identity; Verified address branch and register shadow fields
+0x000111EC	OutputDAC_ResetControl	function	Inferred reset role; Verified FPGA 0x0A bit 2 pulse with 1000us and 25000us delays
+0x00011218	OutputDAC_ConfigureRate	function	Inferred DAC identity; Verified two register sequences selected by register 0x10
+0x0001138C	OutputDAC_SetAttenuation	function	Verified: registers 0..7 and values above 127 map to 255
+0x000113D4	OutputDAC_SetGlobalMute	function	Inferred global mute role; Verified register 0x0A bit 0
+0x00011460	AudioI2C_SelectBranch	function	Inferred bus topology; Verified FPGA 0x09 bit 3 then 1us delay
+0x000114A0	OutputDAC_WriteRegister	function	Verified: selects descriptor branch then writes two bytes to descriptor address
+0x0001152C	AudioControl_UpdateUDB10	function	Verified: shadow at 0x1FFF810C then B0_UDB10_CTL
+0x00011578	AudioControl_UpdateUDB06	function	Verified: shadow at 0x1FFF810D then B0_UDB06_CTL
+0x000115C4	FPGA_RestoreControlDefaults	function	Verified: six bytes at 0x60800008..0x6080000D
+0x00011860	FPGA_SetSampleRate	function	Verified: rate-to-index conversion at 0x6080000E
+0x000118E4	FPGA_SetClockSource	function	Verified: direct byte and shadow update
+0x0001190C	FPGA_UpdateAudioControlBits	function	Verified: shadowed masked update for registers 8..13
+0x0001198C	FPGA_SetInputReferenceBit	function	Verified: register 0x0B channel bit
+0x00011A10	FPGA_SetLineReferenceBit	function	Verified: register 0x0C channel bit
+0x00011A94	FPGA_SetSoftLimitBit	function	Verified: register 0x0D channel bit
+0x00011BE4	FPGA_WriteMixerCoefficient	function	Verified: 0x1000 + bank*0x100 + side*0x80 + channel*2
+0x00011C24	FPGA_SetRoute	function	Verified: source at 0x200+d then control 8 at 0x300+d
+0x00011C5C	FPGA_SetRouteControl	function	Verified: source then explicit control
+0x00011C98	FPGA_SetPhaseBit	function	Verified: register 7 channel bit
+0x00011D24	FPGA_SetOpticalFormat	function	Verified: register 0x28 mask 5 or 10
+0x00012150	FPGA_MeasureExternalRate	function	Verified: period at 0x18..0x1B then division and optical multiplier
+0x00012610	FPGA_WriteWord32LE	function	Verified: four byte writes least significant first
+0x00012658	FPGA_WriteWord16LE	function	Verified: two byte writes least significant first
+0x00012690	GuitarGain_Init	function	Verified: I2C branch 1 target 0x29 bytes 00 40 86
+0x000126D4	GuitarGain_Set	function	Verified: masked gain in one of two cached bytes then three-byte write
+0x00012D28	FrontADC_Init	function	Inferred ADC identity; Verified address 0x18 revision-dependent paged sequences
+0x00012F44	FrontADC_SetGain	function	Verified: page 0 register 0x53 or 0x58 or page 1 register 0x3B
+0x00012FD0	FrontADC_EnableGainControl	function	Inferred gain-control mode; Verified page 0 register 0x56=0x80
+0x00013000	FrontADC_DisableGainControl	function	Inferred gain-control mode; Verified page 0 register 0x56=0
+0x000132A4	DSP_InitProtocolState	function	Verified: version byte nonzero enables state and coefficient handshake protocol
+0x000132DC	DSP_HaltRange	function	Verified: first free of eight halt slots and 25us delay
+0x00013388	DSP_ResumeAll	function	Verified: clear halt mask and 25us delay
+0x000133F4	DSP_EraseCode	function	Verified: zero code words for selected thread
+0x00013460	DSP_EraseState	function	Verified: zeros buffer at start+j and uses cached transfer count
+0x00013520	DSP_EraseCoefficients	function	Verified: handshake then zero coefficient range then handshake
+0x00013574	DSP_WriteCode	function	Verified: selected thread then little-endian words at 0x1C00
+0x000135E8	DSP_WriteState	function	Verified: transfer buffer then state-copy registers
+0x000136E4	DSP_ReadCycleBudget	function	Verified: reads 0x6080180E
+0x000136FC	DSP_BeginCoefficients	function	Verified: write thread to 0x1805 then poll bit 5
+0x00013754	DSP_WriteCoefficients	function	Verified: first/last chunk handshakes around words at 0x2000
+0x000137C8	DSP_EndCoefficients	function	Verified: write thread to 0x1806 then poll bit 5
+0x00013860	AudioRoutes_InitFixed	function	Verified: input mixer feeds playback feeds and fixed high routes
+0x000139C8	AudioRoutes_ResetOutputs	function	Verified: default output table and mixer/playback tap routes
+0x00013AE0	AudioRoutes_ResetRecord	function	Verified: default input-pair table
+0x00013DFC	AudioRoutes_SetOutputPair	function	Verified: speaker set mono DAW substitution and meter tap logic
+0x00014058	AudioRoutes_SetRecordPair	function	Verified: pair 15 forced to 0x60 and pair 16 to 0x66
+0x000140E8	AudioRoutes_InputSource	function	Verified: record-order index to physical source table
+0x0001414C	DSP_RouteInput	function	Verified: destination 0xC0+DSP input when mode bit 0 set
+0x00014188	DSP_RouteRecord	function	Verified: destination 0x30+input with processed source for mode bits 0 and 1
+0x000141D8	DSP_RouteMixerFeed	function	Verified: destination 0x60+input with processed source for mode bit 0
+0x0001421C	DSP_ApplyRoutes	function	Verified: DSP input then mixer feed then record route
+0x000143E8	AudioInputs_RestoreAfterPower	function	Verified: preamp state guitar gains initial reference and delayed mute release
+0x000144C0	AudioHardware_ServiceRestore	function	Verified: 500 elapsed ticks then levels global unmute and front gain
+0x0001453C	AudioHardware_ArmMuteRelease	function	Verified: set pending flag and elapsed timestamp
+0x0001455C	AudioHardware_SetSampleRate	function	Verified: full mute ADC delay 100ms fixed delay and converter configuration
+0x0001459C	AudioHardware_SetClockSource	function	Verified: full mute 100ms fixed delay and source register
+0x00014698	AudioInput_SetPhantom	function	Verified: per-channel SPI and aggregate supply mask
+0x0001478C	AudioInput_SetHighPass	function	Verified: preamp filter only in mic or instrument mode
+0x00014810	AudioInput_SetMode	function	Verified: gain path phantom reference instrument and filter sequence
+0x00014A24	AudioInput_SetMicGain	function	Verified: preamp or doubled front-mic gain
+0x00014AB0	AudioInput_SetInstrumentGain	function	Verified: preamp gain or guitar I2C gain
+0x00014B48	AudioOutput_SetReference	function	Verified: FPGA 0x08 bits 4/5 or 0x0C bit
+0x00014D28	AudioOutput_SetTrim	function	Verified: coarse DAC trim and FPGA remainder
+0x00014DF8	AudioOutput_ApplyMonitorLevel	function	Verified: attenuation dim mute and trim to mapped DAC pair
+0x00014EF8	AudioOutput_SetGuitarAttenuation	function	Verified: doubled attenuation to branch 1 register 0 or 1
+0x00014F8C	AudioOutput_MonitorPairRange	function	Verified: monitor index and speaker mode to output pair range
+0x00015038	AudioInput_ApplyGainRange	function	Verified: channel-specific gain table and range-transition zero write
+0x000151D0	AudioOutput_RestoreLevels	function	Verified: monitor levels remaining line trims and guitar levels
+0x00015288	AudioOutput_MuteAll	function	Verified: all 16 attenuation registers to 255 then both global mute bits
+0x000152F0	AudioRate_DelayIndex	function	Verified: 88200 and 96000 both map to index 3
+0x000153A4	AudioRate_ApplyADCDelay	function	Verified: setting 0x2D byte to 0x60800037
+0x000179EC	Mixer_UpdateChannelCoefficients	function	Verified: dB sum of pan fader master and gate into stereo FPGA coefficients
+0x00017F2C	Mixer_StereoLeftBalanceDb	function	Verified: left attenuation only for pan above 64
+0x00017F5C	Mixer_StereoRightBalanceDb	function	Verified: right attenuation only for pan below 64
+0x00018420	Mixer_FaderToDb	function	Verified: value/10-60 or -200 for zero
+0x00018470	Mixer_PanToDb	function	Verified: ten piecewise linear attenuation segments
+0x00018534	Mixer_DbToCoefficient	function	Verified: offline CPU checks yield unity 0x2000 and +12dB 0x8000
+0x00018638	DAWMixer_UpdateChannel	function	Verified: bank 4..7 coefficients with inverted mute polarity
+0x000187EC	DAWMixer_SetPlaybackPass	function	Verified: selected playback pair unity and other playback pairs zero
+0x0002278C	I2C_MasterWriteBuf	function	Verified: buffered master write with address shift state and interrupt setup
+0x00022898	I2C_MasterReadBuf	function	Verified: buffered master read with address shift and read bit
+0x000229A8	I2C_MasterStatus	function	Verified: returns master transfer status at 0x1FFFA9DE
+0x000229E4	I2C_MasterClearStatus	function	Verified: returns old status and clears cached master status
+0x00023AD4	CyDelay	function	Verified: millisecond delay via initial 33000-cycle multiplier
+0x00023B18	CyDelayUs	function	Verified: microsecond delay via initial 33-cycle multiplier
+0x000253E0	AudioControl_DefaultBytes	table	Verified: 00 00 84 00 00 00 for FPGA offsets 8..13
+0x00025458	FrontADC_OldPage4Block0	table	Verified: 31-byte I2C payload from RAM 0x1FFF8188
+0x00025478	FrontADC_OldPage4Block1	table	Verified: 21-byte I2C payload from RAM 0x1FFF81A8
+0x00025490	FrontADC_OldPage4Block2	table	Verified: 31-byte I2C payload from RAM 0x1FFF81C0
+0x000254B0	FrontADC_OldPage4Block3	table	Verified: 21-byte I2C payload from RAM 0x1FFF81E0
+0x000254C8	FrontADC_NewPage4Block0	table	Verified: 31-byte I2C payload from RAM 0x1FFF81F8
+0x000254E8	FrontADC_NewPage4Block1	table	Verified: 21-byte I2C payload from RAM 0x1FFF8218
+0x00025500	FrontADC_NewPage4Block2	table	Verified: 31-byte I2C payload from RAM 0x1FFF8230
+0x00025520	FrontADC_NewPage4Block3	table	Verified: 21-byte I2C payload from RAM 0x1FFF8250
+0x00025538	AudioRoutes_DefaultRecordPairs	table	Verified: seven three-byte records copied to 0x1FFF8268
+0x00025550	AudioRoutes_DefaultOutputPairs	table	Verified: five three-byte records copied to 0x1FFF8280
+0x00025560	AudioRoutes_InputSourceGroups	table	Verified: five source/count pairs copied to 0x1FFF8290
+0x0002556C	AudioRoutes_OutputDestinations	table	Verified: seventeen destination bytes copied to 0x1FFF829C
+0x00025580	Preamp_GainRangesAnalog3To8	table	Verified: three five-byte records copied to 0x1FFF82B0
+0x00025590	Preamp_GainRangesAnalog1To2	table	Verified: three five-byte records copied to 0x1FFF82C0
+0x000255A0	OutputDAC_PairMap	table	Verified: eight branch/register pairs copied to 0x1FFF82D0
+0x000255CC	Mixer_PanSegments	table	Verified: ten twelve-byte records copied to 0x1FFF82FC
+0x00025644	Mixer_CoefficientMantissas	table	Verified: 61 uint16 entries copied to 0x1FFF8374
+0x1FFF9054	Preamp_ChannelDescriptors	data	Verified: eight SPI address and control-shadow pairs
+0x1FFF9064	OutputDAC_Descriptors	data	Verified: two twelve-byte address branch variant and control structures
+0x1FFF907C	FPGA_AudioControlShadow	data	Verified: six bytes for FPGA offsets 8..13
+0x1FFF9098	DSP_SelectedThreadCache	data	Verified: code write thread cache
+0x1FFF9099	DSP_StateTransferStart	data	Verified: first chunk destination start
+0x1FFF909A	DSP_StateTransferCount	data	Verified: eight-bit cumulative count also reused by state erase
+0x1FFF909B	DSP_HasStateProtocol	data	Verified: core version byte 0 nonzero flag
+0x1FFF909C	DSP_HaltSlotMask	data	Verified: eight allocated halt bits
+0x1FFF910E	Preamp_ActivePhantomMask	data	Verified: active Mic phantom channels
+0x1FFF912E	AudioHardware_MuteReleasePending	data	Verified: delayed restore flag
+0x1FFF9130	AudioHardware_CurrentRate	data	Verified: current rate in Hz
+0x60800007	FPGA_InputPhase	fpga_reg	Verified: channel phase bits via 0x11C98
+0x60800008	FPGA_AnalogPathControl	fpga_reg	Verified: instrument output reference and insert bits
+0x60800009	FPGA_AudioClockAndBusControl	fpga_reg	Verified: Thru termination I2C branch and clock-sequence bits
+0x6080000A	FPGA_AudioPowerControl	fpga_reg	Inferred power role; Verified phantom and converter sequence masks
+0x6080000B	FPGA_InputReference	fpga_reg	Verified: channel bit set outside +4dBu mode
+0x6080000C	FPGA_Line3To10Reference	fpga_reg	Verified: output reference bits
+0x6080000D	FPGA_InputSoftLimit	fpga_reg	Verified: channel soft-limit bits
+0x6080000E	FPGA_SampleRateIndex	fpga_reg	Verified: six rate codes via 0x11860
+0x6080000F	FPGA_ClockSource	fpga_reg	Verified: source byte via 0x118E4
+0x60800018	FPGA_ExternalClockPeriod	fpga_reg	Verified: four-byte measurement via 0x12150
+0x60800028	FPGA_OpticalFormat	fpga_reg	Verified: masks 0x05 and 0x0A via 0x11D24
+0x60800037	FPGA_ExtraADCDelay	fpga_reg	Verified: selected delay byte via 0x153A4
+0x6080008B	FPGA_LineFineTrimBase	fpga_reg	Verified: ten bytes trim modulo 5
+0x60800200	FPGA_RouteSourceBase	fpga_reg	Verified: 256 destination source bytes
+0x60800300	FPGA_RouteControlBase	fpga_reg	Verified: route control bytes normally 8
+0x60801000	FPGA_MixerCoefficientBase	fpga_reg	Verified: eight banks of stereo uint16 coefficients
+0x60801800	FPGA_DSPThreadSelect	fpga_reg	Verified: thread byte for code access
+0x60801802	FPGA_DSPHaltMask	fpga_reg	Verified: eight halt enable bits
+0x60801805	FPGA_DSPCoefficientBegin	fpga_reg	Verified: thread write and bit-5 response
+0x60801806	FPGA_DSPCoefficientEnd	fpga_reg	Verified: thread write and bit-5 response
+0x60801807	FPGA_DSPVersionBase	fpga_reg	Verified: six version bytes
+0x6080180E	FPGA_DSPCycleBudget	fpga_reg	Verified: report 0xD5 source
+0x6080180F	FPGA_DSPStateCopyControl	fpga_reg	Verified: bit 0 busy and command 2
+0x60801810	FPGA_DSPStateThread	fpga_reg	Verified: copy thread byte
+0x60801811	FPGA_DSPStateStart	fpga_reg	Verified: copy start address byte
+0x60801812	FPGA_DSPStateCount	fpga_reg	Verified: PSoC count byte; prior hardware tests report FPGA ignores it
+0x60801820	FPGA_DSPHaltStartBase	fpga_reg	Verified: eight first-address bytes
+0x60801828	FPGA_DSPHaltEndBase	fpga_reg	Verified: eight inclusive last-address bytes
+0x60801830	FPGA_DSPHaltThreadBase	fpga_reg	Verified: eight thread bytes
+0x60801C00	FPGA_DSPCodeWindow	fpga_reg	Verified: four bytes per selected-thread word
+0x60802000	FPGA_DSPCoefficientWindow	fpga_reg	Verified: four bytes per coefficient word
+0x60802400	FPGA_DSPStateTransferWindow	fpga_reg	Verified: four bytes per state transfer word
