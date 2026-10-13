@@ -21,6 +21,7 @@ struct Ring {
     OSSharedPtr<IOBufferMemoryDescriptor> buffer;
     OSSharedPtr<IODMACommand> dma;
     OSSharedPtr<IOUserAudioStream> stream;
+    uint64_t iova;
 };
 
 struct EnsembleDevice_IVars {
@@ -32,11 +33,15 @@ struct EnsembleDevice_IVars {
     Ring input;
     OSSharedPtr<IOBufferMemoryDescriptor> meters;
     OSSharedPtr<IODMACommand> meter_dma;
+    uint64_t meter_iova;
+    uint32_t meter_count;
     OSSharedPtr<IOInterruptDispatchSource> wrap;
     OSSharedPtr<OSAction> wrap_action;
     uint64_t sample_time;
     uint64_t wrap_time;
     mach_timebase_info_data_t timebase;
+    bool running;
+    bool asleep;
     OSSharedPtr<EnsemblePsoc> psoc;
     double reported_rate;
     OSSharedPtr<EnsembleVolume> volume;
@@ -103,7 +108,7 @@ static IOUserAudioStreamBasicDescription format(uint32_t channels, double rate)
 // The FPGA takes one base address per buffer, so the IOMMU must map each
 // buffer as one segment.
 static kern_return_t mapForDMA(const Bar0 & bar0, IOBufferMemoryDescriptor * buffer, uint64_t bytes,
-                               uint64_t address_low, OSSharedPtr<IODMACommand> * dma)
+                               OSSharedPtr<IODMACommand> * dma, uint64_t * iova)
 {
     IODMACommandSpecification spec = {};
     spec.maxAddressBits = 64;
@@ -124,19 +129,12 @@ static kern_return_t mapForDMA(const Bar0 & bar0, IOBufferMemoryDescriptor * buf
     if (count != 1 || segments[0].length != bytes) {
         return kIOReturnNoResources;
     }
-    const uint64_t iova = segments[0].address;
-    bar0.write(address_low, uint32_t(iova));
-    bar0.write(address_low + 4, uint32_t(iova >> 32));
-    if (bar0.read(address_low) != uint32_t(iova) ||
-        bar0.read(address_low + 4) != uint32_t(iova >> 32)) {
-        return kIOReturnIOError;
-    }
+    *iova = segments[0].address;
     return kIOReturnSuccess;
 }
 
 static kern_return_t makeRing(IOUserAudioDriver * driver, const Bar0 & bar0,
-                              IOUserAudioStreamDirection direction, uint32_t channels,
-                              uint64_t address_low, Ring * ring)
+                              IOUserAudioStreamDirection direction, uint32_t channels, Ring * ring)
 {
     const uint64_t bytes = uint64_t(channels) * kRingFrames * 4;
     IOBufferMemoryDescriptor * buffer = nullptr;
@@ -146,7 +144,7 @@ static kern_return_t makeRing(IOUserAudioDriver * driver, const Bar0 & bar0,
     }
     ring->buffer = OSSharedPtr(buffer, OSNoRetain);
     ring->buffer->SetLength(bytes);
-    ret = mapForDMA(bar0, buffer, bytes, address_low, &ring->dma);
+    ret = mapForDMA(bar0, buffer, bytes, &ring->dma, &ring->iova);
     if (ret != kIOReturnSuccess) {
         return ret;
     }
@@ -186,20 +184,20 @@ kern_return_t EnsembleDevice::Attach(IOPCIDevice * pci, uint8_t bar0)
     const Bar0 & regs = ivars->bar0;
 
     kern_return_t ret = makeRing(ivars->driver.get(), regs, IOUserAudioStreamDirection::Output,
-                                 kOutputChannels, kOutputAddressLow, &ivars->output);
+                                 kOutputChannels, &ivars->output);
     if (ret != kIOReturnSuccess) {
         return ret;
     }
-    ret = makeRing(ivars->driver.get(), regs, IOUserAudioStreamDirection::Input,
-                   kInputChannels, kInputAddressLow, &ivars->input);
+    ret = makeRing(ivars->driver.get(), regs, IOUserAudioStreamDirection::Input, kInputChannels,
+                   &ivars->input);
     if (ret != kIOReturnSuccess) {
         return ret;
     }
-    regs.write(kNumberOfChannels, ((kInputChannels / 2) << 16) | (kOutputChannels / 2));
-    regs.write(kSampleDepth, kMaxDepth - 1);
-    regs.write(kOutputBufferSize, kOutputChannels * kRingFrames);
-    regs.write(kInputBufferSize, kInputChannels * kRingFrames);
-    ret = startMeters();
+    ret = allocateMeters();
+    if (ret != kIOReturnSuccess) {
+        return ret;
+    }
+    ret = program();
     if (ret != kIOReturnSuccess) {
         return ret;
     }
@@ -255,11 +253,10 @@ void EnsembleDevice::setLatency(double rate)
     SetInputLatency(latency.input);
 }
 
-kern_return_t EnsembleDevice::startMeters()
+kern_return_t EnsembleDevice::allocateMeters()
 {
-    const Bar0 & regs = ivars->bar0;
-    const uint32_t count = regs.read(kNumHostMeters) & 0xFFFF;
-    const uint64_t bytes = meterBufferBytes(count);
+    ivars->meter_count = ivars->bar0.read(kNumHostMeters) & 0xFFFF;
+    const uint64_t bytes = meterBufferBytes(ivars->meter_count);
     IOBufferMemoryDescriptor * buffer = nullptr;
     kern_return_t ret = IOBufferMemoryDescriptor::Create(kIOMemoryDirectionIn, bytes, 0, &buffer);
     if (ret != kIOReturnSuccess) {
@@ -267,11 +264,29 @@ kern_return_t EnsembleDevice::startMeters()
     }
     ivars->meters = OSSharedPtr(buffer, OSNoRetain);
     ivars->meters->SetLength(bytes);
-    ret = mapForDMA(regs, buffer, bytes, kMeterAddressLow, &ivars->meter_dma);
-    if (ret != kIOReturnSuccess) {
-        return ret;
+    return mapForDMA(ivars->bar0, buffer, bytes, &ivars->meter_dma, &ivars->meter_iova);
+}
+
+static bool writeAddress(const Bar0 & bar0, uint64_t address_low, uint64_t iova)
+{
+    bar0.write(address_low, uint32_t(iova));
+    bar0.write(address_low + 4, uint32_t(iova >> 32));
+    return bar0.read(address_low) == uint32_t(iova) && bar0.read(address_low + 4) == uint32_t(iova >> 32);
+}
+
+kern_return_t EnsembleDevice::program()
+{
+    const Bar0 & regs = ivars->bar0;
+    if (!writeAddress(regs, kOutputAddressLow, ivars->output.iova) ||
+        !writeAddress(regs, kInputAddressLow, ivars->input.iova) ||
+        !writeAddress(regs, kMeterAddressLow, ivars->meter_iova)) {
+        return kIOReturnIOError;
     }
-    regs.write(kNumHostMeters, count << 16);
+    regs.write(kNumberOfChannels, ((kInputChannels / 2) << 16) | (kOutputChannels / 2));
+    regs.write(kSampleDepth, kMaxDepth - 1);
+    regs.write(kOutputBufferSize, kOutputChannels * kRingFrames);
+    regs.write(kInputBufferSize, kInputChannels * kRingFrames);
+    regs.write(kNumHostMeters, ivars->meter_count << 16);
     regs.write(kMeterTimer, meterTimer(kMeterHz, regs.read(kGeneral)));
     regs.write(kGeneral, regs.read(kGeneral) | kGeneralMeterArmAndRun);
     return kIOReturnSuccess;
@@ -362,10 +377,7 @@ void EnsembleDevice::Reported(const Report & report)
 
 void EnsembleDevice::Detach()
 {
-    ivars->psoc->Stop();
-    const Bar0 & regs = ivars->bar0;
-    regs.write(kGeneral, regs.read(kGeneral) & ~(kGeneralAudioRun | kGeneralMeterRun));
-    regs.write(kInterrupt, regs.read(kInterrupt) & ~kInterruptWrap);
+    halt();
     if (ivars->wrap.get() != nullptr) {
         ivars->wrap->SetEnableWithCompletion(false, nullptr);
     }
@@ -375,6 +387,42 @@ void EnsembleDevice::Detach()
             command->CompleteDMA(kIODMACommandCompleteDMANoOptions);
         }
     }
+}
+
+void EnsembleDevice::halt()
+{
+    ivars->psoc->Stop();
+    const Bar0 & regs = ivars->bar0;
+    regs.write(kGeneral, regs.read(kGeneral) & ~(kGeneralAudioRun | kGeneralMeterRun));
+    regs.write(kInterrupt, regs.read(kInterrupt) & ~kInterruptWrap);
+}
+
+void EnsembleDevice::Sleep()
+{
+    ivars->queue->DispatchSync(^{
+        halt();
+        ivars->asleep = true;
+    });
+}
+
+static uint64_t sinceWrap(const EnsembleDevice_IVars * ivars, uint64_t time)
+{
+    return (time - ivars->wrap_time) * ivars->timebase.numer / ivars->timebase.denom;
+}
+
+void EnsembleDevice::Wake()
+{
+    ivars->queue->DispatchSync(^{
+        if (!ivars->asleep || program() != kIOReturnSuccess) {
+            return;
+        }
+        ivars->asleep = false;
+        ivars->psoc->Resume();
+        if (ivars->running) {
+            const uint64_t wraps = wrapsIn(sinceWrap(ivars, mach_absolute_time()), GetSampleRate()) + 1;
+            startAudio(ivars->sample_time + wraps * kRingFrames);
+        }
+    });
 }
 
 static void zero(IOBufferMemoryDescriptor * buffer)
@@ -392,17 +440,23 @@ kern_return_t EnsembleDevice::StartIO(IOUserAudioStartStopFlags in_flags)
         if (ret != kIOReturnSuccess) {
             return;
         }
-        const Bar0 & regs = ivars->bar0;
-        zero(ivars->output.buffer.get());
-        zero(ivars->input.buffer.get());
-        ivars->sample_time = 0;
-        regs.write(kSampleDepth, depthFor(GetSampleRate()) - 1);
-        regs.write(kGeneral, regs.read(kGeneral) | kGeneralAudioArmAndRun);
-        ivars->wrap_time = mach_absolute_time();
-        UpdateCurrentZeroTimestamp(0, ivars->wrap_time);
-        regs.write(kInterrupt, regs.read(kInterrupt) | kInterruptWrap);
+        startAudio(0);
+        ivars->running = true;
     });
     return ret;
+}
+
+void EnsembleDevice::startAudio(uint64_t sample_time)
+{
+    const Bar0 & regs = ivars->bar0;
+    zero(ivars->output.buffer.get());
+    zero(ivars->input.buffer.get());
+    ivars->sample_time = sample_time;
+    regs.write(kSampleDepth, depthFor(GetSampleRate()) - 1);
+    regs.write(kGeneral, regs.read(kGeneral) | kGeneralAudioArmAndRun);
+    ivars->wrap_time = mach_absolute_time();
+    UpdateCurrentZeroTimestamp(sample_time, ivars->wrap_time);
+    regs.write(kInterrupt, regs.read(kInterrupt) | kInterruptWrap);
 }
 
 kern_return_t EnsembleDevice::StopIO(IOUserAudioStartStopFlags in_flags)
@@ -412,6 +466,7 @@ kern_return_t EnsembleDevice::StopIO(IOUserAudioStartStopFlags in_flags)
         const Bar0 & regs = ivars->bar0;
         regs.write(kInterrupt, regs.read(kInterrupt) & ~kInterruptWrap);
         regs.write(kGeneral, regs.read(kGeneral) & ~kGeneralAudioRun);
+        ivars->running = false;
         ret = super::StopIO(in_flags);
     });
     return ret;
@@ -419,8 +474,7 @@ kern_return_t EnsembleDevice::StopIO(IOUserAudioStartStopFlags in_flags)
 
 void IMPL(EnsembleDevice, WrapOccurred)
 {
-    const uint64_t elapsed = (time - ivars->wrap_time) * ivars->timebase.numer / ivars->timebase.denom;
-    const uint64_t wraps = wrapsIn(elapsed, GetSampleRate());
+    const uint64_t wraps = wrapsIn(sinceWrap(ivars, time), GetSampleRate());
     if (wraps == 0) {
         return;
     }

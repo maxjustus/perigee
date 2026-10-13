@@ -59,9 +59,6 @@ kern_return_t EnsemblePsoc::Start(EnsembleDevice * device, IOPCIDevice * pci, ui
     ivars->device = device;
     ivars->queue = OSSharedPtr(queue, OSRetain);
     ivars->mailbox = {{pci, bar0}};
-    ivars->mailbox.reset();
-    ivars->outbox.push(getAll());
-
     IOTimerDispatchSource * timer = nullptr;
     kern_return_t ret = IOTimerDispatchSource::Create(queue, &timer);
     if (ret != kIOReturnSuccess) {
@@ -78,6 +75,13 @@ kern_return_t EnsemblePsoc::Start(EnsembleDevice * device, IOPCIDevice * pci, ui
     mach_timebase_info_data_t timebase;
     mach_timebase_info(&timebase);
     ivars->period = kPollPeriodNs * timebase.denom / timebase.numer;
+    return Resume();
+}
+
+kern_return_t EnsemblePsoc::Resume()
+{
+    ivars->mailbox.reset();
+    ivars->outbox.push(getAll());
     ivars->timer->WakeAtTime(kIOTimerClockMachAbsoluteTime, mach_absolute_time() + ivars->period, 0);
     return ivars->timer->SetEnable(true);
 }

@@ -24,6 +24,8 @@ public:
 
     kern_return_t Attach(IOPCIDevice * pci, uint8_t bar0) LOCALONLY;
     void Detach() LOCALONLY;
+    void Sleep() LOCALONLY;
+    void Wake() LOCALONLY;
     void VolumeChanged(float decibels) LOCALONLY;
     void ClockSourceChanged(uint64_t source) LOCALONLY;
     void Reported(const Ensemble::Report & report) LOCALONLY;
@@ -39,7 +41,10 @@ public:
 private:
     kern_return_t applyRate(double rate) LOCALONLY;
     void setLatency(double rate) LOCALONLY;
-    kern_return_t startMeters() LOCALONLY;
+    kern_return_t allocateMeters() LOCALONLY;
+    kern_return_t program() LOCALONLY;
+    void halt() LOCALONLY;
+    void startAudio(uint64_t sample_time) LOCALONLY;
     kern_return_t addVolume() LOCALONLY;
     kern_return_t addClockSource() LOCALONLY;
     void nameChannels(IOUserAudioObjectPropertyScope scope, bool input, uint32_t count) LOCALONLY;

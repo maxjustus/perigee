@@ -132,6 +132,18 @@ kern_return_t IMPL(EnsembleDriver, NewUserClient)
     return *user_client != nullptr ? kIOReturnSuccess : kIOReturnError;
 }
 
+kern_return_t IMPL(EnsembleDriver, SetPowerState)
+{
+    if (ivars->device.get() != nullptr) {
+        if (powerFlags & kIOServicePowerCapabilityOn) {
+            ivars->device->Wake();
+        } else {
+            ivars->device->Sleep();
+        }
+    }
+    return SetPowerState(powerFlags, SUPERDISPATCH);
+}
+
 EnsembleDevice * EnsembleDriver::Device()
 {
     return ivars->device.get();

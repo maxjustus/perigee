@@ -18,6 +18,7 @@ public:
     kern_return_t Start(EnsembleDevice * device, IOPCIDevice * pci, uint8_t bar0,
                         IODispatchQueue * queue) LOCALONLY;
     void Stop() LOCALONLY;
+    kern_return_t Resume() LOCALONLY;
     void Send(const Ensemble::Message & message) LOCALONLY;
     void SetMonitorAttenuation(uint8_t attenuation) LOCALONLY;
     void AddListener(EnsembleUserClient * listener) LOCALONLY;
