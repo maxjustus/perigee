@@ -561,6 +561,8 @@ the value in `data[0]`. A command with two arguments sends `p1` and
 | 0xD6 | DSPCoreErase | 2 | memory: 0 code, 1 coefficients, 2 state | p2 = start address. data = 1, 1, thread, word count |
 | 0xD7 | DSPCoreHaltResume | 2 | 0 halt, 1 resume | p2 = start address. data = 0, 0, thread, word count. Resume-all sends p1 = 1 and all other bytes 0 |
 
+Section 8 describes the DSP core and its commands 0xD0 to 0xD7.
+
 Mixer channels are 0 to 47. Channels 0 to 29 follow the input meter
 order, 30 to 45 carry Playback 1 to 16, and 46 and 47 are the mixer
 master L and R. The vendor HAL never writes channel 9, the second half of
@@ -594,7 +596,7 @@ value. Extra report IDs:
 | 0x52, 0x53 | Functional test result (not decoded) |
 | 0x64 | PLL clock lock |
 | 0xD2 | DSP core version, 7 bytes |
-| 0xD5 | DSP cycle count |
+| 0xD5 | DSP cycle count per thread and sample, data[0]. See 8.1 |
 
 A Get-all request (type 4) returns one report per property.
 
@@ -911,9 +913,187 @@ Maximum transfer is 1024 bytes.
 
 ---
 
-## 8. Notes for a new driver
+## 8. DSP core
 
-### 8.1 Minimum viable data path
+The FPGA contains a programmable DSP core. The Apogee FX Rack plugins can
+run on it. The HAL plugin holds the FX programs, links them into the core
+memory, and sends them with commands 0xD0 to 0xD7 (5.6). The unit answers
+a Get-all with one 0xD2 version report.
+
+Source: the arm64 slice of the HAL plugin. Addresses in this section are
+arm64 addresses. `scripts/dsp-programs.cpp` prints the FX programs. The
+probe sent no DSP command to the unit.
+
+Terms:
+
+- **Thread**: one of the 16 instruction streams of the core.
+- **Fragment**: a part of an FX program that runs in one thread.
+- **Option**: one way to split an FX program into fragments.
+- **Rack**: the FX chain on one channel (`DSPChannelRack`).
+- **Biquad**: a second-order IIR filter section.
+
+### 8.1 Resources
+
+| Resource | Value | Source |
+|----------|-------|--------|
+| Threads | 16 | `DSPCoreMemoryBlock` rejects thread 0x10 and higher. `Ensemble2Command::DSPCoreEraseAll` erases threads 0 to 15 |
+| Memories | Code (0), coefficients (1), state (2), per thread | Memory argument of 0xD6 |
+| Memory size | 256 words of 32 bits, per memory and thread | `DSPCoreMemoryBlock` rejects offsets 0x100 and higher |
+| DSP I/O channels | 64 | The channel fields are 6 bits |
+| Cycle budget | `floor(125e6 / (16 * fs))` per thread and sample: 177 at 44.1 kHz, 162 at 48 kHz, 81 at 96 kHz | `DSPController::estimatedDSPCycleCount` @0x62238 |
+
+Report 0xD5 replaces the estimate.
+`Ensemble2AudioDevice::packetFromHardwareArrived` passes its `data[0]` to
+`DSPController::setDSPCycleCount`.
+
+All threads share one state address space. A store or copy instruction
+(8.3) carries a 12-bit state address: the thread in bits 17:14 and the
+offset in bits 13:6.
+
+### 8.2 Load sequence
+
+`FXFragment::load` @0x25a98 loads one fragment:
+
+1. Relocate the code (8.3).
+2. Allocate the code, coefficient, and state blocks in the HAL memory map.
+3. Halt the code range in the thread (0xD7, p1 = 0).
+4. Write the code (0xD0).
+5. Write the initial state (0xD4), if the fragment has state.
+6. Write the coefficients (0xD1).
+
+`FXFragment::load` sends no resume. The caller that resumes the core is
+unverified. `FXFragment::unload` halts the code range, erases it with 0xD6,
+and releases the three blocks.
+
+Each transfer goes out in chunks of at most 23 words. A coefficient change
+sends only the words from the first to the last changed coefficient
+(`FXFragment::setCoefficients` @0x2611c).
+
+Coefficients go on the wire as IEEE 754 single-precision bit patterns.
+`FXFragment::setCoefficients` passes its `float` array to 0xD1 without
+conversion.
+
+### 8.3 Instruction word
+
+Each instruction is one 32-bit word. Bits 5:0 hold the opcode. The HAL
+relocation functions (`TransformInPlace_*`, @0x94084 to @0x943f8) settle
+these fields:
+
+| Opcodes | Bits | Meaning |
+|---------|------|---------|
+| 0x0B | 11:6 | Read audio input. DSP I/O channel |
+| 0x0B, 0x14, 0x15, 0x16 | 28:21 | State offset. The ModernEQ input read stores the sample there |
+| 0x15 | 13:6, 17:14, 20:18 | Copy from state: offset, thread, address mode. The linker writes 0x15 over an 0x0B when the input comes from another fragment |
+| 0x02 | 13:6, 17:14, 20:18 | Store to state: offset, thread, address mode |
+| 0x02 | 22, 28:23 | Bit 22 also sends the value to an audio output. Bits 28:23 hold the DSP I/O channel |
+| 0x04 to 0x0A, 0x0C to 0x13, 0x26 to 0x2B | 13:6, select 23:22 | Operand A. Select 0 = coefficient address, 1 = state offset |
+| 0x04 to 0x0A, 0x0C to 0x13, 0x26 to 0x2B | 21:14, select 25:24 | Operand B. Select 1 = state offset. The relocation skips operand B when operand A is a state offset |
+| 0x17 | 13:6 | STALL. A code address: the linker adds the code start. The linker replaces a trailing STALL with 0 |
+
+The state block of a fragment must align to 2^k words, where k is its
+largest address mode (`FXFragment::sizeMaxStateMode` @0x256e4 returns
+`1 << mode`). This matches circular buffers for delay lines. This is
+unverified.
+
+The programs in 8.4 suggest more. These items are unverified:
+
+| Item | Probable meaning |
+|------|------------------|
+| Opcode 0x05 | Multiply. Starts a new sum with A * B |
+| Opcode 0x04 | Multiply and add to the sum |
+| Operand B select 2 | The previous result |
+| Bit 31 | Set on the last product of each EQ band. The band output then appears at the base of its 4-word state group |
+
+The programs use 17 more opcodes: 0x01, 0x06 to 0x0A, 0x0C, 0x0E, 0x0F,
+0x11, 0x12, 0x14, 0x16, 0x26 to 0x28, 0x2B. They are not decoded.
+
+### 8.4 FX programs
+
+The HAL holds six programs as C++ tables (`DSPCore::*FXInfo`). Each table
+holds default coefficients for mono and, for ModComp only, for stereo. Each
+option lists its fragments. A fragment holds its code, a map from fragment
+coefficient slot to FX coefficient index, and "critical sections". In
+MonoGain and ModernEQ, the critical sections mark the input read and the
+output store.
+
+| Table | HAL name | Product | id | Coefficients, mono and stereo | Words per fragment, per option |
+|-------|----------|---------|----|-------------------------------|--------------------------------|
+| `noFXInfo` | MonoGain | none | 0 | 4, 0 | 3 |
+| `modEQFXInfo` | ModernEQ | ModEQ 6 | 2 | 34, 0 | 34 |
+| `eqp1aFXInfo` | TubePultecAuthentic | EQP-1A | 3 | 36, 0 | 48. 24 + 28 |
+| `modCompFXInfo` | ModernCompMono | ModComp | 4 | 30, 40 | Mono: 72. 39 + 40. Stereo: 93. 13 + 84. 33 + 47 + 25 |
+| `opto3AFXInfo` | VintageCompMono | Opto-3A | 5 | 84, 0 | 190. 64 + 74 + 64. 26 + 50 + 52 + 35 + 38 + 19 |
+| `meq5FXInfo` | MEQ5 | MEQ-5 | 8 | 32, 0 | 42. 18 + 28 |
+
+The unsplit Opto-3A program (190 words) exceeds the cycle estimate at
+44.1 kHz and higher.
+
+Coefficients 0 to 2 are level slots. `FXProcessor::levelModifiedCoef`
+@0x7afc4 multiplies c0 by the rack input level, and c1 and c2 by the rack
+output level. In ModernEQ, c1 scales the dry input and c2 scales the EQ
+output.
+
+The listing comments use the unverified readings in 8.3.
+
+MonoGain:
+
+    0  0000000b  read input, I/O channel 0
+    1  42000085  0x05  c2 * previous result
+    2  00400042  0x02  store to state 1 and to audio output 0
+
+ModernEQ is six biquads. Band k (1 to 6) reads its input group x at
+state 4k and writes its output group y at state 4k + 4. Each group holds
+samples n, n-1, and n-2 at offsets 0 to 2.
+
+     0  4080000b  read input, I/O channel 0, to state 4
+     1  490100c5  0x05  c3 * s4     x[n]
+     2  49014104  0x04  + c4 * s5   x[n-1]
+     3  49018144  0x04  + c5 * s6   x[n-2]
+     4  49024184  0x04  + c6 * s9   y[n-1]
+     5  c90281c4  0x04  + c7 * s10  y[n-2], bit 31
+     6 to 30      bands 2 to 6, the same shape, c8 to c32
+    31  42000085  0x05  c2 * previous result
+    32  49010044  0x04  + c1 * s4   dry x[n]
+    33  00400002  0x02  store to state 0 and to audio output 0
+
+The code never moves the history words. The state memory must age them,
+for example with the address modes. This is unverified.
+
+### 8.5 Linker
+
+`DSPCoreLinkSollution` places the fragments of all racks. It tries each
+option of each FX in the free code, coefficient, and state blocks.
+`canPossiblyBeatBestSollution` drops a branch that cannot beat the best
+solution. The log strings compare two solutions on four values:
+
+- samples of delay (`maxSamplesDelay`)
+- delay difference between left and right (`lrDelaySkew`)
+- threads in use
+- average free block size
+
+A split FX passes audio between its fragments through state memory. The
+linker clears the audio-output bit of the producer store
+(`TransformInPlace_DSPCoreDisableStoreOutput`). It turns the consumer input
+read into a copy (0x0B to 0x15). `addFragmentDelayPenalty` charges delay
+for each hop. `FXFragment::forbiddenStartAddressRanges` limits the start
+address of a fragment. The likely purpose is to keep each copy after the
+store that feeds it. This is unverified.
+
+### 8.6 Open questions
+
+- The meaning of the 17 undecoded opcodes.
+- The number format inside the core. The wire carries float bit patterns.
+- How the state memory ages delay-line words.
+- Which caller resumes the core after a load.
+- How the rack channel in 0xD3 p1 maps to the input channels.
+- Where the DSP meters land. The meter block holds 88 meters on this unit
+  (4.4).
+
+---
+
+## 9. Notes for a new driver
+
+### 9.1 Minimum viable data path
 
 1. Match `IOPCIDevice` with `0x220119C2`. Set `IOPCITunnelCompatible`.
 2. Map BAR0. Enable memory and bus master.
@@ -931,7 +1111,7 @@ Maximum transfer is 1024 bytes.
 Without the PSoC protocol the unit keeps its last settings and clock source.
 Sample rate changes need command 0x29.
 
-### 8.2 Watch items
+### 9.2 Watch items
 
 - The FPGA never reports a status bit for the MSI. A shared vector cannot
   be disambiguated. Keep one vector.
@@ -943,7 +1123,7 @@ Sample rate changes need command 0x29.
   instead of the wrap interrupt. This is unverified.
 - The PSoC message slots hold 8 entries. Queue in software when full.
 
-### 8.3 Unverified items
+### 9.3 Unverified items
 
 - Bit layouts of `STATUS`, `HOST_CONTROL`, `INTERRUPT` bits 22 and 26.
 - Names of meter group 2 (0x84) and output positions 2 to 5 (0x7C). Apogee
