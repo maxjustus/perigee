@@ -580,7 +580,7 @@ the value in `data[0]`. A command with two arguments sends `p1` and
 | 0xA0 | OpticalIsSubMix | 1 | bool | 1 only with a second linked unit |
 | 0xD0 | DSPCoreWriteCode | 2 | words in this chunk, 1 to 23 | p2 = start address. data = first-chunk flag, last-chunk flag, thread, total words, then the words |
 | 0xD1 | DSPCoreWriteCoefficients | 2 | as 0xD0 | as 0xD0 |
-| 0xD3 | DSPCoreRouting | 2 | rack channel | p2 = 0. data = DSP I/O channel, DSP I/O channel, 1 on or 0 off. The Ensemble HAL sends the same I/O channel twice |
+| 0xD3 | DSPCoreRouting | 2 | input index in record order (5.10) | p2 = 0. data = DSP I/O channel, DSP I/O channel, 1 on or 0 off. The Ensemble HAL sends the same I/O channel twice |
 | 0xD4 | DSPCoreWriteStateInit | 2 | as 0xD0 | as 0xD0 |
 | 0xD6 | DSPCoreErase | 2 | memory: 0 code, 1 coefficients, 2 state | p2 = start address. data = 1, 1, thread, word count |
 | 0xD7 | DSPCoreHaltResume | 2 | 0 halt, 1 resume | p2 = start address. data = 0, 0, thread, word count. Resume-all sends p1 = 1 and all other bytes 0 |
@@ -947,9 +947,9 @@ run on it. The HAL plugin holds the FX programs, links them into the core
 memory, and sends them with commands 0xD0 to 0xD7 (5.6). The unit answers
 a Get-all with one 0xD2 version report.
 
-Source: the arm64 slice of the HAL plugin. Addresses in this section are
-arm64 addresses. `scripts/dsp-programs.cpp` prints the FX programs. The
-probe sent no DSP command to the unit.
+Source: the arm64 slice of the HAL plugin, and tests on the unit (8.6).
+Addresses in this section are arm64 addresses. `scripts/dsp-programs.cpp`
+prints the FX programs.
 
 Terms:
 
@@ -966,12 +966,14 @@ Terms:
 | Threads | 16 | `DSPCoreMemoryBlock` rejects thread 0x10 and higher. `Ensemble2Command::DSPCoreEraseAll` erases threads 0 to 15 |
 | Memories | Code (0), coefficients (1), state (2), per thread | Memory argument of 0xD6 |
 | Memory size | 256 words of 32 bits, per memory and thread | `DSPCoreMemoryBlock` rejects offsets 0x100 and higher |
-| DSP I/O channels | 64 | The channel fields are 6 bits |
-| Cycle budget | `floor(125e6 / (16 * fs))` per thread and sample: 177 at 44.1 kHz, 162 at 48 kHz, 81 at 96 kHz | `DSPController::estimatedDSPCycleCount` @0x62238 |
+| DSP I/O channels | 16 | `DSPCoreResourceManager` allocates channels 0 to 15. The instruction fields are 6 bits |
+| Racks | 30, one per input in record order (5.10) | `Ensemble2AudioDevice::DSPCoreNumberOfHardwareInputs` |
+| Cycle budget | `floor(125e6 / (16 * fs))` per thread and sample: 177 at 44.1 kHz, 162 at 48 kHz, 81 at 96 kHz | `DSPController::estimatedDSPCycleCount` @0x62238. The unit reports 162 at 48 kHz |
 
 Report 0xD5 replaces the estimate.
 `Ensemble2AudioDevice::packetFromHardwareArrived` passes its `data[0]` to
-`DSPController::setDSPCycleCount`.
+`DSPController::setDSPCycleCount`. On report 0x43 (power on), the same
+function requests 0xD5, sends a Get-all, and erases all threads (@0x81d44).
 
 All threads share one state address space. A store or copy instruction
 (8.3) carries a 12-bit state address: the thread in bits 17:14 and the
@@ -1015,21 +1017,24 @@ these fields:
 | 0x02 | 22, 28:23 | Bit 22 also sends the value to an audio output. Bits 28:23 hold the DSP I/O channel |
 | 0x04 to 0x0A, 0x0C to 0x13, 0x26 to 0x2B | 13:6, select 23:22 | Operand A. Select 0 = coefficient address, 1 = state offset |
 | 0x04 to 0x0A, 0x0C to 0x13, 0x26 to 0x2B | 21:14, select 25:24 | Operand B. Select 1 = state offset. The relocation skips operand B when operand A is a state offset |
-| 0x17 | 13:6 | STALL. A code address: the linker adds the code start. The linker replaces a trailing STALL with 0 |
+| 0x17 | 13:6 | STALL. A code address: the linker adds the code start. The linker replaces a STALL at the end of a fragment with 0 |
 
 The state block of a fragment must align to 2^k words, where k is its
 largest address mode (`FXFragment::sizeMaxStateMode` @0x256e4 returns
-`1 << mode`). This matches circular buffers for delay lines. This is
-unverified.
+`1 << mode`).
 
-The programs in 8.4 suggest more. These items are unverified:
+The tests on the unit (8.6) settle these items:
 
-| Item | Probable meaning |
-|------|------------------|
-| Opcode 0x05 | Multiply. Starts a new sum with A * B |
-| Opcode 0x04 | Multiply and add to the sum |
-| Operand B select 2 | The previous result |
-| Bit 31 | Set on the last product of each EQ band. The band output then appears at the base of its 4-word state group |
+| Item | Meaning |
+|------|---------|
+| Coefficient and state words | IEEE 754 single-precision floats |
+| Opcode 0x05 | Multiply: A * B |
+| Opcode 0x04 | Multiply and add: the previous result + A * B |
+| Opcode 0x0B | The input sample becomes the result. In ModernEQ (bit 30 set) it also goes to the state offset in bits 28:21 |
+| Operand B select 2 | The result register |
+| Bit 30 | Writes the result to the result register. Without it, a later store does not see the value. Tested on opcode 0x05 |
+| Bit 31 | Also writes the result to offset 0 of the operand B group |
+| Bits 27:26 = k | Operand B is a circular group of 2^k state words. The group advances one word per sample, so offset j reads the value that offset 0 held j samples earlier. k = 0 is a fixed word |
 
 The programs use 17 more opcodes: 0x01, 0x06 to 0x0A, 0x0C, 0x0E, 0x0F,
 0x11, 0x12, 0x14, 0x16, 0x26 to 0x28, 0x2B. They are not decoded.
@@ -1060,8 +1065,6 @@ Coefficients 0 to 2 are level slots. `FXProcessor::levelModifiedCoef`
 output level. In ModernEQ, c1 scales the dry input and c2 scales the EQ
 output.
 
-The listing comments use the unverified readings in 8.3.
-
 MonoGain:
 
     0  0000000b  read input, I/O channel 0
@@ -1069,8 +1072,8 @@ MonoGain:
     2  00400042  0x02  store to state 1 and to audio output 0
 
 ModernEQ is six biquads. Band k (1 to 6) reads its input group x at
-state 4k and writes its output group y at state 4k + 4. Each group holds
-samples n, n-1, and n-2 at offsets 0 to 2.
+state 4k and writes its output group y at state 4k + 4. Each group is a
+4-word circular group (bits 27:26 = 2), so offset j holds sample n - j.
 
      0  4080000b  read input, I/O channel 0, to state 4
      1  490100c5  0x05  c3 * s4     x[n]
@@ -1083,8 +1086,9 @@ samples n, n-1, and n-2 at offsets 0 to 2.
     32  49010044  0x04  + c1 * s4   dry x[n]
     33  00400002  0x02  store to state 0 and to audio output 0
 
-The code never moves the history words. The state memory must age them,
-for example with the address modes. This is unverified.
+Band 1 computes `y[n] = c3 x[n] + c4 x[n-1] + c5 x[n-2] + c6 y[n-1] +
+c7 y[n-2]`. The feedback terms add, so c6 and c7 hold -a1 and -a2 of the
+usual biquad form.
 
 ### 8.5 Linker
 
@@ -1106,13 +1110,48 @@ for each hop. `FXFragment::forbiddenStartAddressRanges` limits the start
 address of a fragment. The likely purpose is to keep each copy after the
 store that feeds it. This is unverified.
 
-### 8.6 Open questions
+### 8.6 Tests on the unit
 
-- The meaning of the 17 undecoded opcodes.
-- The number format inside the core. The wire carries float bit patterns.
-- How the state memory ages delay-line words.
-- Which caller resumes the core after a load.
-- How the rack channel in 0xD3 p1 maps to the input channels.
+Measured with the open driver at 48 kHz. The commands went out through
+`raw.send` of ensemble-control. Each load erased all threads, followed 8.2
+in thread 0 at address 0 with DSP I/O channel 0, and sent a resume-all.
+The record stream gave the reference: channel 8 is the dry front panel
+mic, and channels 30 and 31 are Mixer 1 (5.10). The speaker output stayed
+muted.
+
+- A Get of 0xD5 returns 162.
+- 0xD3 with p1 = 0 routes Analog 1, and p1 = 8 routes the front panel
+  mic. So p1 is the input index in record order. data[2] = 0 removes the
+  route.
+- The FX output replaces the input in the input meter and in the mixers.
+  The record stream keeps the dry input.
+- MonoGain adds 3 samples to the mixer path. For c2 = 0.5, 0.25, -1, and
+  0, the gain against the route-off gain is 0.500, 0.250, -1.001, and
+  0.000.
+- The program `c3 * s4`, then a store, reads 2048 on the input meter for
+  c3 = 0.25 and s4 = 0.5. That is 0.125 of full scale (4.4).
+- The same program with s4 = 0.5, s5 = 0.25, and zeros up to s11 reads
+  s4, s5, s6, s7 in turn for bits 27:26 = 2. Bits 27:26 = 0, 1, and 3
+  give a period of 1, 2, and 8 samples.
+- With bits 30 and 31 set, `c3 * s4` keeps s4 at 0.5 for c3 = 1. For
+  c3 = 0.5, s4 decays to 0.
+- The ModernEQ program, with bands 2 to 6 set to pass, gives these
+  responses. c3 = 1 passes the input. c4 = 1 delays it by 1 sample, and
+  c5 = 1 by 2 samples. c6 = 0.5 gives the impulse response 1, 0.49,
+  0.26, 0.11. c7 = 0.5 gives 1.04, -0.03, 0.54, -0.02, 0.28. c1 = 0.5
+  with c2 = 0 passes the dry input at 0.5.
+
+The input meters hold their peaks for 2 s (`meters/peakHold`), so a level
+decrease shows late. After the tests, 0xD3 with data[2] = 0 and an erase
+of all threads returned both inputs to dry.
+
+### 8.7 Open questions
+
+- The meaning of the 17 undecoded opcodes, and of bit 30 on them.
+- Whether the core can feed the record stream, as the FX Rack "Print"
+  mode needs.
+- Which caller in the vendor HAL resumes the core after a load.
+- The meaning of 0xD3 data[0] and data[1] when they differ.
 - Where the DSP meters land. The meter block holds 88 meters on this unit
   (4.4).
 
