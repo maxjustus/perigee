@@ -708,9 +708,11 @@ preset routes Mixer 1 to Line 1-2 and Mixers 2 and 3 to the headphones.
 Destinations: `d` = 0 to 14 drives output pair `2d, 2d+1` of Line 1-10,
 Guitar Out 1-2, S/PDIF Coax, Optical 1-16. 15 and 16 are Headphone 1 and 2.
 A tone routed to each destination lit exactly that output meter pair, and
-15 and 16 lit the meter group at 0x7C. In "2 Speaker Sets" mode, the
-inactive set (Line 3-4 while set A is active) stays silent whatever its
-route is.
+15 and 16 lit the meter group at 0x7C. In "2 Speaker Sets" mode, set A
+plays the route of destination 0 and set B the route of destination 1. The
+inactive set stays silent. The vendor HAL writes the speaker source to
+destinations 0 and 1, and to 2 in "3 Speaker Sets" mode, so all sets play
+the same source.
 
 The HAL publishes the 36 output channels as "Playback 1" to "Playback 36".
 The DMA output ring therefore carries software playback channels, not
