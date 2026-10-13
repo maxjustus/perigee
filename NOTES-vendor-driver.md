@@ -396,7 +396,7 @@ Buffer layout (`Ensemble2AudioDevice::CopyMeterData`):
 | 0x7C | 4 * 2 | Headphone 1 L/R, Headphone 2 L/R (measured by routing a tone to destinations 15 and 16) |
 | 0x84 | 16 * 2 | Playback 1-16, before the mixers (measured with a tone per playback channel) |
 | 0xA4 | 8 * 2 | Mixer master outputs, 4 stereo mixers |
-| 0xB4 | n * 2 | DSP core meters, present if `numHostMeters > 88`. The Ensemble FPGA reports 88 (8.6) |
+| 0xB4 | n * 2 | DSP core meters, one per DSP I/O channel, present if `numHostMeters > 88`. The Ensemble FPGA reports 88 (8.6) |
 
 Ensemble reports 88 host meters, so the buffer is 4 + 88 * 2 = 0xB4
 bytes. The HAL thread polls byte 0 every 5 ms and copies the block when the
@@ -1284,8 +1284,12 @@ the rule and is not tested.
 
 Each instruction is one 32-bit word, and bits 5:0 hold the opcode. A thread
 runs one instruction per cycle from code address 0. Instructions past the
-cycle budget do not run. Coefficient and state words are IEEE 754
-single-precision floats. The core has two result registers, r and x.
+cycle budget do not run. At 48 kHz, the last instruction that takes effect
+runs at cycle 160: a store at address 160 of a program without jumps
+writes, and a store at address 161 does not (`isa.py idle`). That is 161
+cycles, one less than the 162 of report 0xD5. Coefficient and state words
+are IEEE 754 single-precision floats. The core has two result registers, r
+and x.
 
 The HAL relocation functions (`TransformInPlace_*`, @0x94084 to @0x943f8)
 give the address fields. The tests on the unit (8.7) give the other fields
@@ -1366,9 +1370,10 @@ Other instructions:
 | Opcode | Bits | Meaning |
 |--------|------|---------|
 | 0x01 | 13:6 | Jump to this address + the offset, a signed 8-bit value. Offset 2 skips one instruction, and 0xFE jumps two back |
-| 0x01 | 16:14 | 2 to 5: jump if x meets the condition. 0, 1, 6, and 7: always jump |
+| 0x01 | 16:14 | 2 to 5: jump if x meets the condition. 0, 1, 6, and 7: always jump. Bit 14 also selects the path that waits, see below |
 | 0x01 | 23:21 | Condition on x, see below |
-| 0x02 | 13:6, 17:14, 20:18 | Store: state offset, thread, address mode |
+| 0x01 | 27:24 | Idle cycles n. The thread waits n cycles after the jump if bit 14 is 1, else when it does not jump |
+| 0x02 | 13:6, 17:14, 20:18 | Store: state offset, thread, address mode. Mode m writes offset 0 of a circular group of 2^m words, as 0x14 reads one (`isa.py stores`) |
 | 0x02 | 21 | Source: 0 r, 1 x |
 | 0x02 | 22, 28:23 | Bit 22 also sends the value to an audio output. Bits 28:23 hold the DSP I/O channel |
 | 0x0B | 11:6 | Read audio input: DSP I/O channel. The sample goes to r |
@@ -1377,7 +1382,7 @@ Other instructions:
 | 0x14 | 31:29 | Changed nothing, with sources in thread 0 and thread 1 |
 | 0x16 | 13:6, 17:14, 28:21 | As 0x14, and also loads the value into x. Bits 31:29 changed nothing |
 | 0x15 | 13:6, 17:14, 20:18, 28:21 | As 0x14, and also loads the value into r. The linker writes 0x15 over an 0x0B when the input comes from another fragment |
-| 0x17 | 13:6 | STALL until cycle n. The next instruction runs at cycle n + 1. The linker adds the code start to n and replaces a STALL at the end of a fragment with 0 |
+| 0x17 | 13:6 | STALL until cycle n. The next instruction runs at cycle n. The linker adds the code start to n and replaces a STALL at the end of a fragment with 0 |
 
 Jump conditions, bits 23:21 of 0x01:
 
@@ -1396,16 +1401,29 @@ The vendor programs set bits 20:17 of 0x01 to 1111, and bits 16:14 to 1,
 2, or 3. With bits 16:14 = 2 to 5, the condition tests x. With 0, 1, 6, or
 7, the jump always goes to the relative target, even with condition 110
 (`isa.py selectors`). The vendor programs use 1 only with condition 111.
-Bits 27:24 changed nothing. In the vendor conditional jumps, they hold
-values from 0 to 0xD. A value of ±1e-30 counts as nonzero.
+A value of ±1e-30 counts as nonzero.
+
+A jump takes one cycle, taken or not, and the words that it skips take no
+cycles. Bits 27:24 then add n idle cycles to one of the two paths: to the
+jump if bit 14 is 1, else to the path that does not jump. A selector that
+always jumps (0, 1, 6, 7) waits only if bit 14 is 1. The vendor programs
+use this to give both paths of a branch the same length. With this rule,
+every branch path through each of the 27 vendor fragments takes the same
+number of cycles, without the help of a STALL. With idle cycles on the
+taken path only, 10 fragments get paths of unequal length.
+The same rule explains the measured cycles of all 8 selectors with
+conditions 110 and 111 (8.7).
 
 Opcodes 0x00, 0x03, 0x18 to 0x25, and 0x2C to 0x3F changed neither r nor
 x. The test put them after 0x0D and after 0x10, with destination r and
 with destination x (`isa.py unknown`). So none of them gives a square root
 or another unit result. 0x38 to 0x3F also left r unchanged with raw
 integer words as operand A, so they convert no integers. The large values
-of an earlier 0x38 test did not repeat. The vendor programs use none of
-these opcodes.
+of an earlier 0x38 test did not repeat. They also write no state word and
+no DSP I/O channel. The test put each of them, and 0x0D and 0x10, in the
+field layouts of an arithmetic instruction (with and without bit 31), a
+store (with bit 22), and a copy, and read every word that the fields name
+(`isa.py writes`). The vendor programs use none of these opcodes.
 
 ### 8.4 FX programs
 
@@ -1545,6 +1563,29 @@ the input meter, which taps after the DSP, as the FX output level. It
 takes the FX input level from the DSP core meters, at the DSP input
 channel of the input. With 88 meters, the buffer holds no DSP core meters.
 
+The FPGA alone sets the count of 88:
+
+- The kext reads it from bits 15:0 of BAR0 0x1C
+  (`numberOfHostMeteringChannels`, x86_64 0x53BA). It sizes the meter
+  buffer as 4 + 2 × count bytes and writes the same count back into bits
+  31:16 (`_allocateMemoryBuffers` 0x5493, `_refreshFPGAAudioRegisters`
+  0x3225). No host code writes another count.
+- The PSoC bus has no path to BAR0 0x1C. The PSoC code touches no meter
+  count.
+- The HAL indexes the DSP core meters by DSP I/O channel, 0 to 15
+  (`getUsedDSPCoreIOChannel` @0x62788). So a full set is 16 meters, a
+  count of 104.
+- `Ensemble2AudioDevice::CopyMeterData` (@0x89ed4) passes a null DSP meter
+  pointer for a count of 88 or less. For an input with active FX, its
+  input loop then reads address 2 × channel. So with an 88-meter FPGA, the
+  vendor HAL faults in the first meter copy after an FX load. Either other
+  FPGA versions report more meters, or FX never ran with meters on this
+  FPGA. Inferred from the code, not tested.
+
+Whether the FPGA sends DSP core meters when the host writes a larger count
+into bits 31:16 is unknown. The test needs a change to the open driver,
+because the meter buffer must grow with the count.
+
 ### 8.7 Tests on the unit
 
 Measured with the open driver at 48 kHz. `scripts/dsp/dsp.py` sends the
@@ -1576,7 +1617,8 @@ speaker output stayed muted.
   0.26, 0.11. c7 = 0.5 gives 1.04, -0.03, 0.54, -0.02, 0.28. c1 = 0.5
   with c2 = 0 passes the dry input at 0.5.
 - STALL 159 lets two more instructions run, and STALL 160 does not. So
-  cycles 0 to 161 run at 48 kHz.
+  the instruction after STALL n runs at cycle n, and cycles 0 to 160 take
+  effect at 48 kHz (8.3).
 - After full writes of two patterns, one-word 0xD4 writes to s40 and s100
   left s8, s40, s100, and s200 at the values that `state[(start + j) mod
   256] = staging[j]` predicts (`isa.py state`).
@@ -1603,10 +1645,41 @@ speaker output stayed muted.
   neither the copy, x, r, nor a word of thread 1 (`isa.py copybits`).
 - The opcodes without a known function changed neither r nor x
   (`isa.py unknown`).
+- Each opcode without a known function, and 0x0D and 0x10, left s20 to
+  s23 at 0.111 to 0.444 and DSP output 0 at 0 (`isa.py writes`). The left
+  channel read the state word plus 1.8 % of the right channel, the leak of
+  pan 127. The test adds the leak to the expected value.
+- 0x02 with address mode m (0 to 7) stored b to s128. 0x15 with mode m
+  then read offset 0 and offset 1 of the group. Offset 0 gave b. Offset 1
+  gave the b of the sample before for m = 1 to 7, and 0 for m = 0
+  (`isa.py stores`).
+- A jump at address 5 skipped address 6. A store at address A put a marker
+  on the right channel. The table after this list gives the last address A
+  at which the store took effect, for bits 27:24 = 4 (`isa.py idle`).
+  Without a jump, it is 160. With bits 27:24 = 0, jumps over 2 and 4 words
+  gave 162 and 164. Earlier probes with selector 3 gave 161 − n for n = 0,
+  1, 2, 4, 8, and 15 with condition 111, and 160 for each n with condition
+  110.
 - A halted thread sends exact zeros to its DSP I/O channels. Early in the
   tests, a resume-all after a code swap left the thread halted a few
   times, and a second resume-all restarted it. Later, 30 swaps, half of
-  them after an erase, never stayed halted.
+  them after an erase, never stayed halted. `isa.py resume` then repeated
+  7 sequences 10 times each, in two runs: one swap, five swaps, two halts
+  with code and resume and no 0.02 s pauses, nine halts (one more than
+  the 8 halt slots) with code and resume, five swaps in thread 1 while
+  thread 0 runs, a Get-all then a swap, and an erase of all threads then a
+  load. In the 130 sequences, no thread stayed halted. The 152 swaps of
+  `isa.py writes` also needed no second resume-all.
+
+| Bits 16:14 | Condition 111 | Condition 110 |
+|------------|---------------|---------------|
+| 0, 6 | 161 | 161 |
+| 1, 7 | 157 | 157 |
+| 2, 4 | 161 | 156 |
+| 3, 5 | 157 | 160 |
+
+161 is a jump without idle cycles, and 157 a jump with 4 idle cycles. 160
+is no jump, and 156 no jump with 4 idle cycles.
 
 For the opcode tests, `scripts/dsp/isa.py` sends DSP I/O channel 0 to
 Analog 1 and channel 1 to Analog 2. Mixer 1 pans them hard left and hard
@@ -1621,16 +1694,13 @@ of all threads returned the inputs to dry.
 
 ### 8.8 Open questions
 
-- Why a resume-all sometimes did not restart the thread. The PSoC has no
-  path that drops a resume.
-- What bits 27:24 of a conditional jump do. The vendor programs set them,
-  but they changed nothing in the tests.
-- Whether the opcodes without a known function write state words or DSP
-  I/O channels. The tests read only r and x.
-- Whether a store (0x02) with address mode m writes a group of 2^m words,
-  as 0x14 reads one. This is not tested.
-- Whether the FPGA sends DSP core meters when the host asks for more than
-  88 meters. The host must then enlarge the meter buffer.
+- Why a resume-all left a thread halted a few times early in the tests.
+  130 later sequences did not repeat it (8.7). The PSoC has no path that
+  drops a resume. The dext drops a message when its 32-entry outbox is
+  full, and the mailbox reset after a PSoC restart drops the queued slots.
+  Either can lose a resume, but no test showed it.
+- Whether the FPGA sends DSP core meters when the host writes a count
+  above 88 into bits 31:16 of BAR0 0x1C (8.6).
 - The Cyclone V image itself. Project Mistral documents the Cyclone V
   bitstream format, which can show how the core is built.
 
