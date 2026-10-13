@@ -367,6 +367,11 @@ Ensemble reports 88 host meters, so the buffer is 4 + 88 * 2 = 0xB4
 bytes. The HAL thread polls byte 0 every 5 ms and copies the block when the
 value changes.
 
+Each value is a linear peak level with full scale at 16384 (2^14): a
+1 kHz sine at -40 dBFS reads 164, and at -20 dBFS reads 1639. So
+dBFS = 20 * log10(value / 16384). The meters measure before the monitor
+mute. Measured with the open driver.
+
 The HAL does not interpret the values. It repacks them into an
 `ApogeeMeterData` struct for Apogee Control (`_serializeMeterData`). The
 struct header holds four uint16 counts. The Ensemble constructor writes
