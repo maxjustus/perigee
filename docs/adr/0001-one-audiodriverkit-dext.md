@@ -16,9 +16,10 @@ AudioDriverKit clock and buffer model directly:
   does. The dext has no code on the real-time IO path.
 - `SetZeroTimeStampPeriod(0x4000)` matches the one MSI per ring wrap that
   the probe measured (341.3 ms at 48 kHz). The MSI handler calls
-  `UpdateCurrentZeroTimestamp`. It reads `CUR_OUTPUT_AUDIO_ADDRESS_LOW` to
-  remove the interrupt latency from the host time, with a resolution of
-  `SAMPLEDEPTH + 1` frames.
+  `UpdateCurrentZeroTimestamp` with the time that
+  `IOInterruptDispatchSource` passes. That time comes from the kernel's
+  primary interrupt handler, so the latency of the dext process does not
+  enter the timestamp.
 - The sample rate maps to `PerformDeviceConfigurationChange` and PSoC
   command 0x29. The clock source maps to a `ClockSourceControl` selector.
   `SetElementName` gives the channel names.
