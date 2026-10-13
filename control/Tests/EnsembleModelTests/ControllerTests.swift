@@ -196,6 +196,15 @@ func makeController() -> (Controller, FakeTransport, Broadcasts) {
                     Choice(name: "Infinite", code: 2)]))
 }
 
+@Test func channelEnableWritesAllFourMixersAndReadsOneReport() {
+    let (controller, transport, broadcasts) = makeController()
+    _ = controller.handle(#"{"jsonrpc":"2.0","id":1,"method":"set","params":{"mixers/channels/33/enabled":true}}"#)
+    #expect(transport.sent == (0..<4).map { [1, 0, word(2, 0x38, 32, $0), word(1, 1, 0, 0)] })
+    controller.receive(Report(type: 1, command: 0x38, p1: 32, p2: 7, data: [1]))
+    let changed = object(broadcasts.texts.last!)
+    #expect((changed["params"] as? [String: Any])?["mixers/channels/33/enabled"] as? Bool == true)
+}
+
 @Test func reportDecodesFromAsyncArguments() {
     let args: [UInt64] = [2 | 0x41 << 8 | 0 << 16 | 0 << 24 | 3 << 32, 0xccbbaa]
     let report = Report(arguments: args)

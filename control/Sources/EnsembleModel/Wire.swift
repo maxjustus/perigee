@@ -22,14 +22,14 @@ public struct Report: Equatable, Sendable {
     }
 }
 
-func message(_ parameter: Parameter, p1: UInt8, _ value: Int) -> [UInt32] {
+func message(_ parameter: Parameter, _ target: Target, _ value: Int) -> [UInt32] {
     let bytes: [UInt8]
     switch parameter.wire {
     case .set:
-        bytes = [1, parameter.command, p1, UInt8(value)]
+        bytes = [1, parameter.command, target.p1, UInt8(value)]
     case .block(let count):
         let data = count == 2 ? [UInt8(value >> 8), UInt8(value & 0xFF)] : [UInt8(value)]
-        bytes = [2, parameter.command, p1, parameter.p2, UInt8(count)] + data
+        bytes = [2, parameter.command, target.p1, target.p2, UInt8(count)] + data
     }
     let words = stride(from: 0, to: bytes.count, by: 4).map { start in
         bytes[start..<min(start + 4, bytes.count)].enumerated().reduce(UInt32(0)) {

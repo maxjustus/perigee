@@ -15,9 +15,9 @@ public final class Controller: @unchecked Sendable {
     private let transport: Transport
     private let broadcast: @Sendable (String) -> Void
     private let byPath = Dictionary(uniqueKeysWithValues: parameters.map { ($0.path, $0) })
-    private let byKey = Dictionary(uniqueKeysWithValues: parameters.flatMap { parameter in
-        ([parameter.p1] + parameter.also).map { (Key(parameter, p1: $0), parameter) }
-    })
+    private let byKey = Dictionary(parameters.flatMap { parameter in
+        targets(parameter).map { (Key(parameter, $0), parameter) }
+    }, uniquingKeysWith: { first, _ in first })
     private let lock = NSLock()
     private var values: [String: Int] = [:]
 
@@ -90,7 +90,7 @@ public final class Controller: @unchecked Sendable {
                     throw RPCError.invalidParams("unknown path \(path)")
                 }
                 let wire = try encodeValue(value, parameter)
-                return ([parameter.p1] + parameter.also).map { message(parameter, p1: $0, wire) }
+                return targets(parameter).map { message(parameter, $0, wire) }
             }
             try messages.forEach(transport.send)
             return true
@@ -118,11 +118,11 @@ private struct Key: Hashable {
     let p1: UInt8
     let p2: UInt8
 
-    init(_ parameter: Parameter, p1: UInt8) {
+    init(_ parameter: Parameter, _ target: Target) {
         block = (parameter.reported ?? parameter.wire) != .set
         command = parameter.command
-        self.p1 = p1
-        p2 = block ? parameter.p2 : 0
+        p1 = target.p1
+        p2 = block ? target.p2 : 0
     }
 
     init(_ report: Report) {
@@ -131,6 +131,10 @@ private struct Key: Hashable {
         p1 = report.p1
         p2 = block ? report.p2 : 0
     }
+}
+
+private func targets(_ parameter: Parameter) -> [Target] {
+    [Target(p1: parameter.p1, p2: parameter.p2)] + parameter.also
 }
 
 private func describe(_ parameter: Parameter) -> [String: Any] {

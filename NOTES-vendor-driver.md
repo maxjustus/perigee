@@ -358,8 +358,8 @@ Buffer layout (`Ensemble2AudioDevice::CopyMeterData`):
 | 0x01 | 3 | Padding |
 | 0x04 | 30 * 2 | Input meters, uint16, one per input channel |
 | 0x40 | 30 * 2 | Output meters, uint16 |
-| 0x7C | 4 * 2 | Output group, first 4 entries after the monitor pair |
-| 0x84 | 16 * 2 | Group 2, 16 entries on Ensemble and Element alike |
+| 0x7C | 4 * 2 | Headphone 1 L/R, Headphone 2 L/R (measured by routing a tone to destinations 15 and 16) |
+| 0x84 | 16 * 2 | Playback 1-16, before the mixers (measured with a tone per playback channel) |
 | 0xA4 | 8 * 2 | Mixer master outputs, 4 stereo mixers |
 | 0xB4 | n * 2 | DSP core meters, present if `numHostMeters > 88` |
 
@@ -538,7 +538,7 @@ the value in `data[0]`. A command with two arguments sends `p1` and
 | 0x33 | MixerChannelPan | 2 | mixer | channel, 1 byte |
 | 0x34 | MixerChannelSolo | 2 | mixer | channel, 1 byte |
 | 0x35 | MixerChannelMute | 2 | mixer | channel, 1 byte |
-| 0x38 | MixerChannelIsVisible | 2 | mixer | channel, 1 byte |
+| 0x38 | MixerChannelIsVisible | 2 | channel | p2 = mixer, 1 byte. Gates the channel into that mixer: a hidden channel is not mixed. The report is type 1, one value per channel, 1 if any mixer has the channel visible. The vendor writes all mixers |
 | 0x39 | MixerChannelIsStereo | 2 | mixer | channel, 1 byte |
 | 0x3A | MixerChannelSoloSafe | 2 | channel | 1 byte |
 | 0x50 | FunctionalTestMode | 1 | mode | |
@@ -708,7 +708,9 @@ preset routes Mixer 1 to Line 1-2 and Mixers 2 and 3 to the headphones.
 Destinations: `d` = 0 to 14 drives output pair `2d, 2d+1` of Line 1-10,
 Guitar Out 1-2, S/PDIF Coax, Optical 1-16. 15 and 16 are Headphone 1 and 2.
 A tone routed to each destination lit exactly that output meter pair, and
-15 and 16 lit the meter group at 0x7C.
+15 and 16 lit the meter group at 0x7C. In "2 Speaker Sets" mode, the
+inactive set (Line 3-4 while set A is active) stays silent whatever its
+route is.
 
 The HAL publishes the 36 output channels as "Playback 1" to "Playback 36".
 The DMA output ring therefore carries software playback channels, not

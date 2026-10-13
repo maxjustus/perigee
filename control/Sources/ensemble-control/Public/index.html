@@ -17,7 +17,7 @@
   label { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; align-items: center; margin: 6px 0; }
   input[type=range] { grid-column: 1 / -1; width: 100%; }
   output { font-variant-numeric: tabular-nums; color: #c9d1d9; }
-  #meters { margin-bottom: 12px; }
+  #meter-banks { margin-bottom: 12px; }
   .bank { display: flex; gap: 2px; height: 90px; margin-bottom: 18px; }
   .meter { flex: 1; position: relative; background: #2a2e33; border-radius: 2px; }
   .fill { position: absolute; bottom: 0; width: 100%; background: #6fcf97; border-radius: 2px; }
@@ -42,7 +42,7 @@
 </head>
 <body>
 <header><h1>Ensemble</h1><span id="status">connecting</span></header>
-<section id="meters"></section>
+<section id="meter-banks"></section>
 <section id="mixers"><h2>Mixers <span id="mixer-tabs"></span></h2></section>
 <main id="groups"></main>
 <script>
@@ -57,8 +57,11 @@ function rpc(method, params) {
 }
 
 function show(path, value) {
-  const control = controls.get(path);
-  if (control) control.update(value);
+  for (const update of controls.get(path) ?? []) update(value);
+}
+
+function watch(path, update) {
+  controls.set(path, [...(controls.get(path) ?? []), update]);
 }
 
 function group(path) {
@@ -86,17 +89,17 @@ function slider(path, min, max, format) {
       rpc("set", { [path]: Number(input.value) });
     });
   };
-  controls.set(path, { update: value => {
+  watch(path, value => {
     if (document.activeElement !== input) input.value = value;
     output.value = format(value);
-  } });
+  });
   return [output, input];
 }
 
 function toggle(path) {
   const input = Object.assign(document.createElement("input"), { type: "checkbox" });
   input.onchange = () => rpc("set", { [path]: input.checked });
-  controls.set(path, { update: value => { input.checked = value; } });
+  watch(path, value => { input.checked = value; });
   return input;
 }
 
@@ -104,11 +107,20 @@ function picker(path, choices) {
   const input = document.createElement("select");
   input.append(...choices.map(choice => new Option(choice, choice)));
   input.onchange = () => rpc("set", { [path]: input.value });
-  controls.set(path, { update: value => { input.value = value; } });
+  watch(path, value => { input.value = value; });
   return input;
 }
 
 function render(parameter) {
+  const enable = parameter.path.match(/^mixers\/channels\/(\d+)\/enabled$/);
+  if (enable) {
+    for (const number of [1, 2, 3, 4]) {
+      const label = Object.assign(document.createElement("label"), { className: "mute" });
+      label.append(toggle(parameter.path), "On");
+      stripFor(number, Number(enable[1])).append(label);
+    }
+    return;
+  }
   const strip = parameter.path.match(/^mixers\/(\d+)\/channels\/(\d+)\/(\w+)$/);
   if (strip) return renderStrip(parameter, Number(strip[1]), Number(strip[2]), strip[3]);
   const name = parameter.path.slice(parameter.path.lastIndexOf("/") + 1);
@@ -148,13 +160,18 @@ function showMixer(number) {
   document.querySelectorAll("#mixer-tabs button").forEach((b, i) => b.classList.toggle("shown", i + 1 === number));
 }
 
-function renderStrip(parameter, number, channel, control) {
+function stripFor(number, channel) {
   let strip = document.getElementById(`mixer-${number}-${channel}`);
   if (!strip) {
     strip = Object.assign(document.createElement("div"), { id: `mixer-${number}-${channel}`, className: "strip" });
     strip.append(Object.assign(document.createElement("span"), { textContent: channelNames[channel - 1] }));
     mixer(number).append(strip);
   }
+  return strip;
+}
+
+function renderStrip(parameter, number, channel, control) {
+  const strip = stripFor(number, channel);
   if (control === "fader") {
     const [output, input] = slider(parameter.path, parameter.min, parameter.max, formatFader);
     input.className = "fader";
@@ -176,6 +193,7 @@ const meterNames = {
   outputs: [...Array.from({ length: 10 }, (_, i) => `Line ${i + 1}`), "Gtr Out 1", "Gtr Out 2",
             "SPDIF L", "SPDIF R", ...Array.from({ length: 16 }, (_, i) => `Opt ${i + 1}`)],
   outputGroup: ["HP1 L", "HP1 R", "HP2 L", "HP2 R"],
+  group2: Array.from({ length: 16 }, (_, i) => `Play ${i + 1}`),
   mixers: [1, 2, 3, 4].flatMap(n => [`Mix ${n} L`, `Mix ${n} R`]),
 };
 const channelNames = [...meterNames.inputs, ...Array.from({ length: 16 }, (_, i) => `Play ${i + 1}`),
@@ -195,7 +213,7 @@ for (const [key, names] of Object.entries(meterNames)) {
     bank.append(meter);
     return fill;
   });
-  document.getElementById("meters").append(bank);
+  document.getElementById("meter-banks").append(bank);
 }
 
 function showMeters(meters) {

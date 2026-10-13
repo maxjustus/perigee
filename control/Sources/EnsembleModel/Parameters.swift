@@ -14,12 +14,17 @@ public enum Wire: Equatable, Sendable {
     case block(bytes: Int)
 }
 
+public struct Target: Equatable, Sendable {
+    public let p1: UInt8
+    public let p2: UInt8
+}
+
 public struct Parameter: Sendable {
     public let path: String
     public let command: UInt8
     public let p1: UInt8
     public var p2: UInt8 = 0
-    public var also: [UInt8] = []
+    public var also: [Target] = []
     public var wire: Wire = .set
     public var reported: Wire?
     public var on = 1
@@ -127,20 +132,31 @@ private let inputs = (0..<8).flatMap { channel in
     return channel < 4 ? analog + [instrument] : analog
 } + (0..<4).map { pair in
     Parameter(path: "inputs/analog/\(2 * pair + 1)-\(2 * pair + 2)/link", command: 0x07, p1: UInt8(2 * pair),
-              also: [UInt8(2 * pair + 1)], on: pair + 1, kind: .bool)
+              also: [Target(p1: UInt8(2 * pair + 1), p2: 0)], on: pair + 1, kind: .bool)
 } + [
     Parameter(path: "inputs/frontMic/gain", command: 0x02, p1: 8, kind: .int(0...40)),
-    Parameter(path: "inputs/guitar/1-2/link", command: 0x07, p1: 10, also: [11], on: 6, kind: .bool),
+    Parameter(path: "inputs/guitar/1-2/link", command: 0x07, p1: 10, also: [Target(p1: 11, p2: 0)], on: 6,
+              kind: .bool),
     Parameter(path: "inputs/analog/1/insert", command: 0x0A, p1: 0, kind: .bool),
     Parameter(path: "inputs/analog/2/insert", command: 0x0A, p1: 1, kind: .bool),
 ] + (0..<2).map { guitar in
     Parameter(path: "inputs/guitar/\(guitar + 1)/gain", command: 0x03, p1: UInt8(10 + guitar), kind: .int(0...45))
 }
 
-private let mixers = (1..<4).map { mixer in
+private let mixers: [Parameter] = channelEnables + preFaders + strips
+
+private let channelEnables: [Parameter] = (0..<46).filter { $0 != 9 }.map { channel in
+    Parameter(path: "mixers/channels/\(channel + 1)/enabled", command: 0x38, p1: UInt8(channel),
+              also: (1..<4).map { Target(p1: UInt8(channel), p2: UInt8($0)) }, wire: .block(bytes: 1),
+              reported: .set, kind: .bool)
+}
+
+private let preFaders: [Parameter] = (1..<4).map { mixer in
     Parameter(path: "mixers/\(mixer + 1)/preFader", command: 0x90, p1: UInt8(mixer), wire: .block(bytes: 1),
               reported: .set, kind: .bool)
-} + (0..<4).flatMap { mixer in
+}
+
+private let strips: [Parameter] = (0..<4).flatMap { mixer in
     (0..<48).filter { $0 != 9 }.flatMap { channel in
         let prefix = "mixers/\(mixer + 1)/channels/\(channel + 1)"
         let (p1, p2) = (UInt8(channel), UInt8(mixer))
