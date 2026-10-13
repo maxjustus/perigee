@@ -251,8 +251,8 @@ void EnsembleDevice::setLatency(double rate)
     const Latency latency = latencyFor(rate);
     SetOutputSafetyOffset(latency.safety);
     SetInputSafetyOffset(latency.safety);
-    ivars->output.stream->SetLatency(latency.output);
-    ivars->input.stream->SetLatency(latency.input);
+    SetOutputLatency(latency.output);
+    SetInputLatency(latency.input);
 }
 
 kern_return_t EnsembleDevice::startMeters()

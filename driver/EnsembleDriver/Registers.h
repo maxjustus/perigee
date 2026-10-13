@@ -78,9 +78,8 @@ struct Latency {
     uint32_t output;
 };
 
-// The vendor HAL values, in frames. Its device latency is one DMA burst
-// plus a converter delay. AudioDriverKit has no device latency, so the
-// dext reports it as stream latency. CoreAudio adds the two.
+// The vendor HAL values, in frames. The device latency is one DMA burst
+// plus a converter delay.
 inline Latency latencyFor(double rate)
 {
     if (rate <= 48000.0) {
