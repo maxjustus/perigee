@@ -310,8 +310,9 @@ void EnsembleDevice::SetListener(EnsembleUserClient * listener)
 
 void EnsembleDevice::Send(const Message & message)
 {
+    const Message copy = message;
     ivars->queue->DispatchAsync(^{
-        ivars->outbox.push(message);
+        ivars->outbox.push(copy);
     });
 }
 

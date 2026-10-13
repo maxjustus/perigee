@@ -53,6 +53,16 @@ static void send_refuses_a_full_ring()
     CHECK(r[kTxWriteIndex] == 7);
 }
 
+static void send_refuses_a_message_longer_than_a_slot()
+{
+    std::map<uint64_t, uint32_t> r = {{kTxWriteIndex, 0}, {kTxReadIndex, 0}};
+    Mailbox<FakeRegs> mailbox{{&r}};
+    Message message = getAll();
+    message.count = kSlotWords + 1;
+    CHECK(!mailbox.send(message));
+    CHECK(r[kTxWriteIndex] == 0 && r.count(kTxSlots) == 0);
+}
+
 static void receive_reads_one_slot_and_frees_it()
 {
     const uint64_t slot = kRxSlots + 6 * kSlotBytes;
@@ -81,6 +91,7 @@ int main()
     reset_clears_slots_and_indices_and_sets_the_reset_bit();
     send_fills_the_write_slot_and_rings_the_doorbell();
     send_refuses_a_full_ring();
+    send_refuses_a_message_longer_than_a_slot();
     receive_reads_one_slot_and_frees_it();
     event_bit1_answers_the_handshake();
     if (failures == 0) {
