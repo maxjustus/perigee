@@ -455,7 +455,7 @@ timer drains up to 8 queued messages per tick.
 | 2 | Set, block | roundup4(13 + len) | type, cmd, p1, p2, len, data[0..len) |
 | 3 | Get | 12 | type, cmd, p1, p2 |
 | 4 | Get all | 12 | type, 0, 0, 0 |
-| 5 | PSoC restarted | kext to HAL only | len = 0 |
+| 5 | PSoC restarted | kext to HAL only. The open dext sends it to user-client subscribers | len = 0 |
 
 Wire size counts the header. The maximum is 29 words (116 bytes).
 
