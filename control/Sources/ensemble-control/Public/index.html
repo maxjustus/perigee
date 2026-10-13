@@ -17,11 +17,20 @@
   label { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; align-items: center; margin: 6px 0; }
   input[type=range] { grid-column: 1 / -1; width: 100%; }
   output { font-variant-numeric: tabular-nums; color: #c9d1d9; }
+  #meters { margin-bottom: 12px; }
+  .bank { display: flex; gap: 2px; height: 90px; margin-bottom: 18px; }
+  .meter { flex: 1; position: relative; background: #2a2e33; border-radius: 2px; }
+  .fill { position: absolute; bottom: 0; width: 100%; background: #6fcf97; border-radius: 2px; }
+  .fill.hot { background: #f2c94c; }
+  .fill.clip { background: #eb5757; }
+  .meter span { position: absolute; top: 100%; width: 100%; font-size: 8px; text-align: center;
+                color: #9aa0a6; overflow: hidden; white-space: nowrap; }
   select { background: #2a2e33; color: inherit; border: 1px solid #3a3f45; border-radius: 4px; }
 </style>
 </head>
 <body>
 <header><h1>Ensemble</h1><span id="status">connecting</span></header>
+<section id="meters"></section>
 <main id="groups"></main>
 <script>
 const controls = new Map();
@@ -90,6 +99,40 @@ function render(parameter) {
   controls.set(parameter.path, { update });
 }
 
+const meterNames = {
+  inputs: [...[1, 2, 3, 4, 5, 6, 7, 8].map(n => `A${n}`), "Mic L", "Mic R", "Gtr 1", "Gtr 2",
+           "SPDIF L", "SPDIF R", ...Array.from({ length: 16 }, (_, i) => `Opt ${i + 1}`)],
+  outputs: Array.from({ length: 30 }, (_, i) => `Out ${i + 1}`),
+  mixers: [1, 2, 3, 4].flatMap(n => [`Mix ${n} L`, `Mix ${n} R`]),
+};
+const meterFills = {};
+
+for (const [key, names] of Object.entries(meterNames)) {
+  const bank = document.createElement("div");
+  bank.className = "bank";
+  meterFills[key] = names.map(name => {
+    const meter = document.createElement("div");
+    meter.className = "meter";
+    meter.title = name;
+    const fill = document.createElement("div");
+    fill.className = "fill";
+    meter.append(fill, Object.assign(document.createElement("span"), { textContent: name }));
+    bank.append(meter);
+    return fill;
+  });
+  document.getElementById("meters").append(bank);
+}
+
+function showMeters(meters) {
+  for (const [key, fills] of Object.entries(meterFills)) {
+    meters[key].forEach((value, i) => {
+      const db = 20 * Math.log10(Math.max(value, 1) / 16384);
+      fills[i].style.height = `${Math.min(100, Math.max(0, (db + 60) / 60 * 100))}%`;
+      fills[i].className = db > -1 ? "fill clip" : db > -6 ? "fill hot" : "fill";
+    });
+  }
+}
+
 function connect() {
   const status = document.getElementById("status");
   socket = new WebSocket(`ws://${location.hostname}:8738`);
@@ -99,6 +142,8 @@ function connect() {
       const { resolve, reject } = pending.get(message.id);
       pending.delete(message.id);
       message.error ? reject(message.error) : resolve(message.result);
+    } else if (message.method === "meters") {
+      showMeters(message.params);
     } else if (message.method === "changed") {
       for (const [path, value] of Object.entries(message.params)) show(path, value);
     }
