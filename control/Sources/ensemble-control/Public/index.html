@@ -25,12 +25,25 @@
   .fill.clip { background: #eb5757; }
   .meter span { position: absolute; top: 100%; width: 100%; font-size: 8px; text-align: center;
                 color: #9aa0a6; overflow: hidden; white-space: nowrap; }
+  #mixers { margin-bottom: 12px; }
+  #mixer-tabs button { margin-left: 6px; background: #2a2e33; color: inherit; border: 1px solid #3a3f45;
+                       border-radius: 4px; padding: 2px 8px; }
+  #mixer-tabs button.shown { background: #3d6b55; }
+  .strips { display: none; gap: 4px; overflow-x: auto; padding-bottom: 6px; }
+  .strips.shown { display: flex; }
+  .strip { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 52px;
+           background: #262a2f; border-radius: 4px; padding: 6px 2px; font-size: 10px; }
+  .strip span { white-space: nowrap; color: #c9d1d9; }
+  .fader { writing-mode: vertical-lr; direction: rtl; height: 140px; width: 22px; margin: 0; }
+  .pan { width: 46px; margin: 0; }
+  .strip label.mute { display: flex; gap: 2px; margin: 0; }
   select { background: #2a2e33; color: inherit; border: 1px solid #3a3f45; border-radius: 4px; }
 </style>
 </head>
 <body>
 <header><h1>Ensemble</h1><span id="status">connecting</span></header>
 <section id="meters"></section>
+<section id="mixers"><h2>Mixers <span id="mixer-tabs"></span></h2></section>
 <main id="groups"></main>
 <script>
 const controls = new Map();
@@ -60,43 +73,99 @@ function group(path) {
   return section;
 }
 
+function slider(path, min, max, format) {
+  const output = document.createElement("output");
+  const input = Object.assign(document.createElement("input"), { type: "range", min, max });
+  let queued = false;
+  input.oninput = () => {
+    output.value = format(input.value);
+    if (queued) return;
+    queued = true;
+    requestAnimationFrame(() => {
+      queued = false;
+      rpc("set", { [path]: Number(input.value) });
+    });
+  };
+  controls.set(path, { update: value => {
+    if (document.activeElement !== input) input.value = value;
+    output.value = format(value);
+  } });
+  return [output, input];
+}
+
+function toggle(path) {
+  const input = Object.assign(document.createElement("input"), { type: "checkbox" });
+  input.onchange = () => rpc("set", { [path]: input.checked });
+  controls.set(path, { update: value => { input.checked = value; } });
+  return input;
+}
+
+function picker(path, choices) {
+  const input = document.createElement("select");
+  input.append(...choices.map(choice => new Option(choice, choice)));
+  input.onchange = () => rpc("set", { [path]: input.value });
+  controls.set(path, { update: value => { input.value = value; } });
+  return input;
+}
+
 function render(parameter) {
+  const strip = parameter.path.match(/^mixers\/(\d+)\/channels\/(\d+)\/(\w+)$/);
+  if (strip) return renderStrip(parameter, Number(strip[1]), Number(strip[2]), strip[3]);
   const name = parameter.path.slice(parameter.path.lastIndexOf("/") + 1);
   const label = document.createElement("label");
   label.append(name);
-  let input, output, update;
   if (parameter.kind === "bool") {
-    input = Object.assign(document.createElement("input"), { type: "checkbox" });
-    input.onchange = () => rpc("set", { [parameter.path]: input.checked });
-    update = value => { input.checked = value; };
+    label.append(toggle(parameter.path));
   } else if (parameter.kind === "choice") {
-    input = document.createElement("select");
-    input.append(...parameter.choices.map(choice => new Option(choice, choice)));
-    input.onchange = () => rpc("set", { [parameter.path]: input.value });
-    update = value => { input.value = value; };
+    label.append(picker(parameter.path, parameter.choices));
   } else {
     const format = name === "attenuation" ? v => `-${v} dB` : v => `${v}`;
-    output = document.createElement("output");
-    input = Object.assign(document.createElement("input"),
-                          { type: "range", min: parameter.min, max: parameter.max });
-    let queued = false;
-    input.oninput = () => {
-      output.value = format(input.value);
-      if (queued) return;
-      queued = true;
-      requestAnimationFrame(() => {
-        queued = false;
-        rpc("set", { [parameter.path]: Number(input.value) });
-      });
-    };
-    update = value => {
-      if (document.activeElement !== input) input.value = value;
-      output.value = format(value);
-    };
+    label.append(...slider(parameter.path, parameter.min, parameter.max, format));
   }
-  label.append(...[output, input].filter(Boolean));
   group(parameter.path).append(label);
-  controls.set(parameter.path, { update });
+}
+
+const formatFader = v => Number(v) === 0 ? "-∞" : ((v - 600) / 10).toFixed(1);
+const formatPan = v => Number(v) === 64 ? "C" : v < 64 ? `L${64 - v}` : `R${v - 64}`;
+
+function mixer(number) {
+  let strips = document.getElementById(`mixer-${number}`);
+  if (!strips) {
+    const tab = Object.assign(document.createElement("button"), { textContent: `Mix ${number}` });
+    tab.onclick = () => showMixer(number);
+    document.getElementById("mixer-tabs").append(tab);
+    strips = Object.assign(document.createElement("div"), { id: `mixer-${number}`, className: "strips" });
+    document.getElementById("mixers").append(strips);
+    if (number === 1) showMixer(1);
+  }
+  return strips;
+}
+
+function showMixer(number) {
+  document.querySelectorAll(".strips").forEach(s => s.classList.toggle("shown", s.id === `mixer-${number}`));
+  document.querySelectorAll("#mixer-tabs button").forEach((b, i) => b.classList.toggle("shown", i + 1 === number));
+}
+
+function renderStrip(parameter, number, channel, control) {
+  let strip = document.getElementById(`mixer-${number}-${channel}`);
+  if (!strip) {
+    strip = Object.assign(document.createElement("div"), { id: `mixer-${number}-${channel}`, className: "strip" });
+    strip.append(Object.assign(document.createElement("span"), { textContent: channelNames[channel - 1] }));
+    mixer(number).append(strip);
+  }
+  if (control === "fader") {
+    const [output, input] = slider(parameter.path, parameter.min, parameter.max, formatFader);
+    input.className = "fader";
+    strip.append(output, input);
+  } else if (control === "pan") {
+    const [output, input] = slider(parameter.path, parameter.min, parameter.max, formatPan);
+    input.className = "pan";
+    strip.append(input, output);
+  } else {
+    const label = Object.assign(document.createElement("label"), { className: "mute" });
+    label.append(toggle(parameter.path), "M");
+    strip.append(label);
+  }
 }
 
 const meterNames = {
@@ -105,6 +174,8 @@ const meterNames = {
   outputs: Array.from({ length: 30 }, (_, i) => `Out ${i + 1}`),
   mixers: [1, 2, 3, 4].flatMap(n => [`Mix ${n} L`, `Mix ${n} R`]),
 };
+const channelNames = [...meterNames.inputs, ...Array.from({ length: 16 }, (_, i) => `Play ${i + 1}`),
+                      "Master", "48"];
 const meterFills = {};
 
 for (const [key, names] of Object.entries(meterNames)) {

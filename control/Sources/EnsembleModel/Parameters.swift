@@ -4,14 +4,21 @@ public enum Kind: Equatable, Sendable {
     case choice([String])
 }
 
+public enum Wire: Equatable, Sendable {
+    case set
+    case block(bytes: Int)
+}
+
 public struct Parameter: Sendable {
     public let path: String
     public let command: UInt8
     public let p1: UInt8
+    public var p2: UInt8 = 0
+    public var wire: Wire = .set
     public let kind: Kind
 }
 
-public let parameters: [Parameter] = clock + outputs + inputs
+public let parameters: [Parameter] = clock + outputs + inputs + mixers
 
 private let clock = [
     Parameter(path: "clock/sampleRate", command: 0x29, p1: 0,
@@ -46,4 +53,19 @@ private let inputs = (0..<8).flatMap { channel in
         Parameter(path: "\(prefix)/group", command: 0x07, p1: p1, kind: .int(0...5)),
         Parameter(path: "\(prefix)/highPass", command: 0x08, p1: p1, kind: .bool),
     ]
+}
+
+private let mixers = (0..<4).flatMap { mixer in
+    (0..<48).flatMap { channel in
+        let prefix = "mixers/\(mixer + 1)/channels/\(channel + 1)"
+        let (p1, p2) = (UInt8(channel), UInt8(mixer))
+        let strip = [
+            Parameter(path: "\(prefix)/fader", command: 0x32, p1: p1, p2: p2, wire: .block(bytes: 2),
+                      kind: .int(0...720)),
+            Parameter(path: "\(prefix)/mute", command: 0x35, p1: p1, p2: p2, wire: .block(bytes: 1), kind: .bool),
+        ]
+        let pan = Parameter(path: "\(prefix)/pan", command: 0x33, p1: p1, p2: p2, wire: .block(bytes: 1),
+                            kind: .int(0...127))
+        return channel < 46 ? strip + [pan] : strip
+    }
 }

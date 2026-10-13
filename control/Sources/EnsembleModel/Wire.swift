@@ -22,6 +22,28 @@ public struct Report: Equatable, Sendable {
     }
 }
 
-func setMessage(command: UInt8, p1: UInt8, value: UInt8) -> [UInt32] {
-    [1, 0, 1 | UInt32(command) << 8 | UInt32(p1) << 16 | UInt32(value) << 24]
+func message(_ parameter: Parameter, _ value: Int) -> [UInt32] {
+    let bytes: [UInt8]
+    switch parameter.wire {
+    case .set:
+        bytes = [1, parameter.command, parameter.p1, UInt8(value)]
+    case .block(let count):
+        let data = count == 2 ? [UInt8(value >> 8), UInt8(value & 0xFF)] : [UInt8(value)]
+        bytes = [2, parameter.command, parameter.p1, parameter.p2, UInt8(count)] + data
+    }
+    let words = stride(from: 0, to: bytes.count, by: 4).map { start in
+        bytes[start..<min(start + 4, bytes.count)].enumerated().reduce(UInt32(0)) {
+            $0 | UInt32($1.element) << (8 * UInt32($1.offset))
+        }
+    }
+    return [1, 0] + words
+}
+
+func value(_ parameter: Parameter, _ report: Report) -> Int? {
+    switch parameter.wire {
+    case .block(bytes: 2):
+        return report.data.count >= 2 ? Int(report.data[0]) << 8 | Int(report.data[1]) : nil
+    default:
+        return report.data.first.map(Int.init)
+    }
 }

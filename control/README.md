@@ -41,6 +41,9 @@ The server sends two notifications:
   `{type, command, p1, p2, data}`.
 
 `EnsembleModel/Parameters.swift` defines the paths and their PSoC commands.
+Mixer paths are `mixers/<1-4>/channels/<1-48>/{fader,mute,pan}`. A fader
+is 0 to 720 in 0.1 dB steps, with 600 at 0 dB. A pan is 0 to 127, with 64
+at the center.
 
 ## Test
 

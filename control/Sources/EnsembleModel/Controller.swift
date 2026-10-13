@@ -15,9 +15,9 @@ public final class Controller: @unchecked Sendable {
     private let transport: Transport
     private let broadcast: @Sendable (String) -> Void
     private let byPath = Dictionary(uniqueKeysWithValues: parameters.map { ($0.path, $0) })
-    private let byCommand = Dictionary(uniqueKeysWithValues: parameters.map { (key($0.command, $0.p1), $0) })
+    private let byKey = Dictionary(uniqueKeysWithValues: parameters.map { (Key($0), $0) })
     private let lock = NSLock()
-    private var values: [String: UInt8] = [:]
+    private var values: [String: Int] = [:]
 
     public init(transport: Transport, broadcast: @escaping @Sendable (String) -> Void) {
         self.transport = transport
@@ -50,9 +50,7 @@ public final class Controller: @unchecked Sendable {
     }
 
     public func receive(_ report: Report) {
-        guard report.type == 1, let parameter = byCommand[key(report.command, report.p1)],
-              let value = report.data.first
-        else {
+        guard let parameter = byKey[Key(report)], let value = value(parameter, report) else {
             broadcast(notification("report", [
                 "type": Int(report.type), "command": Int(report.command), "p1": Int(report.p1),
                 "p2": Int(report.p2), "data": report.data.map(Int.init),
@@ -89,8 +87,7 @@ public final class Controller: @unchecked Sendable {
                 guard let parameter = byPath[path] else {
                     throw RPCError.invalidParams("unknown path \(path)")
                 }
-                let wire = try encodeValue(value, parameter)
-                return setMessage(command: parameter.command, p1: parameter.p1, value: wire)
+                return message(parameter, try encodeValue(value, parameter))
             }
             try messages.forEach(transport.send)
             return true
@@ -112,8 +109,25 @@ public final class Controller: @unchecked Sendable {
     }
 }
 
-private func key(_ command: UInt8, _ p1: UInt8) -> UInt16 {
-    UInt16(command) << 8 | UInt16(p1)
+private struct Key: Hashable {
+    let block: Bool
+    let command: UInt8
+    let p1: UInt8
+    let p2: UInt8
+
+    init(_ parameter: Parameter) {
+        block = parameter.wire != .set
+        command = parameter.command
+        p1 = parameter.p1
+        p2 = block ? parameter.p2 : 0
+    }
+
+    init(_ report: Report) {
+        block = report.type == 2
+        command = report.command
+        p1 = report.p1
+        p2 = block ? report.p2 : 0
+    }
 }
 
 private func describe(_ parameter: Parameter) -> [String: Any] {
@@ -127,18 +141,18 @@ private func describe(_ parameter: Parameter) -> [String: Any] {
     }
 }
 
-private func json(_ value: UInt8, _ kind: Kind) -> Any {
+private func json(_ value: Int, _ kind: Kind) -> Any {
     switch kind {
     case .bool:
         return value != 0
     case .int:
-        return Int(value)
+        return value
     case .choice(let names):
-        return Int(value) < names.count ? names[Int(value)] : Int(value)
+        return value < names.count ? names[value] : value
     }
 }
 
-private func encodeValue(_ value: Any, _ parameter: Parameter) throws -> UInt8 {
+private func encodeValue(_ value: Any, _ parameter: Parameter) throws -> Int {
     switch parameter.kind {
     case .bool:
         if let flag = value as? Bool {
@@ -146,11 +160,11 @@ private func encodeValue(_ value: Any, _ parameter: Parameter) throws -> UInt8 {
         }
     case .int(let range):
         if let number = value as? Int, range.contains(number) {
-            return UInt8(number)
+            return number
         }
     case .choice(let names):
         if let name = value as? String, let index = names.firstIndex(of: name) {
-            return UInt8(index)
+            return index
         }
     }
     throw RPCError.invalidParams("bad value for \(parameter.path)")
