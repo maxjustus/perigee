@@ -7,9 +7,10 @@ const REGISTERS: [(&str, u32); 5] = [
     ("ID", 0x00),
     ("GENERAL", 0x0C),
     ("STATUS", 0x10),
-    ("INTERRUPT", 0x14),
+    ("INTERRUPT", INTERRUPT),
     ("INFO", 0x68),
 ];
+const INTERRUPT: u32 = 0x14;
 
 fn main() -> ExitCode {
     match run() {
@@ -38,8 +39,6 @@ fn regs(device: &Device) -> Result<(), String> {
     }
     Ok(())
 }
-
-const INTERRUPT: u32 = 0x14;
 
 fn irq(device: &Device) -> Result<(), String> {
     const ENABLE_TIME_STAMP: u32 = 6;
@@ -229,6 +228,8 @@ struct Device {
 }
 
 impl Device {
+    const ACCESS_BAR0_REGISTER: u32 = 6;
+
     fn open(class: &CStr) -> Result<Self, String> {
         let service = unsafe { IOServiceGetMatchingService(0, IOServiceMatching(class.as_ptr())) };
         if service == 0 {
@@ -309,19 +310,17 @@ impl Device {
     }
 
     fn read(&self, offset: u32) -> Result<u32, String> {
-        const ACCESS_BAR0_REGISTER: u32 = 6;
         const READ: u32 = 1;
         let mut value = [0];
-        self.call(ACCESS_BAR0_REGISTER, &[READ, offset, 0], &mut value)
+        self.call(Self::ACCESS_BAR0_REGISTER, &[READ, offset, 0], &mut value)
             .map_err(|kr| format!("read {offset:#06x}: {kr:#010x}"))?;
         checked(value[0])
     }
 
     fn write(&self, offset: u32, value: u32) -> Result<(), String> {
-        const ACCESS_BAR0_REGISTER: u32 = 6;
         const WRITE: u32 = 0;
         self.call(
-            ACCESS_BAR0_REGISTER,
+            Self::ACCESS_BAR0_REGISTER,
             &[WRITE, offset, value],
             &mut [0u32; 0],
         )
