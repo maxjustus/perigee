@@ -44,7 +44,7 @@ inline Message getAll()
 
 inline Message set(uint8_t command, uint8_t p1, uint8_t value)
 {
-    return {{1, 0, 1u | command << 8 | p1 << 16 | uint32_t(value) << 24}, 3};
+    return {{1, 0, 1u | uint32_t(command) << 8 | uint32_t(p1) << 16 | uint32_t(value) << 24}, 3};
 }
 
 // Words 0 and 1 are a header. Records follow. The PSoC can claim more data

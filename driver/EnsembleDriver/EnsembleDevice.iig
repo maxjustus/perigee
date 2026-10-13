@@ -6,6 +6,8 @@
 #include <PCIDriverKit/IOPCIDevice.iig>
 #include <AudioDriverKit/IOUserAudioDevice.iig>
 
+#include "Protocol.h"
+
 using namespace AudioDriverKit;
 
 class EnsembleDevice: public IOUserAudioDevice
@@ -22,6 +24,7 @@ public:
     kern_return_t Attach(IOPCIDevice * pci, uint8_t bar0) LOCALONLY;
     void Detach() LOCALONLY;
     void VolumeChanged(float decibels) LOCALONLY;
+    void Send(const Ensemble::Message & message) LOCALONLY;
 
     virtual kern_return_t StartIO(IOUserAudioStartStopFlags in_flags) final LOCALONLY;
     virtual kern_return_t StopIO(IOUserAudioStartStopFlags in_flags) final LOCALONLY;

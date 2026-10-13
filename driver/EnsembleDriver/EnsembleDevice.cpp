@@ -8,6 +8,7 @@
 #include "Bar0.h"
 #include "Controls.h"
 #include "Mailbox.h"
+#include "Outbox.h"
 
 using namespace Ensemble;
 
@@ -37,7 +38,7 @@ struct EnsembleDevice_IVars {
     OSSharedPtr<OSAction> mailbox_action;
     uint64_t mailbox_period;
     double reported_rate;
-    int requested_rate;
+    Outbox outbox;
     OSSharedPtr<EnsembleVolume> volume;
     uint8_t monitors[kMonitorOutputs];
     uint8_t monitors_known;
@@ -61,7 +62,6 @@ bool EnsembleDevice::init(IOUserAudioDriver * in_driver,
     }
     ivars->driver = OSSharedPtr(in_driver, OSRetain);
     ivars->queue = GetWorkQueue();
-    ivars->requested_rate = -1;
     ivars->requested_volume = -1;
     return true;
 }
@@ -245,14 +245,24 @@ kern_return_t EnsembleDevice::addVolume()
 
 void EnsembleDevice::VolumeChanged(float in_decibels)
 {
-    __atomic_store_n(&ivars->requested_volume, int(attenuation(in_decibels)), __ATOMIC_RELAXED);
+    const int target = attenuation(in_decibels);
+    ivars->queue->DispatchAsync(^{
+        ivars->requested_volume = target;
+    });
+}
+
+void EnsembleDevice::Send(const Message & message)
+{
+    ivars->queue->DispatchAsync(^{
+        ivars->outbox.push(message);
+    });
 }
 
 kern_return_t EnsembleDevice::startMailbox()
 {
     ivars->mailbox = {ivars->bar0};
     ivars->mailbox.reset();
-    ivars->mailbox.send(getAll());
+    ivars->outbox.push(getAll());
 
     IOTimerDispatchSource * timer = nullptr;
     kern_return_t ret = IOTimerDispatchSource::Create(ivars->queue.get(), &timer);
@@ -345,7 +355,7 @@ kern_return_t EnsembleDevice::HandleChangeSampleRate(double in_sample_rate)
     if (index < 0) {
         return kIOReturnBadArgument;
     }
-    __atomic_store_n(&ivars->requested_rate, index, __ATOMIC_RELAXED);
+    Send(set(kCommandSampleRate, 0, uint8_t(index)));
     return applyRate(in_sample_rate);
 }
 
@@ -372,28 +382,23 @@ void IMPL(EnsembleDevice, MailboxTimerOccurred)
 {
     const Mailbox<Bar0> & mailbox = ivars->mailbox;
     if (mailbox.serviceEvents()) {
-        mailbox.send(getAll());
+        ivars->outbox.push(getAll());
     }
-    const int requested = __atomic_exchange_n(&ivars->requested_rate, -1, __ATOMIC_RELAXED);
-    if (requested >= 0 && !mailbox.send(set(kCommandSampleRate, 0, uint8_t(requested)))) {
-        int none = -1;
-        __atomic_compare_exchange_n(&ivars->requested_rate, &none, requested, false,
-                                    __ATOMIC_RELAXED, __ATOMIC_RELAXED);
-    }
-    const int volume = __atomic_exchange_n(&ivars->requested_volume, -1, __ATOMIC_RELAXED);
-    if (volume >= 0 && ivars->monitors_known == (1 << kMonitorOutputs) - 1) {
+    if (ivars->requested_volume >= 0 && ivars->monitors_known == (1 << kMonitorOutputs) - 1) {
         uint8_t next[kMonitorOutputs];
         for (uint8_t i = 0; i < kMonitorOutputs; i++) {
             next[i] = ivars->monitors[i];
         }
-        follow(next, uint8_t(volume));
+        follow(next, uint8_t(ivars->requested_volume));
         for (uint8_t i = 0; i < kMonitorOutputs; i++) {
             if (next[i] != ivars->monitors[i] &&
-                mailbox.send(set(kCommandOutputAttenuation, i, next[i]))) {
+                ivars->outbox.push(set(kCommandOutputAttenuation, i, next[i]))) {
                 ivars->monitors[i] = next[i];
             }
         }
+        ivars->requested_volume = -1;
     }
+    ivars->outbox.flush(mailbox);
     while (mailbox.receive([&](const Report & report) {
         if (report.command == kCommandSampleRate && report.data[0] < kSampleRateCount) {
             const double rate = kSampleRates[report.data[0]];
