@@ -752,7 +752,14 @@ pending p1 values. The sender (0x2153C) sends each pending value with
 p2 = 0.
 
 - Get (type 3, 0x208E0) marks (command, p1) as pending. The PSoC ignores
-  p2, and a Get of an ID that is not in the report table.
+  p2, and a Get of an ID that is not in the report table. Gets of the
+  same (command, p1) that arrive before the report goes out give one
+  report: 150 Gets of 0xD5 without pauses gave 25 reports.
+- The sender clears the pending bit when it builds the report (0x215BC).
+  If the host ring stays full for 10 tries of 1 µs (0x11EC2), the PSoC
+  drops the batch. No test showed a drop with the open driver: 64
+  distinct Gets without pauses gave 64 reports, and five Get-alls each
+  gave the same 936 reports.
 - A change from source 0 (5.6) marks a report only for these 28 IDs. So a
   front-panel change of a route or a mixer value sends no report.
 - Get-all (type 4 with bytes 1 to 3 zero) makes 0x15668 send, in order:
