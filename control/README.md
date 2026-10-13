@@ -41,13 +41,18 @@ The server sends two notifications:
   `{type, command, p1, p2, data}`.
 
 `EnsembleModel/Parameters.swift` defines the paths and their PSoC commands.
-Mixer paths are `mixers/<1-4>/channels/<1-48>/{fader,mute,pan}`. A fader
-is 0 to 720 in 0.1 dB steps, with 600 at 0 dB. A pan is 0 to 127, with 64
-at the center.
-Routing paths are `routing/<1-17>`, one per output pair. The value is a
-source name: `Playback 1-2` to `Playback 35-36`, `Mixer 1` to `Mixer 6`,
-`Inputs 1-2` to `Inputs 7-8`, or `FX Send`. The physical names of the 17
-output pairs are unknown, so they stay numbered.
+Mixer paths are `mixers/<1-4>/channels/<n>/{fader,mute,pan}`. Channel
+numbers follow the input meter order (1-30), then Playback 1-16 (31-46),
+then master L/R (47-48). Channel 10, the second half of the front panel
+mic, has no controls. A fader is 0 to 720 in 0.1 dB steps, with 600 at
+0 dB. The vendor HAL stops at 660 (+6 dB). A pan is 0 to 127, with 64 at
+the center. Mixer 1 also has `solo` and `soloSafe`.
+
+Routing paths name the output pair: `routing/line1-2` to
+`routing/line9-10`, `routing/guitar1-2`, `routing/spdif`,
+`routing/optical1-2` to `routing/optical15-16`, `routing/headphone1`, and
+`routing/headphone2`. The value is a source name, for example
+`Mixer 1`, `Playback 3-4`, `Analog 1-2`, or `Optical 1-2`.
 
 ## Test
 

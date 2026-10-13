@@ -123,29 +123,61 @@ func makeController() -> (Controller, FakeTransport, Broadcasts) {
     #expect((changed["params"] as? [String: Any])?["mixers/2/channels/31/fader"] as? Int == 600)
 }
 
-@Test func mixerParametersCoverFourMixersOf48Channels() {
-    #expect(parameters.filter { $0.path.hasSuffix("/fader") }.count == 4 * 48)
-    #expect(parameters.filter { $0.path.hasSuffix("/pan") }.count == 4 * 46)
+@Test func mixerPansCoverChannelsBeforeTheMaster() {
+    #expect(parameters.filter { $0.path.hasSuffix("/pan") }.count == 4 * 45)
 }
 
-@Test func routingSendsTheSourceCodeForADestination() {
+@Test func routingSendsTheSourceCodeForANamedDestination() {
     let (controller, transport, _) = makeController()
-    _ = controller.handle(#"{"jsonrpc":"2.0","id":1,"method":"set","params":{"routing/2":"Playback 3-4"}}"#)
-    #expect(transport.sent == [[1, 0, word(1, 0x15, 1, 0x32)]])
+    _ = controller.handle(#"{"jsonrpc":"2.0","id":1,"method":"set","params":{"routing/line1-2":"Mixer 1"}}"#)
+    _ = controller.handle(#"{"jsonrpc":"2.0","id":2,"method":"set","params":{"routing/optical15-16":"Optical 1-2"}}"#)
+    #expect(transport.sent == [[1, 0, word(1, 0x15, 0, 0x60)], [1, 0, word(1, 0x15, 14, 0x10)]])
 }
 
 @Test func routingReportShowsTheSourceName() {
     let (controller, _, broadcasts) = makeController()
-    controller.receive(Report(type: 1, command: 0x15, p1: 15, p2: 0, data: [0x62]))
+    controller.receive(Report(type: 1, command: 0x15, p1: 16, p2: 0, data: [0x64]))
     let changed = object(broadcasts.texts.last!)
-    #expect((changed["params"] as? [String: Any])?["routing/16"] as? String == "Inputs 3-4")
+    #expect((changed["params"] as? [String: Any])?["routing/headphone2"] as? String == "Mixer 3")
 }
 
 @Test func unknownSourceCodeStaysANumber() {
     let (controller, _, broadcasts) = makeController()
     controller.receive(Report(type: 1, command: 0x15, p1: 0, p2: 0, data: [0x7F]))
     let changed = object(broadcasts.texts.last!)
-    #expect((changed["params"] as? [String: Any])?["routing/1"] as? Int == 0x7F)
+    #expect((changed["params"] as? [String: Any])?["routing/line1-2"] as? Int == 0x7F)
+}
+
+@Test func pairLinkWritesBothChannelsWithThePairCode() {
+    let (controller, transport, broadcasts) = makeController()
+    _ = controller.handle(#"{"jsonrpc":"2.0","id":1,"method":"set","params":{"inputs/analog/3-4/link":true}}"#)
+    #expect(transport.sent == [[1, 0, word(1, 0x07, 2, 2)], [1, 0, word(1, 0x07, 3, 2)]])
+    controller.receive(Report(type: 1, command: 0x07, p1: 3, p2: 0, data: [2]))
+    let changed = object(broadcasts.texts.last!)
+    #expect((changed["params"] as? [String: Any])?["inputs/analog/3-4/link"] as? Bool == true)
+}
+
+@Test func soloIsSentAsABlockAndReportedAsTypeOne() {
+    let (controller, transport, broadcasts) = makeController()
+    _ = controller.handle(#"{"jsonrpc":"2.0","id":1,"method":"set","params":{"mixers/1/channels/1/solo":true}}"#)
+    #expect(transport.sent == [[1, 0, word(2, 0x34, 0, 0), word(1, 1, 0, 0)]])
+    controller.receive(Report(type: 1, command: 0x34, p1: 0, p2: 3, data: [1]))
+    let changed = object(broadcasts.texts.last!)
+    #expect((changed["params"] as? [String: Any])?["mixers/1/channels/1/solo"] as? Bool == true)
+}
+
+@Test func mixersSkipTheSecondFrontMicChannel() {
+    #expect(!parameters.contains { $0.path.hasPrefix("mixers/1/channels/10/") })
+    #expect(parameters.filter { $0.path.hasSuffix("/fader") }.count == 4 * 47)
+}
+
+@Test func gainsFollowTheVendorLimits() {
+    func kind(_ path: String) -> Kind? { parameters.first { $0.path == path }?.kind }
+    #expect(kind("inputs/analog/1/micGain") == .int(0...75))
+    #expect(kind("inputs/analog/4/instrumentGain") == .int(0...65))
+    #expect(kind("inputs/analog/5/instrumentGain") == nil)
+    #expect(kind("inputs/frontMic/gain") == .int(0...40))
+    #expect(parameters.first { $0.path == "inputs/guitar/2/gain" }?.p1 == 11)
 }
 
 @Test func reportDecodesFromAsyncArguments() {

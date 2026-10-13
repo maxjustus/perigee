@@ -119,7 +119,9 @@ function render(parameter) {
   } else if (parameter.kind === "choice") {
     label.append(picker(parameter.path, parameter.choices));
   } else {
-    const format = name === "attenuation" ? v => `-${v} dB` : v => `${v}`;
+    const format = name === "attenuation" ? v => `-${v} dB`
+      : name === "trim" ? v => `-${(v / 10).toFixed(1)} dB`
+      : /gain$/i.test(name) ? v => `${v} dB` : v => `${v}`;
     label.append(...slider(parameter.path, parameter.min, parameter.max, format));
   }
   group(parameter.path).append(label);
@@ -163,7 +165,7 @@ function renderStrip(parameter, number, channel, control) {
     strip.append(input, output);
   } else {
     const label = Object.assign(document.createElement("label"), { className: "mute" });
-    label.append(toggle(parameter.path), "M");
+    label.append(toggle(parameter.path), { mute: "M", solo: "S", soloSafe: "SS" }[control]);
     strip.append(label);
   }
 }
@@ -171,11 +173,13 @@ function renderStrip(parameter, number, channel, control) {
 const meterNames = {
   inputs: [...[1, 2, 3, 4, 5, 6, 7, 8].map(n => `A${n}`), "Mic L", "Mic R", "Gtr 1", "Gtr 2",
            "SPDIF L", "SPDIF R", ...Array.from({ length: 16 }, (_, i) => `Opt ${i + 1}`)],
-  outputs: Array.from({ length: 30 }, (_, i) => `Out ${i + 1}`),
+  outputs: [...Array.from({ length: 10 }, (_, i) => `Line ${i + 1}`), "Gtr Out 1", "Gtr Out 2",
+            "SPDIF L", "SPDIF R", ...Array.from({ length: 16 }, (_, i) => `Opt ${i + 1}`)],
+  outputGroup: ["HP1 L", "HP1 R", "HP2 L", "HP2 R"],
   mixers: [1, 2, 3, 4].flatMap(n => [`Mix ${n} L`, `Mix ${n} R`]),
 };
 const channelNames = [...meterNames.inputs, ...Array.from({ length: 16 }, (_, i) => `Play ${i + 1}`),
-                      "Master", "48"];
+                      "Master L", "Master R"];
 const meterFills = {};
 
 for (const [key, names] of Object.entries(meterNames)) {

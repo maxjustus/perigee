@@ -15,7 +15,9 @@ public final class Controller: @unchecked Sendable {
     private let transport: Transport
     private let broadcast: @Sendable (String) -> Void
     private let byPath = Dictionary(uniqueKeysWithValues: parameters.map { ($0.path, $0) })
-    private let byKey = Dictionary(uniqueKeysWithValues: parameters.map { (Key($0), $0) })
+    private let byKey = Dictionary(uniqueKeysWithValues: parameters.flatMap { parameter in
+        ([parameter.p1] + parameter.also).map { (Key(parameter, p1: $0), parameter) }
+    })
     private let lock = NSLock()
     private var values: [String: Int] = [:]
 
@@ -83,11 +85,12 @@ public final class Controller: @unchecked Sendable {
             guard let changes = params as? [String: Any] else {
                 throw RPCError.invalidParams("set takes an object of path: value")
             }
-            let messages = try changes.map { path, value in
+            let messages = try changes.flatMap { path, value in
                 guard let parameter = byPath[path] else {
                     throw RPCError.invalidParams("unknown path \(path)")
                 }
-                return message(parameter, try encodeValue(value, parameter))
+                let wire = try encodeValue(value, parameter)
+                return ([parameter.p1] + parameter.also).map { message(parameter, p1: $0, wire) }
             }
             try messages.forEach(transport.send)
             return true
@@ -115,10 +118,10 @@ private struct Key: Hashable {
     let p1: UInt8
     let p2: UInt8
 
-    init(_ parameter: Parameter) {
-        block = parameter.wire != .set
+    init(_ parameter: Parameter, p1: UInt8) {
+        block = (parameter.reported ?? parameter.wire) != .set
         command = parameter.command
-        p1 = parameter.p1
+        self.p1 = p1
         p2 = block ? parameter.p2 : 0
     }
 
@@ -156,7 +159,7 @@ private func encodeValue(_ value: Any, _ parameter: Parameter) throws -> Int {
     switch parameter.kind {
     case .bool:
         if let flag = value as? Bool {
-            return flag ? 1 : 0
+            return flag ? parameter.on : 0
         }
     case .int(let range):
         if let number = value as? Int, range.contains(number) {
