@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ensemble</title>
+<style>
+  :root { color-scheme: dark; font: 14px system-ui, sans-serif; }
+  body { margin: 0; padding: 16px; background: #15171a; color: #e6e6e6; }
+  header { display: flex; gap: 12px; align-items: baseline; margin-bottom: 16px; }
+  h1 { font-size: 18px; margin: 0; }
+  #status { color: #9aa0a6; }
+  #status.live { color: #6fcf97; }
+  main { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+  section { background: #1f2226; border-radius: 8px; padding: 12px; }
+  h2 { font-size: 13px; margin: 0 0 8px; color: #9aa0a6; text-transform: uppercase; letter-spacing: .04em; }
+  label { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; align-items: center; margin: 6px 0; }
+  input[type=range] { grid-column: 1 / -1; width: 100%; }
+  output { font-variant-numeric: tabular-nums; color: #c9d1d9; }
+  select { background: #2a2e33; color: inherit; border: 1px solid #3a3f45; border-radius: 4px; }
+</style>
+</head>
+<body>
+<header><h1>Ensemble</h1><span id="status">connecting</span></header>
+<main id="groups"></main>
+<script>
+const controls = new Map();
+const pending = new Map();
+let socket, nextId = 1;
+
+function rpc(method, params) {
+  const id = nextId++;
+  socket.send(JSON.stringify({ jsonrpc: "2.0", id, method, params }));
+  return new Promise((resolve, reject) => pending.set(id, { resolve, reject }));
+}
+
+function show(path, value) {
+  const control = controls.get(path);
+  if (control) control.update(value);
+}
+
+function group(path) {
+  const id = path.slice(0, path.lastIndexOf("/"));
+  let section = document.getElementById(id);
+  if (!section) {
+    section = document.createElement("section");
+    section.id = id;
+    section.innerHTML = `<h2>${id.replaceAll("/", " · ")}</h2>`;
+    document.getElementById("groups").append(section);
+  }
+  return section;
+}
+
+function render(parameter) {
+  const name = parameter.path.slice(parameter.path.lastIndexOf("/") + 1);
+  const label = document.createElement("label");
+  label.append(name);
+  let input, output, update;
+  if (parameter.kind === "bool") {
+    input = Object.assign(document.createElement("input"), { type: "checkbox" });
+    input.onchange = () => rpc("set", { [parameter.path]: input.checked });
+    update = value => { input.checked = value; };
+  } else if (parameter.kind === "choice") {
+    input = document.createElement("select");
+    input.append(...parameter.choices.map(choice => new Option(choice, choice)));
+    input.onchange = () => rpc("set", { [parameter.path]: input.value });
+    update = value => { input.value = value; };
+  } else {
+    const format = name === "attenuation" ? v => `-${v} dB` : v => `${v}`;
+    output = document.createElement("output");
+    input = Object.assign(document.createElement("input"),
+                          { type: "range", min: parameter.min, max: parameter.max });
+    let queued = false;
+    input.oninput = () => {
+      output.value = format(input.value);
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(() => {
+        queued = false;
+        rpc("set", { [parameter.path]: Number(input.value) });
+      });
+    };
+    update = value => {
+      if (document.activeElement !== input) input.value = value;
+      output.value = format(value);
+    };
+  }
+  label.append(...[output, input].filter(Boolean));
+  group(parameter.path).append(label);
+  controls.set(parameter.path, { update });
+}
+
+function connect() {
+  const status = document.getElementById("status");
+  socket = new WebSocket(`ws://${location.hostname}:8738`);
+  socket.onmessage = event => {
+    const message = JSON.parse(event.data);
+    if (message.id && pending.has(message.id)) {
+      const { resolve, reject } = pending.get(message.id);
+      pending.delete(message.id);
+      message.error ? reject(message.error) : resolve(message.result);
+    } else if (message.method === "changed") {
+      for (const [path, value] of Object.entries(message.params)) show(path, value);
+    }
+  };
+  socket.onopen = async () => {
+    status.textContent = "connected";
+    status.className = "live";
+    if (controls.size === 0) (await rpc("describe")).forEach(render);
+    for (const [path, value] of Object.entries(await rpc("get"))) show(path, value);
+  };
+  socket.onclose = () => {
+    status.textContent = "reconnecting";
+    status.className = "";
+    setTimeout(connect, 1000);
+  };
+}
+
+connect();
+</script>
+</body>
+</html>
