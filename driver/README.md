@@ -29,6 +29,10 @@ match that the dext wins.
 PSoC message parser and encoder in `EnsembleDriver/Protocol.h`. They run
 under AddressSanitizer and UndefinedBehaviorSanitizer.
 
+`driver/fuzz.sh [seconds]` fuzzes the message parser and the RX mailbox
+with values that the PSoC controls, 60 s per target by default. It needs
+Homebrew LLVM. A crash input goes to `driver/build/fuzz/crash-*`.
+
 ## Check
 
 The driver publishes the BAR0 `ID` register as the `ID` property:
