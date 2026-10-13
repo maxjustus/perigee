@@ -153,10 +153,10 @@ Decoded values:
 |----|------|---------|
 | 0x40 p1 0 | 01 05 03 | Probably PSoC firmware 1.5.3 |
 | 0x40 p1 1 | 00 56 00 | 0x56 equals the PCI revision (FPGA firmware) |
-| 0x41 | 00 0D 6A 00 84 44 F1 00 | `data[0]` = 0: no external clock lock. `data[1..6]` equal bytes 1 to 6 of the Hardware UID, little-endian. `data[7]` was 0x00, then 0x08 |
+| 0x41 | 00 0D 6A 00 84 44 F1 00 | Unit ID: `data[1..6]` equal bytes 1 to 6 of the Hardware UID, little-endian. `data[7]` was 0x00, then 0x08 |
 | 0x29 | 01 | 48 kHz. This agrees with the ring-pointer rate |
 | 0x2A | 00 | Clock source 0 |
-| 0x42 | 01 | Device ready. Last report before 0x64 |
+| 0x42 | 01 | External clock lock: locked (see notes 5.7) |
 
 Differences from the notes:
 

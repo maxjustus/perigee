@@ -580,12 +580,15 @@ value. Extra report IDs:
 
 | ID | Meaning |
 |----|---------|
-| 0x40 | Device status (not decoded) |
-| 0x41 | External clock lock. data[0] != 0 = locked. The PSoC sets len = 8 but sends 7 data bytes |
-| 0x42 | Device ready. The HAL then requests all properties |
-| 0x43 | Not decoded |
+| 0x40 | Versions. p1 0 = main firmware, p1 1 = FPGA firmware, p1 3 data[1] = 4th main firmware digit |
+| 0x41 | 8-byte unit ID. The PSoC sends 7 of the 8 bytes |
+| 0x42 | External clock lock. data[0] != 0 = locked |
+| 0x43 | Power switch on. The HAL then requests all properties |
+| 0x44 | Get-all complete. data[0] = 1 |
 | 0x52, 0x53 | Functional test result (not decoded) |
-| 0x61, 0x64 | Firmware update status (not decoded) |
+| 0x64 | PLL clock lock |
+| 0xD2 | DSP core version, 7 bytes |
+| 0xD5 | DSP cycle count |
 
 A Get-all request (type 4) returns one report per property.
 
@@ -684,17 +687,28 @@ exist only in `ElementAudioDevice`.
 
 ### 5.9 Output routing source codes
 
-Command 0x15 takes `p1 = destination`, `p2 = source`. Destination is the
-physical output pair index. Source codes
-(`Ensemble2AudioDevice::convertToOutputRouteSource`):
+Command 0x15 sets `p1 = destination` and `data[0] = source code`. Command
+0x09 uses the same codes for the 17 record channel pairs, but the vendor
+HAL never sends 0x09 (`Ensemble2Command::setInputRouting` is empty).
+Source codes (`Ensemble2AudioDevice::convertToOutputRouteSource`):
 
-| Source byte | Meaning |
-|-------------|---------|
-| 0x00 to 0x0B | Hardware mixer 1 to 6 output, L/R interleaved (value / 2 = mixer) |
-| 0x10 to 0x1E | Mixer 7 to 14 output (value - 0x10) / 2 + 6 |
-| 0x30 to 0x53 | Software playback channel `value - 0x30` (0 to 35) |
-| 0x54, 0x55 | Special mixer source (FX send), maps to mixer 12/13 |
-| 0x60, 0x62, 0x64, 0x66 | Hardware input pair `(value - 0x60) / 2` |
+| Code | Source |
+|------|--------|
+| 0x00, 0x02, 0x04, 0x06 | Analog 1-2, 3-4, 5-6, 7-8 |
+| 0x08 | Front Panel Mic |
+| 0x0A | Guitar 1-2 |
+| 0x10 to 0x1E, even | Optical 1-2 to 15-16 |
+| 0x30 to 0x52, even | Playback 1-2 to 35-36 |
+| 0x54 | S/PDIF Coax in |
+| 0x60, 0x62, 0x64, 0x66 | Mixer 1, Mixer 2, Mixer 3, FX Send |
+
+The Ensemble has 4 mixers (`getNumberOfMixers` returns 4). The vendor
+preset routes Mixer 1 to Line 1-2 and Mixers 2 and 3 to the headphones.
+
+Destinations: `d` = 0 to 14 drives output pair `2d, 2d+1` of Line 1-10,
+Guitar Out 1-2, S/PDIF Coax, Optical 1-16. 15 and 16 are Headphone 1 and 2.
+A tone routed to each destination lit exactly that output meter pair, and
+15 and 16 lit the meter group at 0x7C.
 
 The HAL publishes the 36 output channels as "Playback 1" to "Playback 36".
 The DMA output ring therefore carries software playback channels, not
