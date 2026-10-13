@@ -11,7 +11,7 @@ final class Device: Transport, @unchecked Sendable {
     private let connect: io_connect_t
     private let port: IONotificationPortRef
     private var onReport: ((Report) -> Void)?
-    private var terminationTimer: DispatchSourceTimer?
+    private var onTerminated: (() -> Void)?
 
     init(queue: DispatchQueue) throws {
         service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceNameMatching("EnsembleDriver"))
@@ -31,16 +31,18 @@ final class Device: Transport, @unchecked Sendable {
         IONotificationPortSetDispatchQueue(port, queue)
     }
 
-    func watchTermination(queue: DispatchQueue, _ onTerminated: @escaping @Sendable () -> Void) {
-        let timer = DispatchSource.makeTimerSource(queue: queue)
-        timer.schedule(deadline: .now() + 1, repeating: 1)
-        timer.setEventHandler { [service] in
-            if IORegistryEntryInPlane(service, kIOServicePlane) == 0 {
-                onTerminated()
-            }
+    func watchTermination(_ onTerminated: @escaping () -> Void) throws {
+        self.onTerminated = onTerminated
+        let callback: IOServiceInterestCallback = { refcon, _, message, _ in
+            guard let refcon, message == kIOMessageServiceIsTerminated else { return }
+            Unmanaged<Device>.fromOpaque(refcon).takeUnretainedValue().onTerminated?()
         }
-        timer.resume()
-        terminationTimer = timer
+        var notification: io_object_t = 0
+        let kr = IOServiceAddInterestNotification(port, service, kIOGeneralInterest, callback,
+                                                  Unmanaged.passUnretained(self).toOpaque(), &notification)
+        guard kr == KERN_SUCCESS else {
+            throw DeviceError(description: String(format: "watch termination: %#x", kr))
+        }
     }
 
     func send(_ words: [UInt32]) throws -> Bool {
@@ -92,3 +94,6 @@ final class Device: Transport, @unchecked Sendable {
         }
     }
 }
+
+// IOMessage.h defines it as iokit_common_msg(0x010), a macro that Swift does not import.
+private let kIOMessageServiceIsTerminated: UInt32 = 0xE000_0010

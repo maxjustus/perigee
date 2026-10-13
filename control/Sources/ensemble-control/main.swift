@@ -9,7 +9,7 @@ let monitor = Monitor()
 
 do {
     let device = try Device(queue: DispatchQueue(label: "device"))
-    device.watchTermination(queue: DispatchQueue(label: "watch")) {
+    try device.watchTermination {
         FileHandle.standardError.write(Data("ensemble-control: EnsembleDriver terminated\n".utf8))
         exit(0)
     }
