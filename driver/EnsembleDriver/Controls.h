@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 
 namespace Ensemble {
 
@@ -42,19 +43,11 @@ inline void channelName(bool input, uint32_t index, char * out, size_t size)
     } else {
         text = fixed[4 + (index - 30) % 4];
     }
-    size_t at = 0;
-    for (; *text != '\0' && at + 1 < size; text++) {
-        out[at++] = *text;
+    if (number > 0) {
+        snprintf(out, size, "%s%u", text, number);
+    } else {
+        snprintf(out, size, "%s", text);
     }
-    char digits[10];
-    size_t count = 0;
-    for (; number > 0; number /= 10) {
-        digits[count++] = char('0' + number % 10);
-    }
-    while (count > 0 && at + 1 < size) {
-        out[at++] = digits[--count];
-    }
-    out[at] = '\0';
 }
 
 inline float decibels(uint8_t attenuation)
