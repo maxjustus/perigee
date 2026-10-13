@@ -40,8 +40,9 @@
   .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%;
                    background: #c9d1d9; transition: left .12s; }
   .switch[aria-pressed=true]::after { left: 23px; }
-  select { font: inherit; font-size: 16px; color: inherit; background: var(--well); border: 1px solid var(--line);
-           border-radius: 6px; min-height: 34px; max-width: 60%; }
+  select, input { font: inherit; font-size: 16px; color: inherit; background: var(--well); border: 1px solid var(--line);
+                  border-radius: 6px; min-height: 34px; max-width: 60%; }
+  #presets select, #presets input { flex: 1; min-width: 0; max-width: none; }
   .slider { position: relative; flex: 1 1 100%; height: 30px; touch-action: pan-y; cursor: ew-resize; outline: none; }
   .slider::before { content: ""; position: absolute; left: 0; right: 0; top: 12px; height: 6px; border-radius: 3px;
                     background: var(--well); }
@@ -117,6 +118,16 @@
   <div class="view cards" id="outputs"></div>
   <div class="view cards" id="routing"></div>
   <div class="view cards" id="device"></div>
+  <div class="view cards" id="presets">
+    <section>
+      <h2>Presets</h2>
+      <div class="row"><select id="preset-names" aria-label="Preset"></select>
+        <button id="preset-load">Load</button><button id="preset-delete">Delete</button></div>
+      <div class="row"><input id="preset-name" aria-label="Name" placeholder="Name">
+        <button id="preset-save">Save</button></div>
+      <div class="row"><output id="preset-status"></output></div>
+    </section>
+  </div>
   <div class="view cards" id="monitor">
     <section>
       <h2>Remote monitor</h2>
@@ -148,7 +159,7 @@ function watch(path, update) {
 }
 
 const tabs = { mixer: "Mixer", meters: "Meters", inputs: "Inputs", outputs: "Outputs", routing: "Routing",
-               device: "Device", monitor: "Monitor" };
+               device: "Device", presets: "Presets", monitor: "Monitor" };
 
 for (const [id, name] of Object.entries(tabs)) {
   document.getElementById("tabs").append(Object.assign(document.createElement("a"), { href: `#${id}`, textContent: name }));
@@ -497,6 +508,48 @@ const setHideOff = on => {
 hideOff.onclick = () => setHideOff(hideOff.getAttribute("aria-pressed") !== "true");
 setHideOff(localStorage.getItem("hideOff") === "true");
 
+const presetNames = document.getElementById("preset-names");
+const presetName = document.getElementById("preset-name");
+const presetStatus = document.getElementById("preset-status");
+
+function showPresets(names) {
+  const selected = presetNames.value;
+  presetNames.replaceChildren(...names.map(name => new Option(name, name)));
+  if (names.includes(selected)) presetNames.value = selected;
+}
+
+async function presetCall(method, name, done) {
+  try {
+    done(await rpc(method, { name }));
+  } catch (error) {
+    presetStatus.value = error.message;
+  }
+}
+
+document.getElementById("preset-save").onclick = () => {
+  const name = presetName.value.trim();
+  const taken = [...presetNames.options].some(option => option.value === name);
+  if (!name || (taken && !confirm(`Replace ${name}?`))) return;
+  presetCall("presets.save", name, async () => {
+    showPresets(await rpc("presets.list"));
+    presetNames.value = name;
+    presetName.value = "";
+    presetStatus.value = `Saved ${name}`;
+  });
+};
+document.getElementById("preset-load").onclick = () => {
+  const name = presetNames.value;
+  if (!name || !confirm(`Load ${name}? This sets every saved value on the unit.`)) return;
+  presetCall("presets.load", name, ({ skipped }) => {
+    presetStatus.value = skipped.length ? `Loaded ${name}. Skipped: ${skipped.join(", ")}` : `Loaded ${name}`;
+  });
+};
+document.getElementById("preset-delete").onclick = () => {
+  const name = presetNames.value;
+  if (!name || !confirm(`Delete ${name}?`)) return;
+  presetCall("presets.delete", name, () => { presetStatus.value = `Deleted ${name}`; });
+};
+
 const monitorChannel = document.getElementById("monitor-channel");
 const monitorListen = document.getElementById("monitor-listen");
 const monitorLevel = document.getElementById("monitor-level");
@@ -584,6 +637,8 @@ function connect() {
       showMeters(message.params);
     } else if (message.method === "changed") {
       for (const [path, value] of Object.entries(message.params)) show(path, value);
+    } else if (message.method === "presets") {
+      showPresets(message.params.names);
     }
   };
   socket.onopen = async () => {
@@ -591,6 +646,7 @@ function connect() {
     status.className = "live";
     if (controls.size === 0) layout(await rpc("describe"));
     for (const [path, value] of Object.entries(await rpc("get"))) show(path, value);
+    showPresets(await rpc("presets.list"));
   };
   socket.onclose = () => {
     status.textContent = "reconnecting";
