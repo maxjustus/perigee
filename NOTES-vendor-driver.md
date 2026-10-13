@@ -1722,7 +1722,7 @@ The routing tests (`scripts/dsp/matrix.py`) use the same set-up:
   stayed muted.
 - After a Get-all, no output route used Playback 31-32. 0xD3 with p1 =
   0x60 and data = 0, 0xDE, 1 put Playback 31 on DSP input 0.
-  `scripts/dsp/play.swift` played a constant on Playback 31. The program
+  `ensemble-audio play` played a constant on Playback 31. The program
   read 0.000 without playback, 0.500 for 0.5, and −0.250 for −0.25
   (`matrix.py playback`).
 - 0x09 with p1 = 0 and code 0x70 put DSP outputs 0 and 1 on record

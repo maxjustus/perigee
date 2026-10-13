@@ -1,4 +1,5 @@
 import CoreAudio
+import EnsembleIO
 import EnsembleModel
 import Foundation
 import Network
@@ -64,10 +65,10 @@ final class Monitor: @unchecked Sendable {
                 return
             }
             device = ensemble
-            var address = globalAddress(kAudioDevicePropertyNominalSampleRate)
+            var address = propertyAddress(kAudioDevicePropertyNominalSampleRate)
             AudioObjectAddPropertyListenerBlock(device, &address, queue) { [self] _, _ in readRate() }
             readRate()
-            channels = inputChannels(device)
+            channels = channelCount(device, kAudioObjectPropertyScopeInput)
             ring = SampleRing(capacity: 16384 * channels)
         }
         // The IOProc runs on the device's IO thread. AudioDeviceStop on this queue waits for that thread,
@@ -85,11 +86,7 @@ final class Monitor: @unchecked Sendable {
     }
 
     private func readRate() {
-        var address = globalAddress(kAudioDevicePropertyNominalSampleRate)
-        var value: Float64 = 0
-        var size = UInt32(MemoryLayout<Float64>.size)
-        AudioObjectGetPropertyData(device, &address, 0, nil, &size, &value)
-        rate = UInt32(value)
+        rate = UInt32(property(device, kAudioDevicePropertyNominalSampleRate, kAudioObjectPropertyScopeGlobal, Float64(0)))
     }
 
     private func publish() {
@@ -109,38 +106,4 @@ final class Monitor: @unchecked Sendable {
         AudioDeviceDestroyIOProcID(device, proc)
         self.proc = nil
     }
-}
-
-private func findEnsemble() -> AudioObjectID? {
-    let system = AudioObjectID(kAudioObjectSystemObject)
-    var address = globalAddress(kAudioHardwarePropertyDevices)
-    var size: UInt32 = 0
-    AudioObjectGetPropertyDataSize(system, &address, 0, nil, &size)
-    var devices = [AudioObjectID](repeating: 0, count: Int(size) / MemoryLayout<AudioObjectID>.size)
-    AudioObjectGetPropertyData(system, &address, 0, nil, &size, &devices)
-    return devices.first { device in
-        var address = globalAddress(kAudioObjectPropertyName)
-        var name: Unmanaged<CFString>?
-        var size = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
-        AudioObjectGetPropertyData(device, &address, 0, nil, &size, &name)
-        return name?.takeRetainedValue() as String? == "Ensemble"
-    }
-}
-
-private func inputChannels(_ device: AudioObjectID) -> Int {
-    var address = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyStreamConfiguration,
-                                             mScope: kAudioObjectPropertyScopeInput,
-                                             mElement: kAudioObjectPropertyElementMain)
-    var size: UInt32 = 0
-    AudioObjectGetPropertyDataSize(device, &address, 0, nil, &size)
-    let list = UnsafeMutableRawPointer.allocate(byteCount: Int(size), alignment: MemoryLayout<AudioBufferList>.alignment)
-    defer { list.deallocate() }
-    AudioObjectGetPropertyData(device, &address, 0, nil, &size, list)
-    return UnsafeMutableAudioBufferListPointer(list.assumingMemoryBound(to: AudioBufferList.self))
-        .reduce(0) { $0 + Int($1.mNumberChannels) }
-}
-
-private func globalAddress(_ selector: AudioObjectPropertySelector) -> AudioObjectPropertyAddress {
-    AudioObjectPropertyAddress(mSelector: selector, mScope: kAudioObjectPropertyScopeGlobal,
-                               mElement: kAudioObjectPropertyElementMain)
 }

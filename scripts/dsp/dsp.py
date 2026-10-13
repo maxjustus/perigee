@@ -19,6 +19,7 @@ import asyncio
 import contextlib
 import enum
 import json
+import os
 import pathlib
 import struct
 import subprocess
@@ -251,23 +252,23 @@ def transfers(start, thread, words):
 
 def record(channels, seconds=1.2, settle=4800):
     """Records record-stream channels. Returns one array per channel."""
-    raw = subprocess.run([tool("capture"), str(seconds), *map(str, channels)], check=True,
+    raw = subprocess.run([*tool("capture"), str(seconds), *map(str, channels)], check=True,
                          capture_output=True).stdout
     return np.frombuffer(raw, "<f4").reshape(-1, len(channels)).T[:, settle:]
 
 
 def play(channel, value, seconds):
     """Starts to play a constant value on a playback channel, 0 for Playback 1. Returns the process."""
-    return subprocess.Popen([tool("play"), str(seconds), str(channel), str(value)])
+    return subprocess.Popen([*tool("play"), str(seconds), str(channel), str(value)])
 
 
-def tool(name):
-    """Builds the Swift tool name.swift next to this file, if it changed, and returns its path."""
-    source = pathlib.Path(__file__).with_name(f"{name}.swift")
-    binary = pathlib.Path(f"/tmp/ensemble-dsp-{name}")
-    if not binary.exists() or binary.stat().st_mtime < source.stat().st_mtime:
-        subprocess.run(["swiftc", "-O", "-o", binary, source], check=True)
-    return binary
+def tool(command):
+    """Builds ensemble-audio if it changed. Returns the command line of one of its commands."""
+    control = pathlib.Path(__file__).parents[2] / "control"
+    env = {k: v for k, v in os.environ.items() if k not in ("CC", "CXX", "LLVM_CONFIG")}
+    subprocess.run(["swift", "build", "-c", "release", "--product", "ensemble-audio"], cwd=control, env=env,
+                   check=True, stdout=subprocess.DEVNULL)
+    return [control / ".build/release/ensemble-audio", command]
 
 
 def gain(dry, wet, lags=range(-8, 9)):
