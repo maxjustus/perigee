@@ -122,7 +122,10 @@ public final class Controller: @unchecked Sendable {
             return try readPresets().keys.sorted()
         case "presets.save":
             var presets = try readPresets()
-            presets[try presetName(method, params)] = snapshot().filter { !byPath[$0.key]!.perSpeakerSet }
+            // A load must not change the sample rate under the running audio apps.
+            presets[try presetName(method, params)] = snapshot().filter {
+                $0.key != "clock/sampleRate" && !byPath[$0.key]!.perSpeakerSet
+            }
             try writePresets(presets)
             return true
         case "presets.load":

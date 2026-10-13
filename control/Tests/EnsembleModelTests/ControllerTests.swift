@@ -395,9 +395,10 @@ func call(_ controller: Controller, _ method: String, _ params: String) -> [Stri
     #expect(transport.sent == [[1, 0, 0x0102_1201]])
 }
 
-@Test func aPresetLeavesOutTheSpeakerSourceAlias() throws {
+@Test func aPresetLeavesOutTheSampleRateAndTheSpeakerSourceAlias() throws {
     let presets = temporaryPresets()
     let (controller, _, _) = makeController(presets: presets)
+    controller.receive(Report(type: 1, command: 0x29, p1: 0, p2: 0, data: [3]))
     controller.receive(Report(type: 1, command: 0x15, p1: 0, p2: 0, data: [0x60]))
     _ = call(controller, "presets.save", #"{"name":"A"}"#)
     let saved = try JSONSerialization.jsonObject(with: Data(contentsOf: presets)) as? [String: [String: String]]

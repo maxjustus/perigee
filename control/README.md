@@ -73,7 +73,7 @@ header `1, 0`. Records follow, 4 bytes to a word, low byte first.
 An error reply to -32700 or -32600 has `"id": null`.
 
 A preset holds the `get` result of the time of `presets.save`, without
-`outputs/speakerSource`. A save with the name of a preset replaces it.
+`clock/sampleRate` and `outputs/speakerSource`. A save with the name of a preset replaces it.
 The service keeps all presets in
 `~/Library/Application Support/ensemble-control/presets.json`.
 `presets.load` sets each saved value that differs from the reported
