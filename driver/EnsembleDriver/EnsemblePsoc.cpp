@@ -141,9 +141,6 @@ void EnsemblePsoc::RemoveListener(EnsembleUserClient * listener)
 void IMPL(EnsemblePsoc, PollOccurred)
 {
     const Mailbox<Bar0> & mailbox = ivars->mailbox;
-    if (mailbox.serviceEvents()) {
-        ivars->outbox.push(getAll());
-    }
     ivars->monitors.apply([&](uint8_t output, uint8_t value) {
         return ivars->outbox.push(set(kCommandOutputAttenuation, output, value));
     });
@@ -157,6 +154,12 @@ void IMPL(EnsemblePsoc, PollOccurred)
         }
         ivars->device->Reported(report);
     };
+    if (mailbox.serviceEvents()) {
+        ivars->outbox.push(getAll());
+        Report restarted = {};
+        restarted.type = kTypeRestarted;
+        handle(restarted);
+    }
     ivars->outbox.flush(mailbox, [&](const Message & sent) { parseMessage(sent.words, sent.count, handle); });
     while (mailbox.receive(handle)) {
     }

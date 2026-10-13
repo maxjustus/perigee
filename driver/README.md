@@ -51,6 +51,10 @@ Get-all, and prints every PSoC report for 2 s. `ensemblectl set <command>
 <p1> <value>` sends one type-1 command, for example `set 0x12 2 1` to mute
 the speaker output.
 
+After a PSoC restart, the dext sends each subscriber a report of type 5
+with no data, and then sends a Get-all. The vendor kext sends the same
+type-5 message to its HAL plugin.
+
 ## Return the device to the vendor driver
 
 Run `make uninstall` in the repository root.

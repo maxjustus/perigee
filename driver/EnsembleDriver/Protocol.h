@@ -23,6 +23,9 @@ inline int rateIndex(double rate)
     return -1;
 }
 
+// The dext sends a report of this type, with no data, after a PSoC restart.
+constexpr uint8_t kTypeRestarted = 5;
+
 struct Report {
     uint8_t type;
     uint8_t command;
