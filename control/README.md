@@ -98,10 +98,10 @@ The server sends five notifications:
   Get-all that the dext sends. The restart removes the DSP routes (0xD3).
   Whether the DSP programs stay in the FPGA is unknown. A client that
   loaded DSP programs or routes must load them again.
-- `meters`: peak levels as `{inputs, outputs, outputGroup, group2,
+- `meters`: peak levels as `{inputs, outputs, headphones, playback,
   mixers}`, arrays of 30, 30, 4, 16, and 8 integers. `inputs` follows
   mixer channels 1-30. `outputs` holds the 30 physical outputs.
-  `outputGroup` is Headphone 1 L/R, then Headphone 2 L/R. `group2` is
+  `headphones` is Headphone 1 L/R, then Headphone 2 L/R. `playback` is
   Playback 1-16 before the mixers.
   `mixers` is the L/R master of each of the 4 mixers. Each value is
   linear, with full scale at 16384: dBFS = 20 * log10(value / 16384).

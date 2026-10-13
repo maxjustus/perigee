@@ -401,8 +401,8 @@ const meterNames = {
                       ...Array.from({ length: 16 }, (_, i) => `O${i + 1}`)]],
   outputs: ["Outputs", [...Array.from({ length: 10 }, (_, i) => `L${i + 1}`), "G1", "G2", "SPL", "SPR",
                         ...Array.from({ length: 16 }, (_, i) => `O${i + 1}`)]],
-  outputGroup: ["Headphones", ["1L", "1R", "2L", "2R"]],
-  group2: ["Playback", Array.from({ length: 16 }, (_, i) => `${i + 1}`)],
+  headphones: ["Headphones", ["1L", "1R", "2L", "2R"]],
+  playback: ["Playback", Array.from({ length: 16 }, (_, i) => `${i + 1}`)],
   mixers: ["Mixers", [1, 2, 3, 4].flatMap(n => [`${n}L`, `${n}R`])],
 };
 const channelNames = [...[1, 2, 3, 4, 5, 6, 7, 8].map(n => `A${n}`), "Mic L", "Mic R", "Gtr 1", "Gtr 2",
@@ -527,7 +527,7 @@ function stripFor(number, channel) {
       <div class="channel"></div><div class="pan"></div><div class="buttons"></div><div class="buttons safe"></div>`;
     const name = channelNames[channel - 1];
     Object.assign(strip.querySelector(".name"), { textContent: name, title: name });
-    const source = channel <= 30 ? ["inputs", channel - 1] : channel <= 46 ? ["group2", channel - 31]
+    const source = channel <= 30 ? ["inputs", channel - 1] : channel <= 46 ? ["playback", channel - 31]
       : ["mixers", 2 * (number - 1) + channel - 47];
     strip.querySelector(".channel").append(meter(...source));
     consoleFor(number).querySelector(channel > 46 ? ".masters" : ".strips").append(strip);

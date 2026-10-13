@@ -344,7 +344,7 @@ async def monitor(core):
         await core.send(message([1, 0x15, 15, code]))
         await core.notifications("meters", 3.0)
         frames = await core.notifications("meters", 1.0)
-        print(f"Headphone 1 = {label}: peaks", [max(f["outputGroup"][i] for f in frames) for i in (0, 1)], flush=True)
+        print(f"Headphone 1 = {label}: peaks", [max(f["headphones"][i] for f in frames) for i in (0, 1)], flush=True)
     await core.route(0, io=0)
 
 

@@ -96,7 +96,7 @@ public final class Controller: @unchecked Sendable {
     public func meters(_ meters: Meters) {
         broadcast(notification("meters", [
             "inputs": meters.inputs.map(Int.init), "outputs": meters.outputs.map(Int.init),
-            "outputGroup": meters.outputGroup.map(Int.init), "group2": meters.group2.map(Int.init),
+            "headphones": meters.headphones.map(Int.init), "playback": meters.playback.map(Int.init),
             "mixers": meters.mixers.map(Int.init),
         ]))
     }

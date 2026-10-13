@@ -34,5 +34,7 @@ func meterBytes() -> [UInt8] {
     controller.meters(Meters(bytes: meterBytes())!)
     let message = object(broadcasts.texts.last!)
     #expect(message["method"] as? String == "meters")
-    #expect(((message["params"] as? [String: Any])?["inputs"] as? [Int])?.first == 0x1234)
+    let params = message["params"] as? [String: Any]
+    #expect(params.map { Set($0.keys) } == ["inputs", "outputs", "headphones", "playback", "mixers"])
+    #expect((params?["inputs"] as? [Int])?.first == 0x1234)
 }
