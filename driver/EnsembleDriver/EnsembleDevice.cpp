@@ -102,6 +102,7 @@ static IOUserAudioStreamBasicDescription format(uint32_t channels, double rate)
         channels * 4,
         channels,
         32,
+        0,
     };
 }
 
