@@ -1,20 +1,22 @@
 """Decodes DSP core opcodes on the unit. NOTES-vendor-driver.md 8.3 lists the results.
 
-Usage: python3 scripts/dsp/isa.py sweep|pairs|jumps|copies|stall|extra|routes|state
+Usage: python3 scripts/dsp/isa.py sweep|pairs|units|jumps|selectors|copies|modes|copybits|stall|extra|unknown|routes|state
 
 The tests run in thread 0. DSP I/O channel 0 feeds Analog 1, panned hard
 left in Mixer 1, and channel 1 feeds Analog 2, panned hard right. Record
 channels 30 and 31 carry Mixer 1. The left channel carries 0.25 b, where b
 steps through a circular group of eight state words, so each capture gives
 eight points. The right channel carries the result. Pan 127 leaks 1.8 % of
-the right channel into the left, which the matching tolerates.
+the right channel into the left, which the matching tolerates. A right
+channel at full scale moves the left one by 0.018, so the b = 0 samples can
+mix into the b = 0.1 point.
 """
 import asyncio
 import sys
 
 import numpy as np
 
-from dsp import Src, block, copy, ins, jump, record, session, store
+from dsp import Src, block, copy, f32, ins, jump, record, session, store
 
 B_VALUES = [-2.0, -0.75, -0.1, 0.0, 0.1, 0.5, 1.0, 3.0]
 SCALE, REF = 0.1, 0.25
@@ -24,6 +26,10 @@ STATE = [0.0] * 8 + B_VALUES + [0.0] * (255 - 16)
 MIXER = {"mixers/1/channels/1/mute": False, "mixers/1/channels/1/pan": 0,
          "mixers/1/channels/2/mute": False, "mixers/1/channels/2/pan": 127,
          **{f"mixers/{m}/channels/{c}/mute": True for m in (2, 3, 4) for c in (1, 2)}}
+# Tests with unbounded results put LIMIT and -LIMIT in c4 and c5 and end the body with CLAMP,
+# so the right channel stays within full scale.
+LIMIT = 10.0
+CLAMP = [ins(0x27, a=4, b_src=Src.R), ins(0x26, a=5, b_src=Src.R)]
 
 
 def coefs(a, *extra):
@@ -99,6 +105,20 @@ async def pairs(core):
         print(row(f"{first:02x}+{second:02x} U", await points(core, program(body))), flush=True)
 
 
+async def units(core):
+    """0x0E, 0x11, and 0x2B read the unit inputs that the instruction before them set."""
+    print(f"{'b =':24}" + " ".join(f"{b:+9.2f}" for b in B_VALUES))
+    await core.coefs(coefs(0.5, LIMIT, -LIMIT))
+    for first in (0x06, 0x07, 0x08, 0x09, 0x0A, 0x0C, 0x0D, 0x0F, 0x10):
+        for second in (0x0E, 0x11, 0x2B):
+            body = [ins(first, a=1, b_src=Src.R), ins(second, a=1, b_src=Src.R), *CLAMP]
+            print(row(f"{first:02x} then {second:02x}", await points(core, program(body))), flush=True)
+    keep_x = ins(5, a=0, b_src=Src.X, to_r=False)
+    for second in (0x0E, 0x11, 0x2B):
+        body = [ins(0x0D, a=1, b_src=Src.R), keep_x, ins(second, a=1, b_src=Src.R), *CLAMP]
+        print(row(f"0d, x = 1 x, {second:02x}", await points(core, program(body))), flush=True)
+
+
 async def jumps(core):
     xs = (-0.5, -1e-30, 0.0, 1e-30, 0.5)
     print("bits 23:21 | jump for x =", " ".join(f"{x:g}" for x in xs))
@@ -110,6 +130,23 @@ async def jumps(core):
             _, right = await run(core, marker(word))
             taken.append("jump" if abs(np.median(right) - P) < 0.01 else "  - ")
         print(f"{condition:03b} ({word:08x}) | " + "  ".join(taken), flush=True)
+
+
+async def selectors(core):
+    """Bits 16:14 of 0x01 with x = 0.5. Each landing block stores its own value and ends the sample."""
+    targets = {P: "stopped", 0.5: "no jump", 0.25: "absolute target", -0.25: "relative target"}
+    await core.coefs(coefs(0.5, *targets))
+    land = [[ins(6, a=c), store(io=1, offset=0), 0x17 | 255 << 6] for c in (5, 6, 7)]
+    for selector in range(8):
+        for condition in (0b010, 0b011, 0b110):
+            code = [ins(5, a=3, b=8, b_src=Src.STATE, k=3), store(io=0, offset=1),
+                    ins(6, a=4), store(io=1, offset=0),
+                    ins(6, a=1, to_r=False), ins(5, a=0, b=8, b_src=Src.STATE, k=3),
+                    jump(10, condition, selector), *land[0], *land[1], 0, 0, 0, *land[2]]
+            _, right = await run(core, code)
+            value = float(np.median(right))
+            name = next((n for t, n in targets.items() if abs(value - t) < 0.01), f"{value:+.4f}")
+            print(f"bits 16:14 = {selector}, condition {condition:03b}: {name}", flush=True)
 
 
 async def copies(core):
@@ -124,6 +161,39 @@ async def copies(core):
         body = [word] if word else []
         body.append(ins(5, b_src=read) if read else ins(5, b=20, b_src=Src.STATE))
         print(row(label, await points(core, program(body))), flush=True)
+
+
+async def modes(core):
+    """Bits 20:18 of 0x14 and 0x15 with the source in the s8 group."""
+    print(f"{'b =':24}" + " ".join(f"{b:+9.2f}" for b in B_VALUES))
+    await core.coefs(coefs(0.5))
+    for op in (0x14, 0x15):
+        for mode in range(8):
+            body = [copy(op, 8, 20, mode=mode), ins(5, b=20, b_src=Src.STATE)]
+            print(row(f"{op:02x} mode {mode}, read s20", await points(core, program(body))), flush=True)
+    for read, tail in (("r", []), ("x", [ins(0x2A, a_src=Src.X)])):
+        body = [copy(0x15, 8, 20, mode=3), *tail]
+        print(row(f"15 mode 3, read {read}", await points(core, program(body))), flush=True)
+
+
+async def copybits(core):
+    """Bits 31:29 of 0x14 and 0x16, from thread 0 s9 (-0.75) and thread 1 s30 (0.77) to s20.
+    The last read copies s20 of thread 1 (0.456) back to s21 of thread 0."""
+    print(f"{'b =':32}" + " ".join(f"{b:+9.2f}" for b in B_VALUES))
+    other = [0.0] * 255
+    other[20], other[30] = 0.456, 0.77
+    await core.coefs(coefs(0.5))
+    reads = {"s20": [ins(5, b=20, b_src=Src.STATE)], "x": [ins(0x2A, a_src=Src.X)], "r": [],
+             "t1 s20": [copy(0x14, 20, 21, thread=1), ins(5, b=21, b_src=Src.STATE)]}
+    for op in (0x14, 0x16):
+        for bit in (29, 30, 31):
+            for thread, source in ((0, 9), (1, 30)):
+                for read, tail in reads.items():
+                    await core.state(other, thread=1)
+                    await core.state(STATE)
+                    body = [copy(op, source, 20, thread) | 1 << bit, *tail]
+                    label = f"{op:02x} bit {bit} t{thread} read {read}"
+                    print(row(f"{label:32}", await points(core, program(body))), flush=True)
 
 
 async def stall(core):
@@ -153,6 +223,28 @@ async def extra(core):
     await core.coefs(coefs(0.5))
     body = [copy(0x14, 30, 20, thread=1), ins(5, b=20, b_src=Src.STATE)]
     print(row("0x14 from thread 1 s30", await points(core, program(body))), flush=True)
+
+
+async def unknown(core):
+    """Opcodes without a known function, after 0x0D and 0x10. Prints a row only where r is not b or
+    x is not c1. 0x38 to 0x3F also get raw integer words as operand A."""
+    print(f"{'b =':24}" + " ".join(f"{b:+9.2f}" for b in B_VALUES))
+    await core.coefs(coefs(0.5, LIMIT, -LIMIT))
+    expected = {"r": B_VALUES, "x": [0.5] * len(B_VALUES)}
+    for op in (0x00, 0x03, *range(0x18, 0x26), *range(0x2C, 0x40)):
+        for first in (0x0D, 0x10):
+            launch = ins(first, a=1, b_src=Src.R)
+            for read, body in (("r", [launch, ins(op, a=1, b_src=Src.R)]),
+                               ("x", [launch, ins(op, a=1, b_src=Src.R, to_r=False), ins(0x2A, a_src=Src.X)])):
+                values = await points(core, program(body + CLAMP))
+                if any(v is None or abs(v / SCALE - e) > 0.002 for v, e in zip(values, expected[read])):
+                    print(row(f"{first:02x} then {op:02x}, read {read}", values), flush=True)
+        print(f"{op:02x} done", flush=True)
+    raw = [1, 2, 3, 100, 0xFFFFFFFF, f32(1.0), f32(2.0), 0x00800000]
+    await core.write(0xD4, 0, 0, [f32(v) for v in STATE[:16]] + raw + [0] * (255 - 24))
+    for op in (0x2A, *range(0x38, 0x40)):
+        body = [ins(op, a=16, a_src=Src.STATE, k=3), *CLAMP]
+        print(row(f"{op:02x} A = raw s16 group", await points(core, program(body))), flush=True)
 
 
 async def routes(core):
@@ -197,7 +289,8 @@ async def main(test):
 
 
 if __name__ == "__main__":
-    tests = {f.__name__: f for f in (sweep, pairs, jumps, copies, stall, extra, routes, state)}
+    tests = {f.__name__: f for f in (sweep, pairs, units, jumps, selectors, copies, modes, copybits, stall, extra,
+                                      unknown, routes, state)}
     if len(sys.argv) != 2 or sys.argv[1] not in tests:
         sys.exit(__doc__)
     asyncio.run(main(tests[sys.argv[1]]))
