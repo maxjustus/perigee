@@ -574,6 +574,10 @@ value. Extra report IDs:
 
 A Get-all request (type 4) returns one report per property.
 
+The PSoC does not echo a set command. A front-panel change, for example
+the volume encoder, produces a report. A host that sends a set command
+must update its own copy of the state.
+
 ### 5.8 Enum values
 
 From the name tables in `Ensemble2AudioDevice::_customPropertyGetPropertyData`
