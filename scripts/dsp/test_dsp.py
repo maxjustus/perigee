@@ -1,6 +1,11 @@
+import json
+import pathlib
+import tempfile
 import unittest
+from unittest import mock
 
-from dsp import Src, block, copy, f32, get, ins, jump, store, transfers
+import dsp
+from dsp import Src, block, copy, f32, get, ins, jump, remember, store, transfers
 
 
 class WireTest(unittest.TestCase):
@@ -45,6 +50,17 @@ class TransferTest(unittest.TestCase):
         self.assertEqual([(p1, p2, data[:4]) for p1, p2, data in chunks],
                          [(23, 10, [1, 0, 3, 30]), (7, 33, [0, 1, 3, 30])])
         self.assertEqual(chunks[1][2][4:8], [23, 0, 0, 0])
+
+
+class RestoreFileTest(unittest.TestCase):
+    def test_remember_appends_messages_in_order(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = pathlib.Path(directory) / "restore.json"
+            path.write_text(json.dumps({"settings": {"outputs/speaker/mute": False}, "messages": [[1, 0, 2]]}))
+            with mock.patch.object(dsp, "RESTORE_FILE", path):
+                remember([[1, 0, 3], [1, 0, 4]])
+            self.assertEqual(json.loads(path.read_text()),
+                             {"settings": {"outputs/speaker/mute": False}, "messages": [[1, 0, 2], [1, 0, 3], [1, 0, 4]]})
 
 
 if __name__ == "__main__":

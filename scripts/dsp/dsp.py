@@ -43,7 +43,7 @@ async def session(changes=None):
         raise RuntimeError(f"{RESTORE_FILE} exists: run `python3 dsp.py restore` first")
     core = await Core.connect()
     before = await core.call("get")
-    RESTORE_FILE.write_text(json.dumps({path: before[path] for path in changes}))
+    RESTORE_FILE.write_text(json.dumps({"settings": {path: before[path] for path in changes}, "messages": []}))
     await core.call("set", changes)
     await asyncio.sleep(0.3)
     core.protected = changes
@@ -55,11 +55,22 @@ async def session(changes=None):
 
 
 async def restore(core):
+    saved = json.loads(RESTORE_FILE.read_text())
+    for words in saved["messages"]:
+        await core.send(words)
     for rack in range(RACKS):
         await core.route(rack, on=False)
     await core.erase_all()
-    await core.call("set", json.loads(RESTORE_FILE.read_text()))
+    await core.call("set", saved["settings"])
     RESTORE_FILE.unlink()
+
+
+def remember(messages):
+    """Adds raw messages that undo a change. A restore sends them in order, before it restores
+    the settings."""
+    saved = json.loads(RESTORE_FILE.read_text())
+    saved["messages"] += messages
+    RESTORE_FILE.write_text(json.dumps(saved))
 
 
 class Core:
@@ -244,17 +255,25 @@ def transfers(start, thread, words):
         yield len(chunk), start + at, flags + list(struct.pack(f"<{len(chunk)}I", *chunk))
 
 
-CAPTURE = pathlib.Path(__file__).with_name("capture.swift")
-CAPTURE_BINARY = pathlib.Path("/tmp/ensemble-dsp-capture")
-
-
 def record(channels, seconds=1.2, settle=4800):
     """Records record-stream channels. Returns one array per channel."""
-    if not CAPTURE_BINARY.exists() or CAPTURE_BINARY.stat().st_mtime < CAPTURE.stat().st_mtime:
-        subprocess.run(["swiftc", "-O", "-o", CAPTURE_BINARY, CAPTURE], check=True)
-    raw = subprocess.run([CAPTURE_BINARY, str(seconds), *map(str, channels)], check=True,
+    raw = subprocess.run([tool("capture"), str(seconds), *map(str, channels)], check=True,
                          capture_output=True).stdout
     return np.frombuffer(raw, "<f4").reshape(-1, len(channels)).T[:, settle:]
+
+
+def play(channel, value, seconds):
+    """Starts to play a constant value on a playback channel, 0 for Playback 1. Returns the process."""
+    return subprocess.Popen([tool("play"), str(seconds), str(channel), str(value)])
+
+
+def tool(name):
+    """Builds the Swift tool name.swift next to this file, if it changed, and returns its path."""
+    source = pathlib.Path(__file__).with_name(f"{name}.swift")
+    binary = pathlib.Path(f"/tmp/ensemble-dsp-{name}")
+    if not binary.exists() or binary.stat().st_mtime < source.stat().st_mtime:
+        subprocess.run(["swiftc", "-O", "-o", binary, source], check=True)
+    return binary
 
 
 def gain(dry, wet, lags=range(-8, 9)):
