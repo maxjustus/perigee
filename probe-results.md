@@ -229,3 +229,34 @@ Consequences:
   so most reads pass. Each Get-all through the vendor kext carries a small
   risk of a panic.
 - A new driver must limit each record to the message length.
+
+## Identity reports through the open driver
+
+2026-10-13, after commit `e2c39cd`. `scripts/firmware/device-reports.py`
+sent one type-3 Get per report ID through `raw.send` of ensemble-control.
+The vendor kext was not loaded. Seven tests for the client are in
+`scripts/firmware/device-reports-test.py`. Output:
+
+| Query | Data | Reading |
+|-------|------|---------|
+| 0x40 p1 0 | 01 05 03 | PSoC firmware 1.5.3, matches the vendor file |
+| 0x40 p1 1 | 00 56 00 | FPGA firmware 0.56, matches the vendor revision |
+| 0x40 p1 2 | 03 00 00 | Hardware revision 3 |
+| 0x40 p1 3 | 00 06 1B | Resource version 6, whole-file CRC-8 `0x1B` |
+| 0x41 | 00 0D 6A 00 84 44 F1 | Unit ID, 7 bytes |
+| 0x42 | 01 | External clock locked (Internal source) |
+| 0x64 | 01 | PLL locked |
+| 0xD5 | 162 | DSP cycles per sample per thread at 48 kHz |
+| 0xD2 | 01 00 00 01 00 00 00 | DSP core version |
+
+`front-panel-resources.py` computes CRC-8 `0x1B` over the vendor
+`EnsembleResourceData.bin`. The device reports the same value, so the
+resource partition in external flash matches the vendor file at CRC-8
+confidence. An 8-bit check cannot rule out a crafted collision, but it
+rules out ordinary corruption.
+
+One Get of 0x40 returns all four selector reports, not only the selector
+that the p1 byte names. Lock reports 0x42 and 0x64 arrived five times each
+within one 4 s window, so the device repeats them outside an explicit
+request. The tracker for this work is
+`.pi-html/artifacts/_project/apogee-ensemble-driver/firmware-map.md`.
