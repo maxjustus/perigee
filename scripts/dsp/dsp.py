@@ -45,6 +45,8 @@ async def session(changes=None):
     before = await core.call("get")
     RESTORE_FILE.write_text(json.dumps({path: before[path] for path in changes}))
     await core.call("set", changes)
+    await asyncio.sleep(0.3)
+    core.protected = changes
     try:
         yield core
     finally:
@@ -68,6 +70,7 @@ class Core:
         self.ws = ws
         self.id = 0
         self.reports = []
+        self.protected = {}
 
     @classmethod
     async def connect(cls):
@@ -101,6 +104,13 @@ class Core:
                 return reply["result"]
             if reply.get("method") == "report":
                 self.reports.append(reply["params"])
+
+    async def check_protected(self):
+        """Raises if another client changed a setting that the session protects."""
+        state = await self.call("get")
+        changed = {path: state[path] for path, value in self.protected.items() if state[path] != value}
+        if changed:
+            raise RuntimeError(f"another client changed protected settings: {changed}")
 
     async def send(self, words):
         await self.call("raw.send", {"words": words})

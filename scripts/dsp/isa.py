@@ -54,6 +54,7 @@ async def run(core, code):
     for _ in range(3):
         await core.swap(code)
         await asyncio.sleep(0.3)
+        await core.check_protected()
         left, right = record([30, 31])
         if left.std() > 0:
             return left, right
