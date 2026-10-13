@@ -5,6 +5,8 @@ host := driver/build/Build/Products/Debug/EnsembleHost.app/Contents/MacOS/Ensemb
 service := control/.build/release/ensemble-control
 agent := $(HOME)/Library/LaunchAgents/dev.ensemble.control.plist
 log := $(HOME)/Library/Logs/ensemble-control.log
+apps := $(HOME)/Applications
+mixer := $(apps)/Ensemble Mixer.app
 gui := gui/$(shell id -u)
 
 .PHONY: install uninstall status service
@@ -16,10 +18,14 @@ install: service
 	sed -e 's|@SERVICE@|$(CURDIR)/$(service)|' -e 's|@LOG@|$(log)|' launchd/dev.ensemble.control.plist > $(agent)
 	launchctl bootout $(gui)/dev.ensemble.control 2> /dev/null || true
 	launchctl bootstrap $(gui) $(agent)
+	mkdir -p "$(apps)"
+	rm -rf "$(mixer)"
+	osacompile -o "$(mixer)" -e 'open location "http://localhost:8737"'
 
 uninstall:
 	launchctl bootout $(gui)/dev.ensemble.control 2> /dev/null || true
 	rm -f $(agent)
+	rm -rf "$(mixer)"
 	sudo scripts/system.sh uninstall
 
 status:

@@ -36,6 +36,8 @@ After `make install`:
 - A launch agent runs the control service at login and restarts it when
   it stops. Its log is `~/Library/Logs/ensemble-control.log`.
 - The vendor HAL plugin is off.
+- `~/Applications/Ensemble Mixer.app` opens the web UI in your browser.
+  Press Cmd+Space and type "Ensemble Mixer".
 
 Run `make install` again to install a new build. No replug is necessary.
 
@@ -43,7 +45,8 @@ Run `make install` again to install a new build. No replug is necessary.
 
     make uninstall
 
-The command removes the launch agent, the launch daemon, and the dext. It
+The command removes the launch agent, the launch daemon, Ensemble
+Mixer, and the dext. It
 then gives the Ensemble to the vendor driver and turns the vendor HAL
 plugin on. It asks for the sudo password. The next `make install` needs
 the approval in System Settings again.
