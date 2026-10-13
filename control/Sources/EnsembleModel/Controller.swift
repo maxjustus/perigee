@@ -18,6 +18,7 @@ public final class Controller: @unchecked Sendable {
     private let byKey = Dictionary(grouping: parameters.flatMap { parameter in
         keys(parameter).map { (key: $0, parameter: parameter) }
     }, by: \.key).mapValues { $0.map(\.parameter) }
+    private let leadsByStereo = Dictionary(grouping: parameters.filter { $0.pair?.leads == true }) { $0.pair!.stereo }
     private let lock = NSLock()
     private var values: [String: Int] = [:]
 
@@ -99,7 +100,9 @@ public final class Controller: @unchecked Sendable {
                     throw RPCError.invalidParams("unknown path \(path)")
                 }
                 let wire = try encodeValue(value, parameter)
-                return sendTargets(parameter).map { message(parameter, $0, wire) }
+                return lock.withLock { writes(parameter, wire) }.flatMap { parameter, value in
+                    sendTargets(parameter).map { message(parameter, $0, value) }
+                }
             }
             try messages.forEach(transport.send)
             return true
@@ -114,6 +117,22 @@ public final class Controller: @unchecked Sendable {
         default:
             throw RPCError(code: -32601, message: "unknown method \(method)")
         }
+    }
+
+    // The caller holds the lock.
+    private func writes(_ parameter: Parameter, _ value: Int) -> [(Parameter, Int)] {
+        var writes = [(parameter, value)]
+        if let pair = parameter.pair, values[pair.stereo] ?? 0 != 0, let partner = byPath[pair.partner] {
+            writes.append((partner, value))
+        }
+        if value != 0 {
+            for lead in leadsByStereo[parameter.path] ?? [] {
+                if let current = values[lead.path], let partner = byPath[lead.pair!.partner] {
+                    writes.append((partner, current))
+                }
+            }
+        }
+        return writes
     }
 
     private func sendTargets(_ parameter: Parameter) -> [Target] {

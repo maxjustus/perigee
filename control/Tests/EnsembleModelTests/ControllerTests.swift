@@ -221,6 +221,27 @@ func makeController() -> (Controller, FakeTransport, Broadcasts) {
     #expect((changed["params"] as? [String: Any])?["mixers/channels/31/stereo"] as? Bool == true)
 }
 
+@Test func aStereoPairLinksTheControlsOfBothChannels() {
+    let (controller, transport, _) = makeController()
+    controller.receive(Report(type: 1, command: 0x39, p1: 30, p2: 0, data: [1]))
+    _ = controller.handle(#"{"jsonrpc":"2.0","id":1,"method":"set","params":{"mixers/2/channels/32/mute":true}}"#)
+    #expect(transport.sent == [[1, 0, word(2, 0x35, 31, 1), word(1, 1, 0, 0)],
+                               [1, 0, word(2, 0x35, 30, 1), word(1, 1, 0, 0)]])
+}
+
+@Test func aMonoChannelMovesAlone() {
+    let (controller, transport, _) = makeController()
+    _ = controller.handle(#"{"jsonrpc":"2.0","id":1,"method":"set","params":{"mixers/2/channels/32/mute":true}}"#)
+    #expect(transport.sent == [[1, 0, word(2, 0x35, 31, 1), word(1, 1, 0, 0)]])
+}
+
+@Test func stereoCopiesTheFirstChannelToItsPartner() {
+    let (controller, transport, _) = makeController()
+    controller.receive(Report(type: 2, command: 0x35, p1: 30, p2: 0, data: [1]))
+    _ = controller.handle(#"{"jsonrpc":"2.0","id":1,"method":"set","params":{"mixers/channels/31/stereo":true}}"#)
+    #expect(transport.sent.contains([1, 0, word(2, 0x35, 31, 0), word(1, 1, 0, 0)]))
+}
+
 @Test func theFrontMicHasNoStereoPair() {
     let (controller, transport, _) = makeController()
     _ = controller.handle(#"{"jsonrpc":"2.0","id":1,"method":"set","params":{"mixers/channels/9/stereo":true}}"#)

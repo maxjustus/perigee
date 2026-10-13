@@ -56,6 +56,11 @@ lets channel n into the mixers: a disabled channel is not mixed.
 (1, 3, 5, 7, 11, ..., 45) and flags the pair n, n+1 as stereo. The front
 panel mic (9, 10) has no pair.
 
+A stereo pair moves together, as in the vendor HAL. A set of `fader`,
+`mute`, `solo`, `soloSafe`, or `enabled` on either channel also writes
+the partner. Turning stereo on copies these values from the first channel
+to the partner. Each channel keeps its own `pan`.
+
 Routing paths name the output pair: `routing/line1-2` to
 `routing/line9-10`, `routing/guitar1-2`, `routing/spdif`,
 `routing/optical1-2` to `routing/optical15-16`, `routing/headphone1`, and

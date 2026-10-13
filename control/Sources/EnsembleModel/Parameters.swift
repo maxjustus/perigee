@@ -19,6 +19,12 @@ public struct Target: Equatable, Sendable {
     public let p2: UInt8
 }
 
+public struct Pair: Sendable {
+    public let stereo: String
+    public let partner: String
+    public let leads: Bool
+}
+
 public struct Parameter: Sendable {
     public let path: String
     public let command: UInt8
@@ -29,6 +35,7 @@ public struct Parameter: Sendable {
     public var reported: Wire?
     public var on = 1
     public var perSpeakerSet = false
+    public var pair: Pair?
     public let kind: Kind
 }
 
@@ -150,7 +157,17 @@ private let mixers: [Parameter] = channelEnables + stereoPairs + preFaders + str
 private let channelEnables: [Parameter] = (0..<46).filter { $0 != 9 }.map { channel in
     Parameter(path: "mixers/channels/\(channel + 1)/enabled", command: 0x38, p1: UInt8(channel),
               also: (1..<4).map { Target(p1: UInt8(channel), p2: UInt8($0)) }, wire: .block(bytes: 1),
-              reported: .set, kind: .bool)
+              reported: .set, pair: pair(channel) { "mixers/channels/\($0 + 1)/enabled" }, kind: .bool)
+}
+
+// The vendor HAL links these controls of a stereo pair on the host
+// (`Ensemble2MixerMatrix::_setMixerChannelIsStereo`).
+private func pair(_ channel: Int, _ path: (Int) -> String) -> Pair? {
+    guard channel < 46, channel / 2 != 4 else {
+        return nil
+    }
+    return Pair(stereo: "mixers/channels/\((channel & ~1) + 1)/stereo", partner: path(channel ^ 1),
+                leads: channel & 1 == 0)
 }
 
 // The unit flags both channels of a pair when the first one is written.
@@ -169,10 +186,14 @@ private let strips: [Parameter] = (0..<4).flatMap { mixer in
     (0..<48).filter { $0 != 9 }.flatMap { channel in
         let prefix = "mixers/\(mixer + 1)/channels/\(channel + 1)"
         let (p1, p2) = (UInt8(channel), UInt8(mixer))
+        func linked(_ control: String) -> Pair? {
+            pair(channel) { "mixers/\(mixer + 1)/channels/\($0 + 1)/\(control)" }
+        }
         var strip = [
             Parameter(path: "\(prefix)/fader", command: 0x32, p1: p1, p2: p2, wire: .block(bytes: 2),
-                      kind: .int(0...720)),
-            Parameter(path: "\(prefix)/mute", command: 0x35, p1: p1, p2: p2, wire: .block(bytes: 1), kind: .bool),
+                      pair: linked("fader"), kind: .int(0...720)),
+            Parameter(path: "\(prefix)/mute", command: 0x35, p1: p1, p2: p2, wire: .block(bytes: 1),
+                      pair: linked("mute"), kind: .bool),
         ]
         if channel < 46 {
             strip.append(Parameter(path: "\(prefix)/pan", command: 0x33, p1: p1, p2: p2, wire: .block(bytes: 1),
@@ -180,11 +201,11 @@ private let strips: [Parameter] = (0..<4).flatMap { mixer in
         }
         if mixer == 0 && channel < 47 {
             strip.append(Parameter(path: "\(prefix)/solo", command: 0x34, p1: p1, wire: .block(bytes: 1),
-                                   reported: .set, kind: .bool))
+                                   reported: .set, pair: linked("solo"), kind: .bool))
         }
         if mixer == 0 && channel < 46 {
             strip.append(Parameter(path: "\(prefix)/soloSafe", command: 0x3A, p1: p1, wire: .block(bytes: 1),
-                                   reported: .set, kind: .bool))
+                                   reported: .set, pair: linked("soloSafe"), kind: .bool))
         }
         return strip
     }
