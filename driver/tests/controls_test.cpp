@@ -46,9 +46,28 @@ static void clock_sources_follow_the_vendor_order()
     CHECK(std::strcmp(kClockSourceNames[4], "Optical 2") == 0);
 }
 
+static bool named(bool input, uint32_t index, const char * expected)
+{
+    char name[32];
+    channelName(input, index, name, sizeof(name));
+    return std::strcmp(name, expected) == 0;
+}
+
+static void channel_names_follow_the_vendor_input_order()
+{
+    CHECK(named(true, 0, "Analog 1") && named(true, 7, "Analog 8"));
+    CHECK(named(true, 8, "Front Mic L") && named(true, 9, "Front Mic R"));
+    CHECK(named(true, 10, "Guitar 1") && named(true, 11, "Guitar 2"));
+    CHECK(named(true, 12, "S/PDIF L") && named(true, 13, "S/PDIF R"));
+    CHECK(named(true, 14, "Optical 1") && named(true, 29, "Optical 16"));
+    CHECK(named(true, 30, "Mix 1 L") && named(true, 33, "FX Send R"));
+    CHECK(named(false, 0, "Playback 1") && named(false, 35, "Playback 36"));
+}
+
 int main()
 {
     clock_sources_follow_the_vendor_order();
+    channel_names_follow_the_vendor_input_order();
     attenuation_is_whole_decibels_below_zero();
     follow_moves_every_monitor_by_the_speaker_change();
     follow_clamps_each_monitor();

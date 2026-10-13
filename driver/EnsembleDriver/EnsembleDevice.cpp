@@ -201,6 +201,8 @@ kern_return_t EnsembleDevice::Attach(IOPCIDevice * pci, uint8_t bar0)
     SetInputSafetyOffset(kSafetyOffset);
     AddStream(ivars->output.stream.get());
     AddStream(ivars->input.stream.get());
+    nameChannels(IOUserAudioObjectPropertyScope::Input, true, kInputChannels);
+    nameChannels(IOUserAudioObjectPropertyScope::Output, false, kOutputChannels);
     ret = addVolume();
     if (ret != kIOReturnSuccess) {
         return ret;
@@ -248,6 +250,16 @@ kern_return_t EnsembleDevice::addVolume()
     }
     ivars->volume->SetDevice(this);
     return AddControl(ivars->volume.get());
+}
+
+void EnsembleDevice::nameChannels(IOUserAudioObjectPropertyScope scope, bool input, uint32_t count)
+{
+    for (uint32_t i = 0; i < count; i++) {
+        char name[32];
+        channelName(input, i, name, sizeof(name));
+        auto string = OSSharedPtr(OSString::withCString(name), OSNoRetain);
+        SetElementName(i + 1, scope, string.get());
+    }
 }
 
 kern_return_t EnsembleDevice::addClockSource()

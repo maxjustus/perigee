@@ -38,6 +38,7 @@ private:
     kern_return_t applyRate(double rate) LOCALONLY;
     kern_return_t addVolume() LOCALONLY;
     kern_return_t addClockSource() LOCALONLY;
+    void nameChannels(IOUserAudioObjectPropertyScope scope, bool input, uint32_t count) LOCALONLY;
     virtual void WrapOccurred(OSAction * action, uint64_t count, uint64_t time)
         TYPE(IOInterruptDispatchSource::InterruptOccurred);
     virtual void MailboxTimerOccurred(OSAction * action, uint64_t time)

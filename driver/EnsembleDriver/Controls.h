@@ -1,6 +1,7 @@
 #ifndef Controls_h
 #define Controls_h
 
+#include <stddef.h>
 #include <stdint.h>
 
 namespace Ensemble {
@@ -14,6 +15,46 @@ constexpr uint8_t kCommandClockSource = 0x2A;
 constexpr const char * kClockSourceNames[] = {"Internal", "Word Clock", "S/PDIF Coax",
                                               "Optical 1", "Optical 2"};
 constexpr uint32_t kClockSourceCount = sizeof(kClockSourceNames) / sizeof(kClockSourceNames[0]);
+
+inline void channelName(bool input, uint32_t index, char * out, size_t size)
+{
+    static const char * const fixed[] = {"Front Mic L", "Front Mic R", "S/PDIF L", "S/PDIF R",
+                                         "Mix 1 L", "Mix 1 R", "FX Send L", "FX Send R"};
+    const char * text = nullptr;
+    uint32_t number = 0;
+    if (!input) {
+        text = "Playback ";
+        number = index + 1;
+    } else if (index <= 7) {
+        text = "Analog ";
+        number = index + 1;
+    } else if (index <= 9) {
+        text = fixed[index - 8];
+    } else if (index <= 11) {
+        text = "Guitar ";
+        number = index - 9;
+    } else if (index <= 13) {
+        text = fixed[index - 10];
+    } else if (index <= 29) {
+        text = "Optical ";
+        number = index - 13;
+    } else {
+        text = fixed[4 + (index - 30) % 4];
+    }
+    size_t at = 0;
+    for (; *text != '\0' && at + 1 < size; text++) {
+        out[at++] = *text;
+    }
+    char digits[10];
+    size_t count = 0;
+    for (; number > 0; number /= 10) {
+        digits[count++] = char('0' + number % 10);
+    }
+    while (count > 0 && at + 1 < size) {
+        out[at++] = digits[--count];
+    }
+    out[at] = '\0';
+}
 
 inline float decibels(uint8_t attenuation)
 {
