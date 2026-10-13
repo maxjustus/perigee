@@ -1,6 +1,6 @@
 """Decodes DSP core opcodes on the unit. NOTES-vendor-driver.md 8.3 lists the results.
 
-Usage: python3 scripts/dsp/isa.py sweep|pairs|jumps|copies|stall
+Usage: python3 scripts/dsp/isa.py sweep|pairs|jumps|copies|stall|extra|routes|state
 
 The tests run in thread 0. DSP I/O channel 0 feeds Analog 1, panned hard
 left in Mixer 1, and channel 1 feeds Analog 2, panned hard right. Record
@@ -14,7 +14,7 @@ import sys
 
 import numpy as np
 
-from dsp import Src, ins, record, session, store
+from dsp import Src, block, ins, record, session, store
 
 B_VALUES = [-2.0, -0.75, -0.1, 0.0, 0.1, 0.5, 1.0, 3.0]
 SCALE, REF = 0.1, 0.25
@@ -134,6 +134,60 @@ async def stall(core):
         print(f"STALL {n:3}: store after it {'ran' if abs(np.median(right) - Q) < 0.01 else 'did not run'}", flush=True)
 
 
+async def extra(core):
+    print(f"{'b =':24}" + " ".join(f"{b:+9.2f}" for b in B_VALUES))
+    for op in (0x13, 0x29, 0x2A):
+        for a in (0.5, -1.5):
+            await core.coefs(coefs(a))
+            print(row(f"{op:02x} AB a={a}", await points(core, program([ins(op, a=1, b_src=Src.R)]))), flush=True)
+    for k in (0, 3):
+        print(row(f"A = s8 group, k={k}", await points(core, program([ins(6, a=8, a_src=Src.STATE, k=k)]))), flush=True)
+    await core.coefs([1.0, 0.0, SCALE, REF, 3.0, 0.1, 1.0])
+    loop = [ins(6, a=1), ins(6, a=4, to_r=False), ins(6, a=5, b_src=Src.R),
+            ins(8, a=6, b_src=Src.X, to_r=False), 0x01 | 0xFE << 6 | 0x7B << 14 | 0b101 << 21 | 0x01 << 24]
+    _, right = await run(core, program(loop))
+    print(f"loop: r = 0, x = 3, three passes of r += 0.1 -> r = {np.median(right) / SCALE:+.4f}", flush=True)
+    state = list(STATE)
+    state[30] = 0.77
+    await core.state(state, thread=1)
+    await core.coefs(coefs(0.5))
+    copy = [0x14 | 30 << 6 | 1 << 14 | 20 << 21, ins(5, b=20, b_src=Src.STATE)]
+    print(row("0x14 from thread 1 s30", await points(core, program(copy))), flush=True)
+
+
+async def routes(core):
+    """0xD3 with DSP input 2 and output 3. Record channel 0 is Analog 1 as recorded."""
+    await core.route(0, on=False)
+    await core.coefs([1.0, 0.0, 0.25])
+    await core.swap([ins(6, a=2), store(io=3)])
+    for mode in (0, 1, 2, 3):
+        await core.send(block(0xD3, 0, 0, [2, 3, mode]))
+        await asyncio.sleep(0.4)
+        await core.check_protected()
+        recorded, mixer = record([0, 30])
+        print(f"mode {mode}: record channel 0 = {np.median(recorded):+.4f}, Mixer 1 left = {np.median(mixer):+.4f}", flush=True)
+    await core.send(block(0xD3, 0, 0, [2, 3, 0]))
+
+
+async def state(core):
+    """A 0xD4 write copies the whole staging buffer: state[(start + j) % 256] = staging[j]."""
+    p1 = [0.01 * (i % 50) + 0.005 for i in range(255)]
+    p2 = [-0.01 * (i % 37) - 0.003 for i in range(255)]
+    staging = list(p2) + [0.0]
+    await core.coefs([1.0, 0.0, 0.01])
+    for label, values, start in (("full write p1", p1, 0), ("full write p2", p2, 0), ("s40 = 0.9", [0.9], 40), ("s100 = 0.8", [0.8], 100)):
+        await core.state(values, start=start)
+        staging[:len(values)] = values
+        expected = {i: staging[(i - start) % 256] for i in (8, 40, 100, 200)}
+        cells = []
+        for word, want in expected.items():
+            _, right = await run(core, [ins(5, a=2, b=8, b_src=Src.STATE, k=3), store(io=0, offset=1),
+                                        ins(5, b=word, b_src=Src.STATE), store(io=1, offset=0)])
+            got = float(np.median(right))
+            cells.append(f"s{word} {got:+.4f} ({'as predicted' if abs(got - want) < 0.0005 else f'want {want:+.4f}'})")
+        print(f"{label:14}", "  ".join(cells), flush=True)
+
+
 async def main(test):
     async with session(MIXER) as core:
         await core.load([0], coefs(0.5), STATE)
@@ -143,7 +197,7 @@ async def main(test):
 
 
 if __name__ == "__main__":
-    tests = {f.__name__: f for f in (sweep, pairs, jumps, copies, stall)}
+    tests = {f.__name__: f for f in (sweep, pairs, jumps, copies, stall, extra, routes, state)}
     if len(sys.argv) != 2 or sys.argv[1] not in tests:
         sys.exit(__doc__)
     asyncio.run(main(tests[sys.argv[1]]))
