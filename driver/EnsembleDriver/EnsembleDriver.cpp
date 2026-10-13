@@ -57,9 +57,15 @@ static kern_return_t attach(IOService * service, Bar0 * bar0)
     bar0->pci->ConfigurationRead16(kIOPCIConfigurationOffsetCommand, &command);
     bar0->pci->ConfigurationWrite16(kIOPCIConfigurationOffsetCommand,
                                     command | kIOPCICommandMemorySpace | kIOPCICommandBusLead);
+    uint8_t revision = 0;
+    bar0->pci->ConfigurationRead8(kIOPCIConfigurationOffsetRevisionID, &revision);
+    publish(service, "FirmwareRevision", revision);
     uint32_t id = bar0->read(kID);
     publish(service, "ID", id);
-    return id == UINT32_MAX ? kIOReturnNoDevice : kIOReturnSuccess;
+    if (id == UINT32_MAX) {
+        return kIOReturnNoDevice;
+    }
+    return revision < kMinFirmwareRevision ? kIOReturnUnsupported : kIOReturnSuccess;
 }
 
 static kern_return_t addDevice(EnsembleDriver * driver, EnsembleDriver_IVars * ivars)

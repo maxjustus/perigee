@@ -50,6 +50,7 @@ constexpr uint32_t kRingFrames = 0x4000;
 constexpr uint32_t kOutputChannels = 36;
 constexpr uint32_t kInputChannels = 34;
 constexpr uint32_t kMaxDepth = 32;
+constexpr uint8_t kMinFirmwareRevision = 0x56;
 
 inline uint32_t meterTimer(uint32_t hz, uint32_t general)
 {
