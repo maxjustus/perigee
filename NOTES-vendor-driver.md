@@ -597,7 +597,9 @@ mixer meters:
   600 is 0 dB and 720 is +12 dB, the unit's maximum. The vendor HAL never
   sends more than 660 (+6 dB). 0 closes the channel.
 - `MixerChannelPan` is 0 to 127, center 64. It works as balance: the near
-  side stays at 0 dB.
+  side stays at 0 dB. A mono input (Analog 1 in Mixer 1) follows a pan law
+  instead: 64 gives 0.704 (-3.0 dB) on each side, 0 gives 1.000 left and
+  0.0003 right, and 127 gives 1.000 right and 0.018 left.
 - `MixerChannelSolo` and `MixerChannelSoloSafe` exist on Mixer 1 only.
   Solo arrives as type 1 without a mixer index.
 
@@ -771,7 +773,9 @@ The index tests in `createChannelName` are `<= 7`, `<= 9`, `<= 11`,
 `<= 13`, `<= 29`. Indices above 29 use `index - 34 + 4` to select the
 mixer return name.
 
-The record ring holds 34 channels in this order.
+The record ring holds 34 channels in this order. Channels 30 and 31 carry
+Mixer 1. With Analog 1 in Mixer 2, 3, or 4 only, channels 30 to 33 stayed
+silent.
 
 ### 5.11 Custom CoreAudio properties (Apogee Control API)
 
