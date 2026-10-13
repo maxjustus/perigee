@@ -50,6 +50,12 @@ mic, has no controls. A fader is 0 to 720 in 0.1 dB steps, with 600 at
 0 dB. The vendor HAL stops at 660 (+6 dB). A pan is 0 to 127, with 64 at
 the center. Mixer 1 also has `solo` and `soloSafe`.
 
+Two channel flags apply to all four mixers. `mixers/channels/<n>/enabled`
+lets channel n into the mixers: a disabled channel is not mixed.
+`mixers/channels/<n>/stereo` exists for the first channel of each pair
+(1, 3, 5, 7, 11, ..., 45) and flags the pair n, n+1 as stereo. The front
+panel mic (9, 10) has no pair.
+
 Routing paths name the output pair: `routing/line1-2` to
 `routing/line9-10`, `routing/guitar1-2`, `routing/spdif`,
 `routing/optical1-2` to `routing/optical15-16`, `routing/headphone1`, and
