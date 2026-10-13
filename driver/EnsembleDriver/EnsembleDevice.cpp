@@ -209,8 +209,8 @@ kern_return_t EnsembleDevice::Attach(IOPCIDevice * pci, uint8_t bar0)
     setLatency(kInitialRate);
     AddStream(ivars->output.stream.get());
     AddStream(ivars->input.stream.get());
-    nameChannels(IOUserAudioObjectPropertyScope::Input, true, kInputChannels);
-    nameChannels(IOUserAudioObjectPropertyScope::Output, false, kOutputChannels);
+    nameChannels(true);
+    nameChannels(false);
     ret = addVolume();
     if (ret != kIOReturnSuccess) {
         return ret;
@@ -313,9 +313,10 @@ kern_return_t EnsembleDevice::addVolume()
     return AddControl(ivars->volume.get());
 }
 
-void EnsembleDevice::nameChannels(IOUserAudioObjectPropertyScope scope, bool input, uint32_t count)
+void EnsembleDevice::nameChannels(bool input)
 {
-    for (uint32_t i = 0; i < count; i++) {
+    auto scope = input ? IOUserAudioObjectPropertyScope::Input : IOUserAudioObjectPropertyScope::Output;
+    for (uint32_t i = 0; i < (input ? kInputChannels : kOutputChannels); i++) {
         char name[32];
         channelName(input, i, name, sizeof(name));
         auto string = OSSharedPtr(OSString::withCString(name), OSNoRetain);

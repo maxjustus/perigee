@@ -47,7 +47,7 @@ private:
     void startAudio(uint64_t sample_time) LOCALONLY;
     kern_return_t addVolume() LOCALONLY;
     kern_return_t addClockSource() LOCALONLY;
-    void nameChannels(IOUserAudioObjectPropertyScope scope, bool input, uint32_t count) LOCALONLY;
+    void nameChannels(bool input) LOCALONLY;
     virtual void WrapOccurred(OSAction * action, uint64_t count, uint64_t time)
         TYPE(IOInterruptDispatchSource::InterruptOccurred);
 };
