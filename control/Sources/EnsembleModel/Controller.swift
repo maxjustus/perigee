@@ -64,6 +64,10 @@ public final class Controller: @unchecked Sendable {
     }
 
     public func receive(_ report: Report) {
+        if report.type == 5 {
+            broadcast(notification("restarted", [:]))
+            return
+        }
         let matches = byKey[Key(report)] ?? []
         guard !matches.isEmpty else {
             broadcast(notification("report", [

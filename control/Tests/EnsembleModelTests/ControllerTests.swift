@@ -93,6 +93,13 @@ func makeController() -> (Controller, FakeTransport, Broadcasts) {
     #expect((report["params"] as? [String: Any])?["data"] as? [Int] == [2, 0x58])
 }
 
+@Test func aPsocRestartIsBroadcast() {
+    let (controller, _, broadcasts) = makeController()
+    controller.receive(Report(type: 5, command: 0, p1: 0, p2: 0, data: []))
+    #expect(broadcasts.texts.count == 1)
+    #expect(object(broadcasts.texts[0])["method"] as? String == "restarted")
+}
+
 @Test func rawSendPassesWordsThrough() {
     let (controller, transport, _) = makeController()
     _ = controller.handle(#"{"jsonrpc":"2.0","id":4,"method":"raw.send","params":{"words":[1,0,4]}}"#)

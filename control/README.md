@@ -64,7 +64,7 @@ header `1, 0`. Records follow, 4 bytes to a word, low byte first.
 
 An error reply to -32700 or -32600 has `"id": null`.
 
-The server sends three notifications:
+The server sends four notifications:
 
 - `changed`: object of path: new value. The dext reports every sent set
   command and every front-panel change, so all clients get each change once.
@@ -72,6 +72,11 @@ The server sends three notifications:
   `{type, command, p1, p2, data}`. `type` 1 is a set record: `p2` is 0
   and `data` holds one byte. `type` 2 is a block record with up to 100
   bytes of `data`.
+- `restarted`: the PSoC restarted, with empty params. The PSoC replays
+  its saved settings, and `changed` notifications follow from the
+  Get-all that the dext sends. The restart removes the DSP routes (0xD3).
+  Whether the DSP programs stay in the FPGA is unknown. A client that
+  loaded DSP programs or routes must load them again.
 - `meters`: peak levels as `{inputs, outputs, outputGroup, group2,
   mixers}`, arrays of 30, 30, 4, 16, and 8 integers. `inputs` follows
   mixer channels 1-30. `outputs` holds the 30 physical outputs.
