@@ -559,6 +559,16 @@ the value in `data[0]`. A command with two arguments sends `p1` and
 | 0xD6 | DSPCore load/erase/coefficients | 2 | | 4 bytes |
 | 0xD7 | DSPCoreHaltResume | 2 | | 4 bytes |
 
+Mixer channels are 0 to 47. Channels 0 to 29 follow the input meter
+order, 30 and 31 carry Playback 1 and 2, and channel 46 is the mixer
+master. Measured with a tone on Playback 1 and 2 and the mixer meters:
+
+- `MixerChannelFaderLevel` is 2 bytes, big-endian, 0.1 dB per step.
+  600 is 0 dB and 720 is +12 dB, the maximum. 0 closes the channel.
+- `MixerChannelPan` is 0 to 127, center 64. It works as balance: the near
+  side stays at 0 dB.
+- `MixerChannelSolo` arrives as type 1 without a mixer index.
+
 DAW fader level: `uint16 = (clamp(dB) + offset) * scale`, byte-swapped.
 The constants are in the HAL at `setDAWMixerFaderLevel`, unverified here.
 
