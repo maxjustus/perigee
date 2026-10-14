@@ -70,7 +70,8 @@ inline uint8_t attenuation(float decibels)
 inline void follow(uint8_t monitors[kMonitorOutputs], uint8_t speaker);
 
 // A volume change moves all three monitor outputs by the same step, so it
-// waits until the PSoC reported each output.
+// waits until the PSoC reported each output and the outbox has room for
+// every moved output.
 struct Monitors {
     uint8_t attenuation[kMonitorOutputs];
     uint8_t known;
@@ -90,18 +91,26 @@ struct Monitors {
     }
 
     template <typename Send>
-    void apply(Send && send)
+    void apply(uint32_t room, Send && send)
     {
         if (!pending || known != (1 << kMonitorOutputs) - 1) {
             return;
         }
         uint8_t next[kMonitorOutputs];
+        uint32_t moved = 0;
         for (uint8_t i = 0; i < kMonitorOutputs; i++) {
             next[i] = attenuation[i];
         }
         follow(next, requested);
         for (uint8_t i = 0; i < kMonitorOutputs; i++) {
-            if (next[i] != attenuation[i] && send(i, next[i])) {
+            moved += next[i] != attenuation[i];
+        }
+        if (moved > room) {
+            return;
+        }
+        for (uint8_t i = 0; i < kMonitorOutputs; i++) {
+            if (next[i] != attenuation[i]) {
+                send(i, next[i]);
                 attenuation[i] = next[i];
             }
         }

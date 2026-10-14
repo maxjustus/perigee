@@ -141,8 +141,8 @@ void EnsemblePsoc::RemoveListener(EnsembleUserClient * listener)
 void IMPL(EnsemblePsoc, PollOccurred)
 {
     const Mailbox<Bar0> & mailbox = ivars->mailbox;
-    ivars->monitors.apply([&](uint8_t output, uint8_t value) {
-        return ivars->outbox.push(set(kCommandOutputAttenuation, output, value));
+    ivars->monitors.apply(kOutboxCapacity - ivars->outbox.count, [&](uint8_t output, uint8_t value) {
+        ivars->outbox.push(set(kCommandOutputAttenuation, output, value));
     });
     auto handle = [&](const Report & report) {
         OSArray * listeners = ivars->listeners.get();

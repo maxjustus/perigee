@@ -32,17 +32,32 @@ static void monitors_wait_for_every_output_before_a_volume_change()
 {
     Monitors monitors = {};
     int sent = 0;
-    auto count = [&](uint8_t, uint8_t) { return ++sent > 0; };
+    auto count = [&](uint8_t, uint8_t) { sent++; };
     monitors.request(10);
     monitors.report(0, 20);
     monitors.report(2, 30);
-    monitors.apply(count);
+    monitors.apply(kMonitorOutputs, count);
     CHECK(sent == 0);
     monitors.report(1, 25);
-    monitors.apply(count);
+    monitors.apply(kMonitorOutputs, count);
     CHECK(sent == 3);
-    monitors.apply(count);
+    monitors.apply(kMonitorOutputs, count);
     CHECK(sent == 3);
+}
+
+static void monitors_keep_a_volume_change_until_every_output_fits()
+{
+    Monitors monitors = {};
+    monitors.report(0, 20);
+    monitors.report(1, 25);
+    monitors.report(2, 30);
+    monitors.request(35);
+    int sent = 0;
+    auto count = [&](uint8_t, uint8_t) { sent++; };
+    monitors.apply(kMonitorOutputs - 1, count);
+    CHECK(sent == 0);
+    monitors.apply(kMonitorOutputs, count);
+    CHECK(sent == 3 && monitors.attenuation[kSpeaker] == 35);
 }
 
 static void monitors_send_only_the_outputs_that_move()
@@ -55,10 +70,9 @@ static void monitors_send_only_the_outputs_that_move()
     uint8_t outputs[kMonitorOutputs] = {};
     uint8_t values[kMonitorOutputs] = {};
     int sent = 0;
-    monitors.apply([&](uint8_t output, uint8_t value) {
+    monitors.apply(kMonitorOutputs - 1, [&](uint8_t output, uint8_t value) {
         outputs[sent] = output;
         values[sent++] = value;
-        return true;
     });
     CHECK(sent == 2);
     CHECK(outputs[0] == 1 && values[0] == 25);
@@ -98,6 +112,7 @@ int main()
     follow_moves_every_monitor_by_the_speaker_change();
     follow_clamps_each_monitor();
     monitors_wait_for_every_output_before_a_volume_change();
+    monitors_keep_a_volume_change_until_every_output_fits();
     monitors_send_only_the_outputs_that_move();
     return finish();
 }
