@@ -47,6 +47,30 @@ They drop or skip records. They are not demonstrated memory corruption.
 **Unknown.** Complete external reachability, whole-path effects, and exploitability.
 No claim here establishes arbitrary code execution.
 
+## EEPROM descriptor write path
+
+**Confirmed.** No mailbox command writes EEPROM descriptor bytes with host-chosen content.
+The replay width defect is therefore not reachable through the host send channel.
+The host deny list needs no more commands for it.
+
+Reproduce each range with `scripts/firmware/psoc-protocol-map.py <start> <end>`.
+
+| Step | Evidence |
+|---|---|
+| One row writer | `0x23064` writes every EEPROM row. Its only direct callers are `0x13050` (`0x13084`), `0x130AC` (`0x13116`), and `0x13188` (`0x13220`, `0x13234`) |
+| Descriptor bytes | `0x20EEC` streams four descriptor bytes through `0x13050`. Its only direct callers are the save functions `0x20F5C` (`0x2101E`), `0x210B0` (`0x21186`), and `0x211DC` (`0x21218`) |
+| Descriptor source | `0x20EB8` copies bytes 0 to 3 of a `SettingsDescriptors` entry at `0x1FFF8BEC` into the save temporaries at `0x1FFFA870` (`0x20F96`, `0x210EA`) |
+| Table origin | Startup copies the table from flash `0x25EBC`. The only store into it is `0x203F6` in `0x203B4`, a halfword at entry offset 4. Bytes 0 to 3 and the volatile flag in byte 7 have no writer |
+| Lookup users | `0x21738` and its wrapper `0x204F4` return an entry pointer to ten call sites. They load through it. `0x21790` bounds p1 and p2 against the entry counts and writes only stack locals. The pending-bit stores at `0x2089E`, `0x20910`, and `0x209AA` target the report table that `0x21854` returns |
+| Other EEPROM writes | `0x17754` writes the restart marker at fixed offset `0x7F0` (`0x17784`). `0x21088` and `0x212E6` patch the CRC byte at offset 3. `0x1314C` flushes the stream buffer |
+| Known stray stores | Commands `11` to `13` store at `0x1FFF9110+3*p1` to `0x1FFF9112+3*p1` (`0x14BC2`, `0x14C18`, `0x14C6C`). Command `94` stores at `0x1FFF90B6+p1` (`0x140D6`). All four start above the table end, `0x1FFF8DCC`, and grow upward |
+
+**Confirmed.** A host can change saved values and can start a factory save with command `51`, value `AB`.
+Neither path changes descriptor bytes. Every save writes the compiled descriptors.
+
+**Unknown.** A memory-corruption path outside this table could still reach `0x1FFF8BEC`.
+The review covered the documented stray stores and direct calls only.
+
 ## Safety notes
 
 - Do not send slot lengths above 29 through any host implementation.
