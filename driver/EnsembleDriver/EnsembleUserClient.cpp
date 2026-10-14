@@ -143,24 +143,17 @@ kern_return_t EnsembleUserClient::ExternalMethod(uint64_t selector,
         if (!ivars->session || input == nullptr) {
             return kIOReturnBadArgument;
         }
-        const uint8_t * request = static_cast<const uint8_t *>(input->getBytesNoCopy());
-        uint32_t bytes = 0;
-        bool read = false;
-        if (input->getLength() == 2 && request[0] == 1) {
-            read = true;
-            bytes = request[1];
-        } else if (input->getLength() >= 2 && request[0] == 0) {
-            bytes = uint32_t(input->getLength()) - 1;
-        }
-        if (!Ensemble::validI2cLength(bytes)) {
+        Ensemble::I2cRequest request;
+        if (!Ensemble::parseI2cRequest(static_cast<const uint8_t *>(input->getBytesNoCopy()),
+                                       uint32_t(input->getLength()), &request)) {
             return kIOReturnBadArgument;
         }
         uint8_t in[Ensemble::kI2cMaxBytes] = {};
-        if (i2cTransfer(ivars->device.get(), read, bytes, request + 1, in)) {
+        if (i2cTransfer(ivars->device.get(), request.read, request.bytes, request.packet, in)) {
             return kIOReturnTimeout;
         }
-        if (read) {
-            arguments->structureOutput = OSData::withBytes(in, bytes);
+        if (request.read) {
+            arguments->structureOutput = OSData::withBytes(in, request.bytes);
             if (arguments->structureOutput == nullptr) {
                 return kIOReturnNoMemory;
             }

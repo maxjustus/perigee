@@ -47,6 +47,69 @@ inline bool validI2cLength(uint32_t bytes)
     return bytes > 0 && bytes <= kI2cMaxBytes;
 }
 
+struct I2cRequest {
+    bool read;
+    uint32_t bytes;
+    const uint8_t * packet;
+};
+
+inline bool validBootloaderPacket(const uint8_t * packet, uint32_t bytes);
+
+// A client sends [1, count] to read or [0, packet...] to write.
+inline bool parseI2cRequest(const uint8_t * request, uint32_t length, I2cRequest * out)
+{
+    if (length == 2 && request[0] == 1) {
+        *out = {true, request[1], nullptr};
+        return validI2cLength(out->bytes);
+    }
+    if (length >= 1 && request[0] == 0) {
+        *out = {false, length - 1, request + 1};
+        return validI2cLength(out->bytes) && validBootloaderPacket(out->packet, out->bytes);
+    }
+    return false;
+}
+
+constexpr uint8_t kBootloaderEnter = 0x38;
+constexpr uint8_t kBootloaderReportSize = 0x32;
+constexpr uint8_t kBootloaderRowChecksum = 0x3A;
+constexpr uint8_t kBootloaderExit = 0x3B;
+constexpr uint8_t kFlashArrays = 4;
+constexpr uint8_t kEepromArray = 0x40;
+
+// Only the reads that the vendor updater sends pass, in the vendor shape.
+// The Cypress loader writes flash for 0x34, 0x36, 0x37, and 0x39, and hands
+// unknown commands to an optional Apogee callback.
+inline bool validBootloaderPacket(const uint8_t * packet, uint32_t bytes)
+{
+    if (bytes < 7 || packet[0] != 0x01 || packet[bytes - 1] != 0x17) {
+        return false;
+    }
+    const uint32_t length = packet[2] | uint32_t(packet[3]) << 8;
+    if (bytes != 7 + length) {
+        return false;
+    }
+    uint16_t sum = 0;
+    for (uint32_t i = 0; i < 4 + length; i++) {
+        sum = uint16_t(sum + packet[i]);
+    }
+    if (uint16_t(packet[4 + length] | packet[5 + length] << 8) != uint16_t(-sum)) {
+        return false;
+    }
+    const uint8_t * data = packet + 4;
+    switch (packet[1]) {
+    case kBootloaderEnter:
+        return length == 0;
+    case kBootloaderReportSize:
+        return length == 1 && data[0] < kFlashArrays;
+    case kBootloaderRowChecksum:
+        return length == 3 && (data[0] < kFlashArrays || data[0] == kEepromArray);
+    case kBootloaderExit:
+        return length == 1 && data[0] == 0;
+    default:
+        return false;
+    }
+}
+
 }
 
 #endif
