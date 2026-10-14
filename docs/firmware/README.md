@@ -53,6 +53,7 @@ Reports appear as each agent completes its work. Their presence does not imply i
 | `fpga-bitstream.md` | FPGA image decode, device evidence, and reconstruction limits |
 | `fpga-reconstruction.md` | Second pass over checksum and reconstruction discrepancies |
 | `hardware-recovery.md` | Physical debug access, protection, backups, and recovery prerequisites |
+| `vendor-evidence.md` | Vendor documentation, chip identification, and community repair evidence |
 | `verify-update-transport.md` | Independent review of host update checks and transport failures |
 | `verify-memory-safety.md` | Independent review of parser, resource, and persistent-state bounds |
 | `verify-recovery.md` | Independent review of flash boundaries and reset dependencies |

@@ -260,3 +260,10 @@ that the p1 byte names. Lock reports 0x42 and 0x64 arrived five times each
 within one 4 s window, so the device repeats them outside an explicit
 request. The tracker for this work is
 `.pi-html/artifacts/_project/apogee-ensemble-driver/firmware-map-v001.html`.
+
+### Firmware release status
+
+2026-10-14. The Apogee knowledge base lists the final Ensemble Thunderbolt
+firmware as PSoC 1.5.3, FPGA 0.56, and resource 6. The base rate above
+matches. The installed firmware is the final vendor release. See
+`docs/firmware/vendor-evidence.md`.
