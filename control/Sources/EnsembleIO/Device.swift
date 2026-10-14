@@ -6,7 +6,7 @@ struct DeviceError: Error, CustomStringConvertible {
     let description: String
 }
 
-public final class Device: Transport, @unchecked Sendable {
+public final class Device: BootloaderLink, @unchecked Sendable {
     private let service: io_service_t
     private let connect: io_connect_t
     private let port: IONotificationPortRef
