@@ -383,10 +383,12 @@ void EnsembleDevice::Reported(const Report & report)
 
 void EnsembleDevice::Detach()
 {
-    halt();
-    if (ivars->wrap.get() != nullptr) {
-        ivars->wrap->SetEnableWithCompletion(false, nullptr);
-    }
+    ivars->queue->DispatchSync(^{
+        halt();
+        if (ivars->wrap.get() != nullptr) {
+            ivars->wrap->SetEnableWithCompletion(false, nullptr);
+        }
+    });
     IODMACommand * commands[] = {ivars->output.dma.get(), ivars->input.dma.get(), ivars->meter_dma.get()};
     for (IODMACommand * command : commands) {
         if (command != nullptr) {
