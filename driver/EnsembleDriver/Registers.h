@@ -19,6 +19,7 @@ constexpr uint64_t kUniqueIDLow = 0x54;
 constexpr uint64_t kUniqueIDHigh = 0x58;
 constexpr uint64_t kSampleDepth = 0x60;
 constexpr uint64_t kNumberOfChannels = 0x64;
+constexpr uint64_t kInfo = 0x68;
 
 constexpr uint64_t kRxSlots = 0x400;
 constexpr uint64_t kRxState = 0x7C0;

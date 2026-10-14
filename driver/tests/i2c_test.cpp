@@ -31,6 +31,19 @@ static void control_word_keeps_the_address_and_sets_the_transfer()
     CHECK((read & 0x3F) == 0x36);
 }
 
+static void control_word_clears_the_previous_count()
+{
+    const uint32_t after = 0x806C7C36;
+    CHECK(Ensemble::i2cControl(after, 8, true) == 0xC06C08B6);
+}
+
+static void bootloader_status_reads_bits_7_to_6()
+{
+    CHECK(Ensemble::bootloaderStatus(0x50) == 1);
+    CHECK(Ensemble::bootloaderStatus(0x90) == Ensemble::kStatusBootloader);
+    CHECK(Ensemble::bootloaderStatus(0xFFFFFFFF) == 3);
+}
+
 static void delay_matches_the_verified_divisor()
 {
     CHECK(Ensemble::i2cDelayMilliseconds(1) == 0);
@@ -137,6 +150,8 @@ static void writes_refuse_broken_frames()
 int main()
 {
     control_word_keeps_the_address_and_sets_the_transfer();
+    control_word_clears_the_previous_count();
+    bootloader_status_reads_bits_7_to_6();
     delay_matches_the_verified_divisor();
     window_words_round_up();
     length_bound();

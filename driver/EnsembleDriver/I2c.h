@@ -18,9 +18,21 @@ constexpr uint32_t kI2cMaxBytes = 255;
 constexpr uint32_t kI2cStartBit = 1u << 30;
 constexpr uint32_t kI2cReadBit = 1u << 7;
 constexpr uint32_t kI2cBusyBit = 1u << 31;
-constexpr uint32_t kI2cControlMask = 0xBFFFFF7Fu;
+// Clears start, read, and the count that the previous transfer left.
+constexpr uint32_t kI2cControlMask = 0xBFFF007Fu;
 constexpr uint32_t kI2cPollTries = 999;
 constexpr uint32_t kI2cPollSleepMilliseconds = 1;
+// The vendor HAL waits this long after it enables the engine, before Enter.
+constexpr uint32_t kI2cSettleMilliseconds = 3000;
+
+// INFO bits 7:6 read 1 while the PSoC application runs, and 2 while its
+// bootloader runs.
+constexpr uint32_t kStatusBootloader = 2;
+
+inline uint32_t bootloaderStatus(uint32_t info)
+{
+    return (info >> 6) & 3;
+}
 
 inline uint32_t i2cControl(uint32_t control, uint32_t bytes, bool read)
 {

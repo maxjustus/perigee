@@ -69,13 +69,26 @@ public final class Device: Transport, @unchecked Sendable {
     }
 
     /// Opens or closes the session that the bootloader entry gate and the
-    /// I2C transfer require. Zero closes it.
+    /// I2C transfer require. The driver refuses it while audio runs or while
+    /// another client holds it.
     public func enableSession(_ on: Bool) throws {
         var value: UInt64 = on ? 1 : 0
         let kr = IOConnectCallScalarMethod(connect, selectorSession, &value, 1, nil, nil)
         guard kr == KERN_SUCCESS else {
             throw DeviceError(description: String(format: "session: %#x", kr))
         }
+    }
+
+    /// The PSoC state in INFO bits 7:6: 1 for the application, 2 for the
+    /// bootloader.
+    public func bootloaderStatus() throws -> Int {
+        var status: UInt64 = 0
+        var count: UInt32 = 1
+        let kr = IOConnectCallScalarMethod(connect, selectorBootloaderStatus, nil, 0, &status, &count)
+        guard kr == KERN_SUCCESS else {
+            throw DeviceError(description: String(format: "bootloader status: %#x", kr))
+        }
+        return Int(status)
     }
 
     /// Writes one packet through the FPGA remote-I2C engine.
@@ -139,6 +152,7 @@ private let selectorSend: UInt32 = 0
 private let selectorSubscribe: UInt32 = 1
 private let selectorSession: UInt32 = 2
 private let selectorI2c: UInt32 = 3
+private let selectorBootloaderStatus: UInt32 = 4
 private let memoryMeters: UInt32 = 0
 
 // IOMessage.h defines it as iokit_common_msg(0x010), a macro that Swift does not import.

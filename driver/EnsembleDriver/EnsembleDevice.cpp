@@ -9,6 +9,7 @@
 #include "EnsembleVolume.h"
 #include "Bar0.h"
 #include "Controls.h"
+#include "I2c.h"
 #include "Registers.h"
 
 using namespace Ensemble;
@@ -48,6 +49,10 @@ struct EnsembleDevice_IVars {
     double reported_rate;
     OSSharedPtr<EnsembleVolume> volume;
     OSSharedPtr<EnsembleClockSource> clock_source;
+    // The user client that holds the bootloader session. Compared, never
+    // dereferenced: the client closes the session in its Stop.
+    OSObject * session;
+    bool i2c_enabled;
 };
 
 bool EnsembleDevice::init(IOUserAudioDriver * in_driver,
@@ -300,14 +305,113 @@ IOMemoryDescriptor * EnsembleDevice::GetMeters()
     return ivars->meters.get();
 }
 
-uint32_t EnsembleDevice::ReadRegister(uint64_t offset)
+// One session at a time, and never while audio runs. The work queue orders
+// the session against StartIO.
+kern_return_t EnsembleDevice::OpenSession(OSObject * owner)
 {
-    return ivars->bar0.read(offset);
+    __block kern_return_t ret = kIOReturnSuccess;
+    ivars->queue->DispatchSync(^{
+        if (ivars->running) {
+            ret = kIOReturnBusy;
+        } else if (ivars->session != nullptr && ivars->session != owner) {
+            ret = kIOReturnExclusiveAccess;
+        } else {
+            ivars->session = owner;
+        }
+    });
+    return ret;
 }
 
-void EnsembleDevice::WriteRegister(uint64_t offset, uint32_t value)
+void EnsembleDevice::CloseSession(OSObject * owner)
 {
-    ivars->bar0.write(offset, value);
+    ivars->queue->DispatchSync(^{
+        if (ivars->session != owner) {
+            return;
+        }
+        if (ivars->i2c_enabled) {
+            ivars->bar0.write(kI2cControlRegister, 0);
+            ivars->i2c_enabled = false;
+        }
+        ivars->session = nullptr;
+    });
+}
+
+bool EnsembleDevice::HoldsSession(OSObject * owner)
+{
+    __block bool holds = false;
+    ivars->queue->DispatchSync(^{
+        holds = ivars->session == owner;
+    });
+    return holds;
+}
+
+uint32_t EnsembleDevice::BootloaderStatus()
+{
+    return bootloaderStatus(ivars->bar0.read(kInfo));
+}
+
+// One remote-I2C transfer. Returns true when the engine stays busy, which
+// means the reply bytes are absent.
+static bool i2cTransfer(const Bar0 & regs, const I2cRequest & request, uint8_t * in)
+{
+    const uint32_t words = i2cWindowWords(request.bytes);
+    if (!request.read) {
+        for (uint32_t i = 0; i < words; i++) {
+            uint32_t word = 0;
+            for (uint32_t b = 0; b < 4 && i * 4 + b < request.bytes; b++) {
+                word |= uint32_t(request.packet[i * 4 + b]) << (8 * b);
+            }
+            regs.write(kI2cWindow + 4 * i, word);
+        }
+    }
+    regs.write(kI2cControlRegister,
+               i2cControl(regs.read(kI2cControlRegister), request.bytes, request.read));
+    IOSleep(i2cDelayMilliseconds(request.bytes));
+    bool busy = true;
+    for (uint32_t attempt = 0; attempt < kI2cPollTries && busy; attempt++) {
+        busy = (regs.read(kI2cControlRegister) & kI2cBusyBit) != 0;
+        if (busy) {
+            IOSleep(kI2cPollSleepMilliseconds);
+        }
+    }
+    if (request.read && !busy) {
+        for (uint32_t i = 0; i < words; i++) {
+            const uint32_t word = regs.read(kI2cWindow + 4 * i);
+            for (uint32_t b = 0; b < 4 && i * 4 + b < request.bytes; b++) {
+                in[i * 4 + b] = uint8_t(word >> (8 * b));
+            }
+        }
+    }
+    return busy;
+}
+
+// The engine stays enabled from the first transfer to the end of the
+// session, as in the vendor updater. It runs only in the bootloader: the
+// application can own the same bus.
+kern_return_t EnsembleDevice::TransferI2c(OSObject * owner, const I2cRequest & request, uint8_t * in)
+{
+    __block kern_return_t ret = kIOReturnSuccess;
+    ivars->queue->DispatchSync(^{
+        const Bar0 & regs = ivars->bar0;
+        if (ivars->session != owner) {
+            ret = kIOReturnNotPermitted;
+            return;
+        }
+        if (bootloaderStatus(regs.read(kInfo)) != kStatusBootloader) {
+            ret = kIOReturnNotReady;
+            return;
+        }
+        if (!ivars->i2c_enabled) {
+            regs.write(kI2cControlRegister, kI2cEnablePre);
+            regs.write(kI2cControlRegister, kI2cEnable);
+            ivars->i2c_enabled = true;
+            IOSleep(kI2cSettleMilliseconds);
+        }
+        if (i2cTransfer(regs, request, in)) {
+            ret = kIOReturnTimeout;
+        }
+    });
+    return ret;
 }
 
 kern_return_t EnsembleDevice::addVolume()
@@ -461,6 +565,10 @@ kern_return_t EnsembleDevice::StartIO(IOUserAudioStartStopFlags in_flags)
 {
     __block kern_return_t ret = kIOReturnSuccess;
     ivars->queue->DispatchSync(^{
+        if (ivars->session != nullptr) {
+            ret = kIOReturnBusy;
+            return;
+        }
         ret = super::StartIO(in_flags);
         if (ret != kIOReturnSuccess) {
             return;

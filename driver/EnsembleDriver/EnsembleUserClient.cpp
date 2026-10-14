@@ -15,59 +15,17 @@ constexpr uint64_t kMemoryMeters = 0;
 enum Selector : uint64_t {
     kSelectorSend = 0,
     kSelectorSubscribe = 1,
-    // A client opts in per connection before the bootloader-entry command
-    // or an I2C transfer passes. Zero closes the session.
+    // A client opens the session before the bootloader-entry command or an
+    // I2C transfer passes. One client holds it at a time. Zero closes it.
     kSelectorSession = 2,
     kSelectorI2c = 3,
+    kSelectorBootloaderStatus = 4,
 };
 
 struct EnsembleUserClient_IVars {
     OSSharedPtr<EnsembleDevice> device;
     OSSharedPtr<OSAction> reports;
-    bool session = false;
 };
-
-// One remote-I2C transfer on the calling thread. Returns true when the
-// engine stays busy, which means the reply bytes are absent.
-static bool i2cTransfer(EnsembleDevice * device, bool read, uint32_t bytes,
-                        const uint8_t * out, uint8_t * in)
-{
-    device->WriteRegister(Ensemble::kI2cControlRegister, Ensemble::kI2cEnablePre);
-    device->WriteRegister(Ensemble::kI2cControlRegister, Ensemble::kI2cEnable);
-    if (!read) {
-        const uint32_t words = Ensemble::i2cWindowWords(bytes);
-        for (uint32_t i = 0; i < words; i++) {
-            uint32_t word = 0;
-            for (uint32_t b = 0; b < 4 && i * 4 + b < bytes; b++) {
-                word |= uint32_t(out[i * 4 + b]) << (8 * b);
-            }
-            device->WriteRegister(Ensemble::kI2cWindow + 4 * i, word);
-        }
-    }
-    const uint32_t control =
-        Ensemble::i2cControl(device->ReadRegister(Ensemble::kI2cControlRegister), bytes, read);
-    device->WriteRegister(Ensemble::kI2cControlRegister, control);
-    IOSleep(Ensemble::i2cDelayMilliseconds(bytes));
-    bool busy = true;
-    for (uint32_t attempt = 0; attempt < Ensemble::kI2cPollTries; attempt++) {
-        if ((device->ReadRegister(Ensemble::kI2cControlRegister) & Ensemble::kI2cBusyBit) == 0) {
-            busy = false;
-            break;
-        }
-        IOSleep(Ensemble::kI2cPollSleepMilliseconds);
-    }
-    if (read) {
-        const uint32_t words = Ensemble::i2cWindowWords(bytes);
-        for (uint32_t i = 0; i < words; i++) {
-            const uint32_t word = device->ReadRegister(Ensemble::kI2cWindow + 4 * i);
-            for (uint32_t b = 0; b < 4 && i * 4 + b < bytes; b++) {
-                in[i * 4 + b] = uint8_t(word >> (8 * b));
-            }
-        }
-    }
-    device->WriteRegister(Ensemble::kI2cControlRegister, 0);
-    return busy;
-}
 
 bool EnsembleUserClient::init()
 {
@@ -106,6 +64,7 @@ kern_return_t IMPL(EnsembleUserClient, Stop)
 {
     if (ivars->device.get() != nullptr) {
         ivars->device->GetPsoc()->RemoveListener(this);
+        ivars->device->CloseSession(this);
     }
     return Stop(provider, SUPERDISPATCH);
 }
@@ -126,7 +85,7 @@ kern_return_t EnsembleUserClient::ExternalMethod(uint64_t selector,
         Message message = {};
         message.count = uint32_t(input->getLength() / 4);
         memcpy(message.words, input->getBytesNoCopy(), input->getLength());
-        if (!validMessage(message, ivars->session)) {
+        if (!validMessage(message, ivars->device->HoldsSession(this))) {
             return kIOReturnBadArgument;
         }
         return ivars->device->GetPsoc()->Send(message);
@@ -135,12 +94,15 @@ kern_return_t EnsembleUserClient::ExternalMethod(uint64_t selector,
         if (arguments->scalarInputCount != 1 || arguments->scalarInput[0] > 1) {
             return kIOReturnBadArgument;
         }
-        ivars->session = arguments->scalarInput[0] != 0;
+        if (arguments->scalarInput[0] != 0) {
+            return ivars->device->OpenSession(this);
+        }
+        ivars->device->CloseSession(this);
         return kIOReturnSuccess;
     }
     case kSelectorI2c: {
         OSData * input = arguments->structureInput;
-        if (!ivars->session || input == nullptr) {
+        if (input == nullptr) {
             return kIOReturnBadArgument;
         }
         Ensemble::I2cRequest request;
@@ -149,8 +111,9 @@ kern_return_t EnsembleUserClient::ExternalMethod(uint64_t selector,
             return kIOReturnBadArgument;
         }
         uint8_t in[Ensemble::kI2cMaxBytes] = {};
-        if (i2cTransfer(ivars->device.get(), request.read, request.bytes, request.packet, in)) {
-            return kIOReturnTimeout;
+        const kern_return_t ret = ivars->device->TransferI2c(this, request, in);
+        if (ret != kIOReturnSuccess) {
+            return ret;
         }
         if (request.read) {
             arguments->structureOutput = OSData::withBytes(in, request.bytes);
@@ -160,6 +123,12 @@ kern_return_t EnsembleUserClient::ExternalMethod(uint64_t selector,
         }
         return kIOReturnSuccess;
     }
+    case kSelectorBootloaderStatus:
+        if (arguments->scalarOutput == nullptr || arguments->scalarOutputCount != 1) {
+            return kIOReturnBadArgument;
+        }
+        arguments->scalarOutput[0] = ivars->device->BootloaderStatus();
+        return kIOReturnSuccess;
     case kSelectorSubscribe:
         if (arguments->completion == nullptr) {
             return kIOReturnBadArgument;
