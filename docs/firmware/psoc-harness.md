@@ -45,13 +45,17 @@ array that holds the resource image at `0x380000`.
 
 ## Limits
 
-- Cold boot from the reset handler runs 2 million instructions and then
-  stalls at `0x22b6c`, in early peripheral initialization. Warm start is
-  the supported entry. A future pass must identify the blocking poll to
-  finish cold boot.
+- Cold boot is proven: emulation from the reset handler reaches the main
+  loop entry at `0x1F8FC` within the instruction budget. Two emulated
+  facts make this possible: the PLL status register reads locked, and the
+  display SPI status registers read always-complete, because the display
+  init polls bits 0 and 4 of both.
 - EEPROM writes, I2C, SPI, and preamp substitutes are registered but not
   exercised by the current test paths. They fire on settings saves, audio
   control changes, and display activity.
+- The timer substitute returns a constant tick value. Any future code path
+  that waits on elapsed time in a loop does not advance. None blocks the
+  current boot or warm-start paths.
 - The emulated FPGA answers from a model, not the vendor bitstream. DSP
   core behavior beyond the version registers is absent.
 - Nothing here proves hardware safety. It proves dispatch, state, and

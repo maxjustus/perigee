@@ -47,6 +47,8 @@ SRAM_BASE = 0x1FFF8000
 EEPROM_BASE = 0x40008000
 CONFIG_BASE = 0x48000000
 PLL_STATUS = 0x40004225
+DISPLAY_TX_STATUS = 0x4000646A  # CYREG_B0_UDB10_ST
+DISPLAY_RX_STATUS = 0x40006469  # CYREG_B0_UDB09_ST
 FPGA_BASE = 0x60800000
 BRIDGE_IMAGE_BASE = 0x380000
 BRIDGE_SIZE = 0x800000
@@ -132,6 +134,10 @@ class PSoCMachine:
         self.uc.mem_write(SRAM_BASE + 0x108, image[0x153D8:0x161A0])
         self.uc.mem_map(0x40000000, 0x100000)  # peripherals incl. EEPROM
         self.uc.mem_write(EEPROM_BASE, b'\xff' * 0x800)
+        # Display SPI status registers, modelled as always complete:
+        # the display init polls bits 0 and 4 of both (FUN_00010988 etc.).
+        self.uc.mem_write(DISPLAY_TX_STATUS, b'\x11')
+        self.uc.mem_write(DISPLAY_RX_STATUS, b'\x11')
         self.uc.mem_map(CONFIG_BASE, 0x8000)  # flash config words (ECC rows)
         if config is not None:
             self.uc.mem_write(CONFIG_BASE, config[:0x8000])
@@ -381,10 +387,14 @@ class PSoCMachine:
             read = self.get(RX_READ_INDEX)
         return records
 
-    def cold_boot(self, count=2_000_000):
-        """Run from Reset_Handler with a bounded instruction budget."""
+    def cold_boot(self, count=80_000_000):
+        """Run from Reset_Handler until the main loop entry, bounded.
+
+        Emulation stops at the first call of the main loop function,
+        0x1F8FC. A return at any other address is a stall.
+        """
         self.uc.reg_write(UC_ARM_REG_SP, 0x20008000)
-        self.uc.emu_start(RESET_HANDLER | 1, 0, count=count)
+        self.uc.emu_start(RESET_HANDLER | 1, MAIN_LOOP_START, count=count)
         return self.uc.reg_read(UC_ARM_REG_PC)
 
 

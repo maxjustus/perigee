@@ -63,11 +63,8 @@ def main():
     print('PASS refusal: bounded call stops with PC check')
 
     stall = machine.cold_boot()
-    in_loop = h.MAIN_LOOP_START <= stall < h.MAIN_LOOP_END
-    print(
-        'cold boot: '
-        + ('reached the main loop' if in_loop else f'stalled at {stall:#x}')
-    )
+    check(stall == h.MAIN_LOOP_START, 'cold boot reaches the main loop entry')
+    print('PASS cold boot: reached the main loop from Reset_Handler')
     exercised = (h.TICKER_READ, h.FPGA_WRITE_WORD32)
     for address in exercised:
         check(machine.hits[address] > 0, f'substitution at {address:#x} never fired')
