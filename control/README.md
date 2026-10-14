@@ -58,7 +58,10 @@ flags from the reported values. Thus `set` sends these paths first. It
 waits up to 1 s for their reports, and then it sends the other paths.
 
 `raw.send` sends the words to the PSoC unchanged. Words 0 and 1 are the
-header `1, 0`. Records follow, 4 bytes to a word, low byte first.
+header `1, 0`. One record follows, 4 bytes to a word, low byte first.
+The dext rejects a message that has more than one record, a record type
+other than 1, 2, or 4, nonzero pad bytes, or command 0x60 to 0x63, 0xD6,
+or 0xD7.
 `EnsembleModel/Wire.swift` encodes set and block records.
 
 | Code | Cause |
