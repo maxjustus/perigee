@@ -98,9 +98,10 @@ static void valid_message_denies_update_and_dsp_halt_commands()
     }
 }
 
-static void valid_message_accepts_types_1_2_and_4_only()
+static void valid_message_accepts_types_1_to_4()
 {
-    CHECK(!validMessage(message({1, 0, word(3, 0x29, 0, 0)})));
+    CHECK(validMessage(message({1, 0, word(3, 0x29, 0, 0)})));
+    CHECK(validMessage(message({1, 0, word(3, 0x40, 1, 0)})));
     CHECK(!validMessage(message({1, 0, word(5, 0x29, 0, 0)})));
     CHECK(!validMessage(message({1, 0, word(0, 0, 0, 0)})));
 }
@@ -110,6 +111,7 @@ static void valid_message_requires_one_record_that_ends_in_the_last_word()
     CHECK(!validMessage(message({1, 0})));
     CHECK(!validMessage(message({1, 0, word(1, 0x29, 0, 1), word(1, 0x2a, 0, 3)})));
     CHECK(!validMessage(message({1, 0, word(4, 0, 0, 0), word(0, 0, 0, 0)})));
+    CHECK(!validMessage(message({1, 0, word(3, 0x29, 0, 0), word(0, 0, 0, 0)})));
     CHECK(!validMessage(message({1, 0, word(2, 0x32, 5, 1), word(5, 0x02, 0x58, 0)})));
     CHECK(!validMessage(message({1, 0, word(2, 0x32, 5, 1), word(1, 0x02, 0, 0), word(0, 0, 0, 0)})));
 }
@@ -169,7 +171,7 @@ int main()
     set_packs_type_command_p1_and_value();
     valid_message_accepts_what_the_senders_send();
     valid_message_denies_update_and_dsp_halt_commands();
-    valid_message_accepts_types_1_2_and_4_only();
+    valid_message_accepts_types_1_to_4();
     valid_message_requires_one_record_that_ends_in_the_last_word();
     valid_message_requires_a_type2_length_of_1_to_99();
     valid_message_requires_zero_padding();

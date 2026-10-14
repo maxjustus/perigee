@@ -295,3 +295,23 @@ the current driver. `kDeniedCommands` also blocks 0x60 to 0x63, which
 keeps the bootloader entry command out of reach until the driver allows
 it. Bootloader session R7 additionally needs the FPGA remote-I2C engine,
 which the open driver does not implement.
+
+### Message types and restored identity reads
+
+2026-10-14. `validMessage` in `driver/EnsembleDriver/Protocol.h` now accepts
+types 1 to 4, so a type-3 Get passes. `driver/tests/protocol_test.cpp`
+asserts acceptance of type 3 and rejection of a trailing word after it.
+
+With the rebuilt dext active, every identity query works again:
+PSoC 1.5.3, FPGA 0.56, hardware revision 3, resource version 6 with
+CRC-8 `0x1B`, clock and PLL locked, DSP cycle count 162, DSP core version
+`01 00 00 01 00 00 00`.
+
+The unit-ID Get is the exception. A direct type-3 Get for 0x41 returns
+nothing, twice with an 8 s window. The identifier arrives inside a Get-all
+response instead. The earlier unit-ID answers came from the report burst
+that a 0x40 Get triggers, not from a direct Get.
+
+The `kDeniedCommands` list still blocks 0x60 to 0x63, and the driver has
+no remote-I2C engine. The bootloader session therefore remains out of
+reach.
