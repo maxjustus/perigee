@@ -27,15 +27,15 @@ with their Ensemble and Element addresses:
 
 | Function | Ensemble | Element |
 |---|---|---|
-| `FlashBridge_SetAddress24` | `0x12334` | `0x1543C` |
-| `FlashBridge_Erase` | `0x12444` | `0x1554C` |
-| `FlashBridge_Program` | `0x124A4` | `0x155AC` |
+| `FlashBridge_SetAddress24` | `0x12334` | `0x1545c` |
+| `FlashBridge_Erase` | `0x123e0` | `0x15508` |
+| `FlashBridge_Program` | `0x12444` | `0x1556c` |
 | `FPGA_WriteWord32LE` | `0x12610` | `0x15698` |
-| `ProtocolSerializeBlock` | `0x15B48` | `0x10D38` |
-| `SchedulerAddTimer` | `0x2019C` | `0x170B8` |
-| `SchedulerRemoveTimer` | `0x20230` | `0x1714C` |
-| `EepromStreamFlush` | `0x1318C` | `0x158B0` |
-| `DSP_InitProtocolState` | `0x13294` | `0x166D8` |
+| `EepromStreamFlush` | `0x1314c` | `0x158f0` |
+| `DSP_InitProtocolState` | `0x132a4` | `0x16718` |
+| `ProtocolSerializeBlock` | `0x15b48` | `0x10d18` |
+| `SchedulerAddTimer` | `0x2019c` | `0x17118` |
+| `SchedulerRemoveTimer` | `0x20230` | `0x171ac` |
 
 Everything else differs: the dispatcher tables, every mapped subsystem
 function, the version constants, and the full application layout. The
