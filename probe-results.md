@@ -259,4 +259,4 @@ One Get of 0x40 returns all four selector reports, not only the selector
 that the p1 byte names. Lock reports 0x42 and 0x64 arrived five times each
 within one 4 s window, so the device repeats them outside an explicit
 request. The tracker for this work is
-`.pi-html/artifacts/_project/apogee-ensemble-driver/firmware-map.md`.
+`.pi-html/artifacts/_project/apogee-ensemble-driver/firmware-map-v001.html`.
