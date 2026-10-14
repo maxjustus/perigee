@@ -4,13 +4,14 @@
 host := driver/build/Build/Products/Debug/EnsembleHost.app/Contents/MacOS/EnsembleHost
 service := control/.build/release/ensemble-control
 ctl := control/.build/release/ensemblectl
+bootloader := control/.build/release/ensemble-bootloader
 agent := $(HOME)/Library/LaunchAgents/dev.ensemble.control.plist
 log := $(HOME)/Library/Logs/ensemble-control.log
 apps := $(HOME)/Applications
 mixer := $(apps)/Ensemble Mixer.app
 gui := gui/$(shell id -u)
 
-.PHONY: install uninstall status service
+.PHONY: install uninstall status service bootloader
 
 install: service
 	driver/build.sh
@@ -41,3 +42,7 @@ service:
 	cd control && env -u CC -u CXX -u LLVM_CONFIG swift build -c release
 	codesign --force --sign - --entitlements control/user-client.entitlements $(service)
 	codesign --force --sign - --entitlements control/user-client.entitlements $(ctl)
+
+bootloader:
+	cd control && env -u CC -u CXX -u LLVM_CONFIG swift build -c release --product ensemble-bootloader
+	codesign --force --sign - --entitlements control/user-client.entitlements $(bootloader)
