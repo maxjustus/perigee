@@ -267,3 +267,31 @@ request. The tracker for this work is
 firmware as PSoC 1.5.3, FPGA 0.56, and resource 6. The base rate above
 matches. The installed firmware is the final vendor release. See
 `docs/firmware/vendor-evidence.md`.
+
+### Passive stream and Get-all through the open driver
+
+2026-10-14, `scripts/firmware/device-reports.py`, open driver, no vendor kext.
+
+R4, passive log for 45 s: 1,242 notifications, all `meters`. With no
+request outstanding the device sends meter frames and nothing else.
+The repeated lock reports seen earlier followed our own Gets.
+
+R5, one type-4 Get-all with an 8 s window: 85 reports across 21 command
+identifiers: 0x01, 0x03, 0x07, 0x09, 0x25, 0x26, 0x32 to 0x35, 0x38,
+0x39, 0x3a, 0x40, 0x41, 0x42, 0x44, 0x64, 0x90, 0xa0, 0xd2.
+Every identifier also appears in the vendor-kext capture.
+
+The 0x41 unit-ID record arrived as seven data bytes
+`00 0d 6a 00 84 44 f1`. The vendor-kext capture of the same record
+carries eight bytes, with the extra byte from adjacent heap memory. That
+overread is the panic cause recorded above. The open driver returns the
+declared seven bytes, and the record parses without error.
+
+Driver limit found: `validMessage` in `driver/EnsembleDriver/Protocol.h`
+accepts types 1, 2, and 4 only, so a type-3 Get is refused with
+`kIOReturnBadArgument`. The identity queries in `device-reports.py` and
+the DSP query path in `scripts/dsp/dsp.py` need type 3, so both fail on
+the current driver. `kDeniedCommands` also blocks 0x60 to 0x63, which
+keeps the bootloader entry command out of reach until the driver allows
+it. Bootloader session R7 additionally needs the FPGA remote-I2C engine,
+which the open driver does not implement.
