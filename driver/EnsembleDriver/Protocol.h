@@ -72,15 +72,27 @@ inline uint8_t byteAt(const uint32_t * words, uint32_t i)
     return uint8_t(words[i / 4] >> (8 * (i % 4)));
 }
 
-// Bootloader entry, firmware selectors, update data, the restart-state
-// store, and DSP core erase and halt. Clients must not send these.
-constexpr uint8_t kDeniedCommands[] = {0x60, 0x61, 0x62, 0x63, 0xD6, 0xD7};
+// Firmware selectors, update data, the restart-state store, and DSP core
+// erase and halt. Clients must not send these.
+constexpr uint8_t kDeniedCommands[] = {0x61, 0x62, 0x63, 0xD6, 0xD7};
+
+// Command 0x60 mode 0 writes the EEPROM restart marker and resets the PSoC
+// into its bootloader. Only an explicitly enabled session may send it, and
+// only in this exact shape.
+constexpr uint8_t kCommandBootloaderEntry = 0x60;
+
+inline bool isBootloaderEntry(const Message & message)
+{
+    return message.count == 3 && byteAt(message.words, 8) == 1 &&
+           byteAt(message.words, 9) == kCommandBootloaderEntry &&
+           byteAt(message.words, 10) == 0 && byteAt(message.words, 11) == 0;
+}
 
 // The PSoC parser misreads the record after a type-2 record of length 1 to
 // 3, and after a type-3 or type-4 record. So a client sends one record.
 // It dispatches stale data for a type-2 length of 0 or above 99.
 // A type-3 Get carries no data: command, p1, and p2 only.
-inline bool validMessage(const Message & message)
+inline bool validMessage(const Message & message, bool session = false)
 {
     if (message.count < 3 || message.count > kSlotWords) {
         return false;
@@ -103,6 +115,10 @@ inline bool validMessage(const Message & message)
         if (command == denied) {
             return false;
         }
+    }
+    if (command == kCommandBootloaderEntry &&
+        !(session && isBootloaderEntry(message))) {
+        return false;
     }
     if (end > message.count * 4 || message.count * 4 - end >= 4) {
         return false;

@@ -98,6 +98,20 @@ static void valid_message_denies_update_and_dsp_halt_commands()
     }
 }
 
+static void bootloader_entry_needs_a_session_and_the_exact_shape()
+{
+    // Denied by default, whatever the shape.
+    CHECK(!validMessage(set(0x60, 0, 0)));
+    // Allowed only inside a session, and only as command 0x60, p1 0, mode 0.
+    CHECK(validMessage(set(0x60, 0, 0), true));
+    CHECK(!validMessage(set(0x60, 0, 1), true));
+    CHECK(!validMessage(set(0x60, 1, 0), true));
+    // The other update commands stay denied inside a session.
+    for (uint8_t command : {0x61, 0x62, 0x63}) {
+        CHECK(!validMessage(set(command, 0, 0), true));
+    }
+}
+
 static void valid_message_accepts_types_1_to_4()
 {
     CHECK(validMessage(message({1, 0, word(3, 0x29, 0, 0)})));
@@ -171,6 +185,7 @@ int main()
     set_packs_type_command_p1_and_value();
     valid_message_accepts_what_the_senders_send();
     valid_message_denies_update_and_dsp_halt_commands();
+    bootloader_entry_needs_a_session_and_the_exact_shape();
     valid_message_accepts_types_1_to_4();
     valid_message_requires_one_record_that_ends_in_the_last_word();
     valid_message_requires_a_type2_length_of_1_to_99();
