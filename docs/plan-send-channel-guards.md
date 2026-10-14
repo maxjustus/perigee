@@ -30,7 +30,7 @@ Exposure of the current dext:
 | A slot state length of 31 overwrites a timer callback | None. `Mailbox.h` caps the length at 30 words. The overwrite starts at 31. The verification doc calls for at most 29, because the 120-byte firmware buffer bound is inferred. |
 | Command `0x62` trusts the count byte over the payload length | Open. `EnsembleUserClient.cpp` copies arbitrary user words with no command check. |
 | The resource loader copies its index before the CRC check | Open. Resource data travels in `0x62` packets on the same channel. |
-| EEPROM replay trusts descriptor widths | Unresolved. The dext sends value writes only. No mailbox command that writes descriptor bytes was confirmed. |
+| EEPROM replay trusts descriptor widths | None. No mailbox command writes descriptor bytes. See [verify-memory-safety.md](firmware/verify-memory-safety.md#eeprom-descriptor-write-path). |
 | The report serializer under-reports its word count | None. `Protocol.h` clamps the claimed length to the bytes the slot holds. |
 | Bridge timeouts never reach the update status | None. The dext replaces the vendor kext and has no update transport. |
 
@@ -59,6 +59,8 @@ The validator walks the record bytes in one pass:
    update data, the restart-state store, and the DSP core erase and halt.
 4. Require exactly one record. The record must end inside the final word of
    the message. The pad bytes after the record must be zero.
+5. Require a type-2 length of 1 to 99. The parser dispatches stale data for
+   length 0 and for lengths above 99.
 
 Current senders comply. The dext sends get-all and type-1 sets. The control
 service sends type-1 sets, type-2 blocks with count 1 or 2, and get-all. Each
