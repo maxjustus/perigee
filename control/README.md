@@ -34,7 +34,7 @@ runs it and sends no reply.
 | `describe` | none | List of `{path, kind}`, `{path, kind, min, max}`, or `{path, kind, choices}` |
 | `get` | none | Object of path: value, for every value reported so far |
 | `set` | Object of path: value | `true` after the commands are queued |
-| `raw.send` | `{words: [...]}`, 3 to 30 unsigned 32-bit integers | `true` |
+| `raw.send` | `{words: [...]}`, 3 to 29 unsigned 32-bit integers | `true` |
 | `presets.list` | none | List of preset names, sorted |
 | `presets.save` | `{name}` | `true` |
 | `presets.load` | `{name}` | `{skipped: [...]}` |

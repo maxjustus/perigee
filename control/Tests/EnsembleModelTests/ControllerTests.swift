@@ -182,6 +182,14 @@ func call(_ controller: Controller, _ method: String, _ params: String) -> [Stri
     #expect(transport.sent.isEmpty)
 }
 
+@Test func rawSendRejectsMoreThan29Words() {
+    let (controller, transport, _) = makeController()
+    let words = Array(repeating: "0", count: 30).joined(separator: ",")
+    let raw = controller.handle(#"{"jsonrpc":"2.0","id":2,"method":"raw.send","params":{"words":["# + words + "]}}")
+    #expect((object(raw!)["error"] as? [String: Any])?["code"] as? Int == -32602)
+    #expect(transport.sent.isEmpty)
+}
+
 @Test func mixerFaderSendsATypeTwoBlockBigEndian() {
     let (controller, transport, _) = makeController()
     _ = controller.handle(#"{"jsonrpc":"2.0","id":1,"method":"set","params":{"mixers/2/channels/31/fader":700}}"#)

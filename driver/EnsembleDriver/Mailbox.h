@@ -29,7 +29,7 @@ struct Mailbox {
     {
         const uint32_t write = regs.read(kTxWriteIndex);
         const uint32_t read = regs.read(kTxReadIndex);
-        if (message.count > kSlotWords || write >= kSlotCount || read >= kSlotCount ||
+        if (message.count > kSendSlotWords || write >= kSlotCount || read >= kSlotCount ||
             (write + 1) % kSlotCount == read) {
             return false;
         }

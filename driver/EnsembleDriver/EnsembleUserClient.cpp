@@ -71,7 +71,7 @@ kern_return_t EnsembleUserClient::ExternalMethod(uint64_t selector,
     case kSelectorSend: {
         OSData * input = arguments->structureInput;
         if (input == nullptr || input->getLength() % 4 != 0 || input->getLength() < 12 ||
-            input->getLength() > kSlotWords * 4) {
+            input->getLength() > kSendSlotWords * 4) {
             return kIOReturnBadArgument;
         }
         Message message = {};

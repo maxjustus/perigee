@@ -150,9 +150,9 @@ public final class Controller: @unchecked Sendable {
         case "raw.send":
             guard let items = (params as? [String: Any])?["words"] as? [Any],
                   case let words = items.compactMap({ integer($0).flatMap { UInt32(exactly: $0) } }),
-                  words.count == items.count, (3...30).contains(words.count)
+                  words.count == items.count, (3...29).contains(words.count)
             else {
-                throw RPCError.invalidParams("raw.send takes words: 3 to 30 unsigned 32-bit integers")
+                throw RPCError.invalidParams("raw.send takes words: 3 to 29 unsigned 32-bit integers")
             }
             try send(words)
             return true

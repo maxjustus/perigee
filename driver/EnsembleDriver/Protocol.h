@@ -6,6 +6,9 @@
 namespace Ensemble {
 
 constexpr uint32_t kSlotWords = 30;
+// The PSoC copies `state & 0x1F` words into a receive buffer whose 30-word
+// size is inferred, not declared. The vendor kext sends at most 29.
+constexpr uint32_t kSendSlotWords = 29;
 constexpr uint8_t kMaxReportData = 100;
 
 constexpr uint8_t kCommandSampleRate = 0x29;
