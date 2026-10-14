@@ -78,6 +78,7 @@ constexpr uint8_t kDeniedCommands[] = {0x60, 0x61, 0x62, 0x63, 0xD6, 0xD7};
 
 // The PSoC parser misreads the record after a type-2 record of length 1 to
 // 3, and after a type-3 or type-4 record. So a client sends one record.
+// It dispatches stale data for a type-2 length of 0 or above 99.
 inline bool validMessage(const Message & message)
 {
     if (message.count < 3 || message.count > kSlotWords) {
@@ -89,7 +90,11 @@ inline bool validMessage(const Message & message)
     if (type == 1 || type == 4) {
         end = 12;
     } else if (type == 2 && message.count > 3) {
-        end = 13u + byteAt(message.words, 12);
+        const uint8_t length = byteAt(message.words, 12);
+        if (length == 0 || length > 99) {
+            return false;
+        }
+        end = 13u + length;
     } else {
         return false;
     }

@@ -114,6 +114,26 @@ static void valid_message_requires_one_record_that_ends_in_the_last_word()
     CHECK(!validMessage(message({1, 0, word(2, 0x32, 5, 1), word(1, 0x02, 0, 0), word(0, 0, 0, 0)})));
 }
 
+static Message block(uint8_t length)
+{
+    std::vector<uint8_t> bytes = {1, 0, 0, 0, 0, 0, 0, 0, 2, 0x32, 0, 0, length};
+    bytes.resize(bytes.size() + length, 1);
+    bytes.resize((bytes.size() + 3) / 4 * 4, 0);
+    std::vector<uint32_t> words;
+    for (size_t i = 0; i < bytes.size(); i += 4) {
+        words.push_back(word(bytes[i], bytes[i + 1], bytes[i + 2], bytes[i + 3]));
+    }
+    return message(words);
+}
+
+static void valid_message_requires_a_type2_length_of_1_to_99()
+{
+    CHECK(!validMessage(block(0)));
+    CHECK(validMessage(block(1)));
+    CHECK(validMessage(block(99)));
+    CHECK(!validMessage(block(100)));
+}
+
 static void valid_message_requires_zero_padding()
 {
     CHECK(!validMessage(message({1, 0, word(2, 0x35, 1, 0), word(1, 1, 0x2a, 0)})));
@@ -151,6 +171,7 @@ int main()
     valid_message_denies_update_and_dsp_halt_commands();
     valid_message_accepts_types_1_2_and_4_only();
     valid_message_requires_one_record_that_ends_in_the_last_word();
+    valid_message_requires_a_type2_length_of_1_to_99();
     valid_message_requires_zero_padding();
     return finish();
 }
