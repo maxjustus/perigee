@@ -64,12 +64,54 @@ inline Message set(uint8_t command, uint8_t p1, uint8_t value)
     return {{1, 0, 1u | uint32_t(command) << 8 | uint32_t(p1) << 16 | uint32_t(value) << 24}, 3};
 }
 
+inline uint8_t byteAt(const uint32_t * words, uint32_t i)
+{
+    return uint8_t(words[i / 4] >> (8 * (i % 4)));
+}
+
+// Bootloader entry, firmware selectors, update data, the restart-state
+// store, and DSP core erase and halt. Clients must not send these.
+constexpr uint8_t kDeniedCommands[] = {0x60, 0x61, 0x62, 0x63, 0xD6, 0xD7};
+
+// The PSoC parser misreads the record after a type-2 record of length 1 to
+// 3, and after a type-3 or type-4 record. So a client sends one record.
+inline bool validMessage(const Message & message)
+{
+    if (message.count < 3 || message.count > kSlotWords) {
+        return false;
+    }
+    const uint8_t type = byteAt(message.words, 8);
+    const uint8_t command = byteAt(message.words, 9);
+    uint32_t end;
+    if (type == 1 || type == 4) {
+        end = 12;
+    } else if (type == 2 && message.count > 3) {
+        end = 13u + byteAt(message.words, 12);
+    } else {
+        return false;
+    }
+    for (uint8_t denied : kDeniedCommands) {
+        if (command == denied) {
+            return false;
+        }
+    }
+    if (end > message.count * 4 || message.count * 4 - end >= 4) {
+        return false;
+    }
+    for (uint32_t i = end; i < message.count * 4; i++) {
+        if (byteAt(message.words, i) != 0) {
+            return false;
+        }
+    }
+    return true;
+}
+
 // Words 0 and 1 are a header. Records follow. The PSoC can claim more data
 // than the message holds (report 0x41), so every read stops at `count`.
 template <typename Emit>
 void parseMessage(const uint32_t * words, uint32_t count, Emit && emit)
 {
-    auto byte = [&](uint32_t i) -> uint8_t { return uint8_t(words[i / 4] >> (8 * (i % 4))); };
+    auto byte = [&](uint32_t i) { return byteAt(words, i); };
     const uint32_t end = count * 4;
     uint32_t at = 8;
     while (at + 4 <= end) {

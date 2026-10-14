@@ -77,6 +77,9 @@ kern_return_t EnsembleUserClient::ExternalMethod(uint64_t selector,
         Message message = {};
         message.count = uint32_t(input->getLength() / 4);
         memcpy(message.words, input->getBytesNoCopy(), input->getLength());
+        if (!validMessage(message)) {
+            return kIOReturnBadArgument;
+        }
         return ivars->device->GetPsoc()->Send(message);
     }
     case kSelectorSubscribe:

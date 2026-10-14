@@ -72,6 +72,54 @@ static void set_packs_type_command_p1_and_value()
     CHECK(m.words[2] == word(1, 0x29, 0, 3));
 }
 
+static Message message(const std::vector<uint32_t> & words)
+{
+    Message m = {};
+    for (uint32_t i = 0; i < words.size(); i++) {
+        m.words[i] = words[i];
+    }
+    m.count = uint32_t(words.size());
+    return m;
+}
+
+static void valid_message_accepts_what_the_senders_send()
+{
+    CHECK(validMessage(getAll()));
+    CHECK(validMessage(set(0x29, 0, 3)));
+    CHECK(validMessage(message({1, 0, word(2, 0x35, 1, 0), word(1, 1, 0, 0)})));
+    CHECK(validMessage(message({1, 0, word(2, 0x32, 5, 1), word(2, 0x02, 0x58, 0)})));
+}
+
+static void valid_message_denies_update_and_dsp_halt_commands()
+{
+    for (uint8_t command : {0x60, 0x61, 0x62, 0x63, 0xd6, 0xd7}) {
+        CHECK(!validMessage(set(command, 0, 0)));
+        CHECK(!validMessage(message({1, 0, word(2, command, 0, 0), word(1, 0, 0, 0)})));
+    }
+}
+
+static void valid_message_accepts_types_1_2_and_4_only()
+{
+    CHECK(!validMessage(message({1, 0, word(3, 0x29, 0, 0)})));
+    CHECK(!validMessage(message({1, 0, word(5, 0x29, 0, 0)})));
+    CHECK(!validMessage(message({1, 0, word(0, 0, 0, 0)})));
+}
+
+static void valid_message_requires_one_record_that_ends_in_the_last_word()
+{
+    CHECK(!validMessage(message({1, 0})));
+    CHECK(!validMessage(message({1, 0, word(1, 0x29, 0, 1), word(1, 0x2a, 0, 3)})));
+    CHECK(!validMessage(message({1, 0, word(4, 0, 0, 0), word(0, 0, 0, 0)})));
+    CHECK(!validMessage(message({1, 0, word(2, 0x32, 5, 1), word(5, 0x02, 0x58, 0)})));
+    CHECK(!validMessage(message({1, 0, word(2, 0x32, 5, 1), word(1, 0x02, 0, 0), word(0, 0, 0, 0)})));
+}
+
+static void valid_message_requires_zero_padding()
+{
+    CHECK(!validMessage(message({1, 0, word(2, 0x35, 1, 0), word(1, 1, 0x2a, 0)})));
+    CHECK(!validMessage(message({1, 0, word(2, 0x35, 1, 0), word(1, 1, 0, 0x01)})));
+}
+
 static void rate_index_matches_the_psoc_table()
 {
     CHECK(rateIndex(44100.0) == 0 && rateIndex(48000.0) == 1 && rateIndex(192000.0) == 5);
@@ -99,5 +147,10 @@ int main()
     unknown_type_stops_the_parse();
     get_all_is_one_type4_word_after_the_header();
     set_packs_type_command_p1_and_value();
+    valid_message_accepts_what_the_senders_send();
+    valid_message_denies_update_and_dsp_halt_commands();
+    valid_message_accepts_types_1_2_and_4_only();
+    valid_message_requires_one_record_that_ends_in_the_last_word();
+    valid_message_requires_zero_padding();
     return finish();
 }
