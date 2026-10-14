@@ -40,18 +40,21 @@ public enum BootloaderPacket {
     }
 
     /// One reply packet: `[start][status][length][data][checksum][stop]`.
-    /// Returns the status byte and the data bytes.
+    /// A read can return more bytes than the reply. The header length
+    /// decides where the reply ends. Returns the status and the data.
     public static func parse(_ reply: [UInt8]) throws -> (status: UInt8, data: [UInt8]) {
-        guard reply.count >= overhead, reply.first == start, reply.last == stop else {
+        guard reply.count >= overhead, reply[0] == start else {
             throw BootloaderPacketError.badMarker
         }
         let length = Int(reply[2]) | Int(reply[3]) << 8
-        guard reply.count == overhead + length else {
+        guard reply.count >= overhead + length else {
             throw BootloaderPacketError.badLength
         }
-        let body = reply[..<(reply.count - 3)]
-        let sum = checksum(body)
-        guard reply[reply.count - 3] == UInt8(sum & 0xff), reply[reply.count - 2] == UInt8(sum >> 8) else {
+        guard reply[overhead + length - 1] == stop else {
+            throw BootloaderPacketError.badMarker
+        }
+        let sum = checksum(reply[..<(4 + length)])
+        guard reply[4 + length] == UInt8(sum & 0xff), reply[5 + length] == UInt8(sum >> 8) else {
             throw BootloaderPacketError.badChecksum
         }
         return (reply[1], Array(reply[4..<(4 + length)]))

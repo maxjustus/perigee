@@ -47,14 +47,16 @@ final class BootloaderPacketTests: XCTestCase {
         XCTAssertThrowsError(try BootloaderPacket.parse([0x01, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x17])) { error in
             XCTAssertEqual(error as? BootloaderPacketError, .badLength)
         }
+        XCTAssertThrowsError(try BootloaderPacket.parse([0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x17])) { error in
+            XCTAssertEqual(error as? BootloaderPacketError, .badMarker)
+        }
     }
 
-    func test_probes_carry_wrong_lengths() {
-        // A two-byte payload cannot satisfy any handler guard in the
-        // reference loader: the guards expect zero, one, or three bytes.
-        for command in [UInt8(0x31), 0x33, 0x34, 0x35, 0x36, 0x3c, 0x45] {
-            let packet = BootloaderPacket.encode(command: command, data: [0, 0])
-            XCTAssertEqual(packet[2], 2)
-        }
+    func test_parse_reads_the_length_from_the_header() throws {
+        // An error reply is 7 bytes. A read sized for an Enter reply pads it.
+        let error = BootloaderPacket.encode(command: 0x04)
+        let parsed = try BootloaderPacket.parse(error + [UInt8](repeating: 0xff, count: 8))
+        XCTAssertEqual(parsed.status, 0x04)
+        XCTAssertEqual(parsed.data, [])
     }
 }
