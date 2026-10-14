@@ -119,6 +119,7 @@ Run the scheduler and mailbox emulators:
 ```sh
 uv run --with unicorn python scripts/firmware/psoc-scheduler-check.py
 uv run --with unicorn==2.1.4 python scripts/firmware/verify-mailbox.py
+uv run --with unicorn==2.1.4 --with capstone python scripts/firmware/verify-descriptor-writes.py
 ```
 
 Run the static evidence checkers:

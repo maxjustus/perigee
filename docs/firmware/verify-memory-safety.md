@@ -54,6 +54,11 @@ The replay width defect is therefore not reachable through the host send channel
 The host deny list needs no more commands for it.
 
 Reproduce each range with `scripts/firmware/psoc-protocol-map.py <start> <end>`.
+Reproduce the caller sets and the emulator results:
+
+```sh
+uv run --with unicorn==2.1.4 --with capstone python scripts/firmware/verify-descriptor-writes.py
+```
 
 | Step | Evidence |
 |---|---|
@@ -68,8 +73,21 @@ Reproduce each range with `scripts/firmware/psoc-protocol-map.py <start> <end>`.
 **Confirmed.** A host can change saved values and can start a factory save with command `51`, value `AB`.
 Neither path changes descriptor bytes. Every save writes the compiled descriptors.
 
+**Confirmed by emulation.** The PSoC harness ran 31,768 host messages that the dext accepts.
+They cover every allowed command with p1 from 0 to `FF`, type-1 values, and type-2 lengths 1 to 99.
+No message wrote the table. A Get-all returned 936 reports and wrote nothing to the table.
+
+**Confirmed by emulation.** 28 messages stopped before the end of their run.
+The script checked the table up to each stop.
+
+| Command | Stop |
+|---|---|
+| `38`, p1 `20` | Exceeded the 2,000,000-instruction budget at `0x21776` |
+| `50`, eight p1 values | Polled hardware at `0x109F2` and exceeded the budget |
+| `94`, p1 `FF` | Wrote FPGA offset `0x1133C`, outside the 64 KiB window that the harness models |
+
 **Unknown.** A memory-corruption path outside this table could still reach `0x1FFF8BEC`.
-The review covered the documented stray stores and direct calls only.
+The review covered the documented stray stores, direct calls, and the emulated messages only.
 
 ## Safety notes
 
