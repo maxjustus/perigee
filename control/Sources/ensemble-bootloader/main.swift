@@ -22,15 +22,8 @@ struct SessionError: Error, CustomStringConvertible {
 func exchange(_ device: Device, _ command: UInt8, data: [UInt8] = [],
               replyCount: Int) throws -> (status: UInt8, data: [UInt8]) {
     let packet = BootloaderPacket.encode(command: command, data: data)
-    let wrote = try device.transfer(direction: 0, payload: packet)
-    if wrote.busy {
-        throw SessionError(description: "write stayed busy for command \(String(command, radix: 16))")
-    }
-    let read = try device.transfer(direction: 1, count: UInt16(replyCount))
-    if read.busy {
-        throw SessionError(description: "read stayed busy for command \(String(command, radix: 16))")
-    }
-    return try BootloaderPacket.parse(read.data)
+    try device.writeI2c(packet)
+    return try BootloaderPacket.parse(try device.readI2c(count: replyCount))
 }
 
 func enter(_ device: Device, attempts: Int = 10) throws -> (status: UInt8, data: [UInt8]) {

@@ -139,19 +139,16 @@ kern_return_t EnsembleUserClient::ExternalMethod(uint64_t selector,
         return kIOReturnSuccess;
     }
     case kSelectorI2c: {
-        if (!ivars->session || arguments->completion == nullptr) {
-            return kIOReturnBadArgument;
-        }
         OSData * input = arguments->structureInput;
-        if (input == nullptr) {
+        if (!ivars->session || input == nullptr) {
             return kIOReturnBadArgument;
         }
         const uint8_t * request = static_cast<const uint8_t *>(input->getBytesNoCopy());
         uint32_t bytes = 0;
         bool read = false;
-        if (input->getLength() >= 3 && request[0] == 1) {
+        if (input->getLength() == 2 && request[0] == 1) {
             read = true;
-            bytes = uint32_t(request[1]) | uint32_t(request[2]) << 8;
+            bytes = request[1];
         } else if (input->getLength() >= 2 && request[0] == 0) {
             bytes = uint32_t(input->getLength()) - 1;
         }
@@ -159,10 +156,15 @@ kern_return_t EnsembleUserClient::ExternalMethod(uint64_t selector,
             return kIOReturnBadArgument;
         }
         uint8_t in[Ensemble::kI2cMaxBytes] = {};
-        const bool busy = i2cTransfer(ivars->device.get(), read, bytes, request + 1, in);
-        uint64_t args[Ensemble::kI2cArguments];
-        Ensemble::packI2c(read, busy, in, read ? bytes : 0, args);
-        AsyncCompletion(arguments->completion, kIOReturnSuccess, args, Ensemble::kI2cArguments);
+        if (i2cTransfer(ivars->device.get(), read, bytes, request + 1, in)) {
+            return kIOReturnTimeout;
+        }
+        if (read) {
+            arguments->structureOutput = OSData::withBytes(in, bytes);
+            if (arguments->structureOutput == nullptr) {
+                return kIOReturnNoMemory;
+            }
+        }
         return kIOReturnSuccess;
     }
     case kSelectorSubscribe:

@@ -12,7 +12,6 @@ public final class Device: Transport, @unchecked Sendable {
     private let port: IONotificationPortRef
     private var onReport: ((Report) -> Void)?
     private var onTerminated: (() -> Void)?
-    private var onI2c: ((Bool, [UInt8]) -> Void)?
 
     public init(queue: DispatchQueue) throws {
         service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceNameMatching("EnsembleDriver"))
@@ -79,50 +78,32 @@ public final class Device: Transport, @unchecked Sendable {
         }
     }
 
-    /// One remote-I2C transfer. A write sends `payload`; a read asks for
-    /// `count` bytes. Returns the busy flag and the read bytes.
-    public func transfer(direction: UInt8, payload: [UInt8] = [], count: UInt16 = 0) throws
-        -> (busy: Bool, data: [UInt8]) {
-        var request: [UInt8] = [direction]
-        if direction == 1 {
-            request += [UInt8(count & 0xff), UInt8(count >> 8)]
-        } else {
-            request += payload
-        }
-        guard request.count <= 1025 else {
-            throw DeviceError(description: "transfer too long")
-        }
-
-        let handler = Unmanaged.passRetained(TransferHandler())
-        let callback: IOAsyncCallback = { refcon, result, args, argCount in
-            guard result == kIOReturnSuccess, let refcon, let args, argCount > 0 else { return }
-            let head = UInt64(UInt(bitPattern: args[0]))
-            let busy = (head >> 40) & 1 == 1
-            let length = Int((head >> 8) & 0x3ff)
-            var data: [UInt8] = []
-            data.reserveCapacity(length)
-            for i in 0..<length where 1 + i / 8 < argCount {
-                let word = UInt64(UInt(bitPattern: args[1 + i / 8]))
-                data.append(UInt8(truncatingIfNeeded: word >> (8 * UInt64(i % 8))))
-            }
-            Unmanaged<TransferHandler>.fromOpaque(refcon).takeUnretainedValue().call(busy, data)
-        }
-        var reference = [UInt64](repeating: 0, count: Int(kOSAsyncRef64Count))
-        reference[Int(kIOAsyncCalloutFuncIndex)] =
-            UInt64(UInt(bitPattern: unsafeBitCast(callback, to: UnsafeRawPointer.self)))
-        reference[Int(kIOAsyncCalloutRefconIndex)] = UInt64(UInt(bitPattern: handler.toOpaque()))
-        let machPort = IONotificationPortGetMachPort(port)
-        let kr = request.withUnsafeBytes { input in
-            IOConnectCallAsyncStructMethod(connect, selectorI2c, machPort, &reference,
-                                           UInt32(kOSAsyncRef64Count),
-                                           input.baseAddress, input.count, nil, nil)
+    /// Writes one packet through the FPGA remote-I2C engine.
+    public func writeI2c(_ packet: [UInt8]) throws {
+        let request = [UInt8(0)] + packet
+        let kr = request.withUnsafeBytes {
+            IOConnectCallStructMethod(connect, selectorI2c, $0.baseAddress, $0.count, nil, nil)
         }
         guard kr == KERN_SUCCESS else {
-            handler.release()
-            throw DeviceError(description: String(format: "transfer: %#x", kr))
+            throw DeviceError(description: String(format: "I2C write: %#x", kr))
         }
-        let (busy, data) = handler.takeRetainedValue().wait()
-        return (busy, data)
+    }
+
+    /// Reads `count` bytes, at most 255, through the FPGA remote-I2C engine.
+    public func readI2c(count: Int) throws -> [UInt8] {
+        let request = [UInt8(1), UInt8(count)]
+        var reply = [UInt8](repeating: 0, count: count)
+        var size = count
+        let kr = request.withUnsafeBytes { input in
+            reply.withUnsafeMutableBytes { output in
+                IOConnectCallStructMethod(connect, selectorI2c, input.baseAddress, input.count,
+                                          output.baseAddress, &size)
+            }
+        }
+        guard kr == KERN_SUCCESS, size == count else {
+            throw DeviceError(description: String(format: "I2C read: %#x, %d bytes", kr, size))
+        }
+        return reply
     }
 
     public func subscribe(_ onReport: @escaping (Report) -> Void) throws {
@@ -163,19 +144,3 @@ private let memoryMeters: UInt32 = 0
 // IOMessage.h defines it as iokit_common_msg(0x010), a macro that Swift does not import.
 private let kIOMessageServiceIsTerminated: UInt32 = 0xE000_0010
 
-
-/// Holds the one in-flight I2C completion and its result.
-final class TransferHandler {
-    private let semaphore = DispatchSemaphore(value: 0)
-    private var box: (Bool, [UInt8]) = (false, [])
-
-    func call(_ busy: Bool, _ data: [UInt8]) {
-        box = (busy, data)
-        semaphore.signal()
-    }
-
-    func wait() -> (Bool, [UInt8]) {
-        semaphore.wait()
-        return box
-    }
-}
