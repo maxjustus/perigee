@@ -31,6 +31,8 @@ public:
     void Reported(const Ensemble::Report & report) LOCALONLY;
     EnsemblePsoc * GetPsoc() LOCALONLY;
     IOMemoryDescriptor * GetMeters() LOCALONLY;
+    uint32_t ReadRegister(uint64_t offset) LOCALONLY;
+    void WriteRegister(uint64_t offset, uint32_t value) LOCALONLY;
 
     virtual kern_return_t StartIO(IOUserAudioStartStopFlags in_flags) final LOCALONLY;
     virtual kern_return_t StopIO(IOUserAudioStartStopFlags in_flags) final LOCALONLY;

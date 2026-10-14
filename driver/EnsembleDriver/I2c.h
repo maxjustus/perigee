@@ -45,6 +45,22 @@ inline bool validI2cLength(uint32_t bytes)
     return bytes > 0 && bytes <= kI2cMaxBytes;
 }
 
+// One completion argument per eight result bytes, plus a head word with the
+// direction, the length, and the busy flag.
+constexpr uint32_t kI2cArguments = 1 + (kI2cMaxBytes + 7) / 8;
+
+inline void packI2c(bool read, bool busy, const uint8_t * data, uint32_t length,
+                    uint64_t args[kI2cArguments])
+{
+    for (uint32_t i = 0; i < kI2cArguments; i++) {
+        args[i] = 0;
+    }
+    args[0] = uint64_t(read ? 1 : 0) | uint64_t(length) << 8 | uint64_t(busy ? 1 : 0) << 40;
+    for (uint32_t i = 0; i < length; i++) {
+        args[1 + i / 8] |= uint64_t(data[i]) << (8 * (i % 8));
+    }
+}
+
 }
 
 #endif

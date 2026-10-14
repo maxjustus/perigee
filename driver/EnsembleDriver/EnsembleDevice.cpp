@@ -300,6 +300,16 @@ IOMemoryDescriptor * EnsembleDevice::GetMeters()
     return ivars->meters.get();
 }
 
+uint32_t EnsembleDevice::ReadRegister(uint64_t offset)
+{
+    return ivars->bar0.read(offset);
+}
+
+void EnsembleDevice::WriteRegister(uint64_t offset, uint32_t value)
+{
+    ivars->bar0.write(offset, value);
+}
+
 kern_return_t EnsembleDevice::addVolume()
 {
     ivars->volume = OSSharedPtr(OSTypeAlloc(EnsembleVolume), OSNoRetain);

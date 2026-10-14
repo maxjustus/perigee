@@ -54,12 +54,25 @@ static void length_bound()
     CHECK(!Ensemble::validI2cLength(1025));
 }
 
+static void pack_carries_the_result()
+{
+    uint64_t args[Ensemble::kI2cArguments];
+    const uint8_t data[] = {0x38, 0x00, 0x01, 0x10};
+    Ensemble::packI2c(true, false, data, sizeof(data), args);
+    CHECK(args[0] == (1u | 4u << 8));
+    CHECK((args[1] & 0xFFFFFFFFu) == (0x10u << 24 | 0x01u << 16 | 0x00u << 8 | 0x38u));
+    uint64_t busy[Ensemble::kI2cArguments];
+    Ensemble::packI2c(false, true, nullptr, 0, busy);
+    CHECK(busy[0] == (uint64_t(1) << 40));
+}
+
 int main()
 {
     control_word_keeps_the_address_and_sets_the_transfer();
     delay_matches_the_verified_divisor();
     window_words_round_up();
     length_bound();
+    pack_carries_the_result();
     if (failures == 0) {
         printf("ok\n");
     }
