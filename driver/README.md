@@ -56,7 +56,9 @@ speaker output.
 
 After a PSoC restart, the dext sends each subscriber a report of type 5
 with no data, and then sends a Get-all. The vendor kext sends the same
-type-5 message to its HAL plugin.
+type-5 message to its HAL plugin. Like the vendor kext, the dext then
+writes the FPGA registers again. If audio runs, the dext restarts it as
+after a wake.
 
 ## Return the device to the vendor driver
 

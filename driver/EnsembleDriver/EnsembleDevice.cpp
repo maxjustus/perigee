@@ -365,7 +365,9 @@ EnsemblePsoc * EnsembleDevice::GetPsoc()
 
 void EnsembleDevice::Reported(const Report & report)
 {
-    if (report.command == kCommandSampleRate && report.data[0] < kSampleRateCount) {
+    if (report.type == kTypeRestarted) {
+        restore();
+    } else if (report.command == kCommandSampleRate && report.data[0] < kSampleRateCount) {
         const double rate = kSampleRates[report.data[0]];
         if (rate != GetSampleRate()) {
             ivars->reported_rate = rate;
@@ -421,16 +423,21 @@ static uint64_t sinceWrap(const EnsembleDevice_IVars * ivars, uint64_t time)
 void EnsembleDevice::Wake()
 {
     ivars->queue->DispatchSync(^{
-        if (!ivars->asleep || program() != kIOReturnSuccess) {
-            return;
-        }
-        ivars->asleep = false;
-        ivars->psoc->Resume();
-        if (ivars->running) {
-            const uint64_t wraps = wrapsIn(sinceWrap(ivars, mach_absolute_time()), GetSampleRate()) + 1;
-            startAudio(ivars->sample_time + wraps * kRingFrames);
+        if (ivars->asleep && restore() == kIOReturnSuccess) {
+            ivars->asleep = false;
+            ivars->psoc->Resume();
         }
     });
+}
+
+kern_return_t EnsembleDevice::restore()
+{
+    const kern_return_t ret = program();
+    if (ret == kIOReturnSuccess && ivars->running) {
+        const uint64_t wraps = wrapsIn(sinceWrap(ivars, mach_absolute_time()), GetSampleRate()) + 1;
+        startAudio(ivars->sample_time + wraps * kRingFrames);
+    }
+    return ret;
 }
 
 static void zero(IOBufferMemoryDescriptor * buffer)

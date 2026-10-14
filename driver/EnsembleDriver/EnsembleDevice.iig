@@ -43,6 +43,7 @@ private:
     void setLatency(double rate) LOCALONLY;
     kern_return_t allocateMeters() LOCALONLY;
     kern_return_t program() LOCALONLY;
+    kern_return_t restore() LOCALONLY;
     void halt() LOCALONLY;
     void startAudio(uint64_t sample_time) LOCALONLY;
     kern_return_t addVolume() LOCALONLY;
