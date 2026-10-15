@@ -55,14 +55,15 @@ class CompareTest(unittest.TestCase):
         self.assertFalse(result["checks"]["image_rows_match"])
         self.assertEqual(result["mismatched_rows"], [[2, 5]])
 
-    def test_identity_and_loader_size_are_checked(self):
+    def test_identity_is_checked_and_sizes_are_reported(self):
         changed = scan()
         changed["identity"][0] = 0x2E
-        changed["sizes"][0] = [0, 255]
+        changed["sizes"] = [[0, 1023]] * 4
         result = rows.compare(changed, RAW)
         self.assertFalse(result["checks"]["silicon_id"])
-        self.assertFalse(result["checks"]["loader_fills_array_0"])
         self.assertFalse(result["pass"])
+        self.assertEqual(result["sizes"], [[0, 1023]] * 4)
+        self.assertNotIn("loader_fills_array_0", result["checks"])
 
 
 if __name__ == "__main__":

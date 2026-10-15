@@ -4,6 +4,8 @@
 the loader's 8-bit sum of the row, negated. With ECC off, the sum also covers
 the 32 configuration bytes of the row. The loader leaves the metadata active
 and verified bytes out of the sum, and the CYACD holds zero in both.
+The report-size reply is recorded, not checked: the v1.20 loader on the unit
+does not answer as the 1.60 reference does.
 """
 
 import argparse
@@ -48,13 +50,13 @@ def compare(scan, raw):
     without_config = [index for index in rows if device[index] == main[index]]
     checks = {
         "silicon_id": bytes(scan["identity"][:4]) == SILICON_ID,
-        "loader_fills_array_0": scan["sizes"][0][0] == 256,
         "image_rows_match": len(rows) in (len(with_config), len(without_config)),
     }
     return {
         "pass": all(checks.values()),
         "checks": checks,
         "identity_hex": bytes(scan["identity"]).hex(" "),
+        "sizes": scan["sizes"],
         "loader_fingerprint_sha256": hashlib.sha256(
             bytes(scan["flash"][0])
         ).hexdigest(),
