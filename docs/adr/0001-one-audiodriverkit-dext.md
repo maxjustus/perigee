@@ -6,9 +6,10 @@ status: accepted
 
 One C++ DriverKit extension (dext) owns the PCI device and publishes the
 CoreAudio device through AudioDriverKit. The dext also runs the PSoC
-mailbox. There is no separate HAL plugin and no custom user client. The
-probe results in `probe-results.md` show that the hardware fits the
-AudioDriverKit clock and buffer model directly:
+mailbox. There is no separate HAL plugin. CoreAudio needs no custom user
+client. The dext has one user client for the control service and the
+tools in `control/`. The probe results in `probe-results.md` show that
+the hardware fits the AudioDriverKit clock and buffer model directly:
 
 - `IOUserAudioStream::Create` takes an `IOMemoryDescriptor` that the HAL
   maps for audio IO. The dext gives it the DMA ring. The HAL then reads
@@ -57,6 +58,7 @@ AudioDriverKit clock and buffer model directly:
   Apogee owns vendor ID 0x19C2. Distribution therefore depends on Apple
   approval that this project does not control. Local development works
   with SIP disabled and `systemextensionsctl developer on`.
-- The vendor kext matches the device with `IOProbeScore` 1000. Tests of
-  the dext need the vendor kext disabled. `scripts/vendor-hal.sh` switches
-  only the vendor HAL plugin.
+- The vendor kext matches the device with `IOProbeScore` 1000. The dext
+  uses the same `IOMatchCategory` with `IOProbeScore` 10000.
+  `scripts/rematch.sh` starts a new match, and the dext wins it.
+  `driver/README.md` describes the switch.
