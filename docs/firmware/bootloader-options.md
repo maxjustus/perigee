@@ -241,6 +241,10 @@ units. It is not the loader bytes.
   comparison detects a delay that is too short.
 - If the loader changes the status during a session, the dext refuses
   every transfer, Exit included. A power cycle then ends the session.
+- The first scan run on 2026-10-14 stopped with a broken reply, and a
+  second run passed. That build did not record the bytes, so the cause is
+  unknown. The tool now names the command and the bytes. If it recurs,
+  compare the bytes with the previous reply and with all `ff`.
 
 ## Limits
 
