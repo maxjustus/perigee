@@ -1,9 +1,11 @@
 # Bootloader option-space analysis
 
-The Apogee bootloader is a Cypress Bootloader component build of the 1.60
-generation. Our verified evidence constrains most of its design-time options.
-The loader itself can be fingerprinted, but not read, through one
-read-only session.
+The Apogee bootloader is a Cypress Bootloader component, version 1.20. The
+scan of 2026-10-14 read this version from the Enter reply, `14 01 01`, which
+is 20, 1, 1. The reference source below is version 1.60, which encodes
+`{60, 1, 0x01}` (`Bootloader_PVT.h:31`). So each verdict below that depends
+on handler details is an inference from a newer version.
+`probe-results.md` records the session results.
 
 ## Method and sources
 
@@ -39,7 +41,9 @@ Apogee's own values below follow from evidence in this repository.
 | `SECURITY_KEY_AVAIL` | 0 | **Constrained: absent.** The observed host Enter request carries no key bytes. The zero-data Enter of the session check stage confirms it. | `updater.md`, `verify-update-transport.md` |
 | `AUTO_SWITCHING_AVAIL` | 1 | Moot for a single-app classic loader. | Same basis as dual-app |
 | `GOLDEN_IMAGE_AVAIL` | 0 | **Constrained: not applicable.** A golden image belongs to launcher builds. No golden slot appears anywhere in the CYACD. | `Bootloader.c` launcher sections |
-| Loader size | set by linker | **Determined: 64 KB.** The metadata records bootloader last row 255. | `image-format.md` metadata table |
+| Loader size | set by linker | **Determined: 64 KB reserved, 70 rows used.** The metadata records bootloader last row 255. The scan found nonzero row checksums in rows 0 to 69 of array 0 only | `image-format.md` metadata table, `probe-results.md` |
+| ECC | set by the `ECCEN` latch | **Determined: off.** All 355 image rows match the 288-byte row sums. Only 206 match the 256-byte sums | `probe-results.md` |
+| Loader row protection | `row < firstRow` refusal in 1.60 | **Open.** Report size answers rows 0 to 1023 for every array, so the reply does not show a protected loader region. Do not write array 0 until the 1.20 program-row guard is known | `probe-results.md` |
 
 ## Recovery consequences
 
@@ -193,7 +197,9 @@ Success criteria:
 
 - The two passes agree.
 - The silicon ID is 0x2E12F069.
-- Array 0 reports first row 256. This confirms the 64 KB loader.
+- Report size answers for arrays 0 to 3. The comparator records the
+  reply. On this unit the v1.20 loader answers rows 0 to 1023 for every
+  array.
 - All 355 rows of the vendor CYACD match. A match of the 288-byte row
   sums means that ECC is off. A match of the 256-byte sums means that
   ECC is on.

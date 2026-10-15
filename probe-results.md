@@ -367,3 +367,33 @@ therefore give clients startup values. The ensemble-control cache showed
 the stored values afterwards, but the later Get-alls also updated it.
 Whether the application sends the stored values without a request is
 unknown.
+
+## Bootloader scan stage
+
+2026-10-14, `ensemble-bootloader scan`, commit `95faa2b`. The scan file is
+`.pi-html/artifacts/_project/apogee-ensemble-driver/bootloader-scan-20261014-1749.json`.
+
+The first run, at 17:47, stopped after 6.9 s with `badMarker`. That build
+did not record the bytes. The tool sent Exit, and the status read 1. The
+second run, at 17:49, took 98 s. Its two passes agreed.
+
+`scripts/firmware/bootloader-rows.py` results:
+
+| Item | Result |
+|------|--------|
+| Silicon ID | 0x2E12F069 |
+| Loader version | `14 01 01`: Cypress Bootloader component 1.20 |
+| Report size | First row 0, last row 1023 for arrays 0 to 3 |
+| Image rows | All 355 match the 288-byte row sums. 206 match the 256-byte sums. So ECC is off |
+| Array 0 | Rows 0 to 69 nonzero, rows 70 to 255 zero. The loader uses 70 of its 256 rows |
+| Array 2 | Rows 98 to 148 nonzero, outside the image. Probably rows of an older, larger application |
+| Array 3 | Row 255, the metadata row, is the only nonzero row |
+| EEPROM | 32 distinct row checksums. Row 0x7F, which holds the restart marker, sums to 0x87 |
+| Loader fingerprint | SHA-256 of the array 0 checksums: `a50c5bbb9d9daba226b2d1800a27841cfa0f9efa9f70fc938c822f58d4038304` |
+
+A Get-all 20 s after Exit differed from the baseline. A Get-all 35 s after
+Exit was identical to the baseline without `p2`.
+
+Consequence for a future update: the 1.20 report-size reply does not show
+a protected loader region. The 1.60 reference refuses program rows below
+the loader end. The 1.20 guard is unknown, so no write may target array 0.
