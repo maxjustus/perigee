@@ -73,7 +73,7 @@ uv run --with unicorn==2.1.4 --with capstone python scripts/firmware/verify-desc
 **Confirmed.** A host can change saved values and can start a factory save with command `51`, value `AB`.
 Neither path changes descriptor bytes. Every save writes the compiled descriptors.
 
-**Confirmed by emulation.** The PSoC harness ran 31,768 host messages that the dext accepts.
+**Confirmed by emulation.** The PSoC harness ran 32,072 host messages that the dext accepts.
 They cover every allowed command with p1 from 0 to `FF`, type-1 values, and type-2 lengths 1 to 99.
 No message wrote the table. A Get-all returned 936 reports and wrote nothing to the table.
 
