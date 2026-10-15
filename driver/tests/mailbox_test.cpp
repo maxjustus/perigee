@@ -78,6 +78,44 @@ static void event_bit1_answers_the_handshake()
     CHECK(r[kHandshake] == kHandshakeValue && r[kPsocEvent] == 0);
 }
 
+static void event_bit0_reports_a_restart_and_leaves_the_reset_to_the_caller()
+{
+    std::map<uint64_t, uint32_t> r = {{kPsocEvent, 1}, {kTxWriteIndex, 5}};
+    Mailbox<FakeRegs> mailbox{{&r}};
+    CHECK(mailbox.serviceEvents());
+    CHECK(r[kTxWriteIndex] == 5 && r[kPsocEvent] == 0);
+}
+
+static void rejoin_restarts_on_an_event_or_a_return_to_the_application()
+{
+    Rejoin heard = {kStatusApplication, true, 0};
+    CHECK(heard.poll(kStatusApplication, false, 100, 10) == Resync::None);
+    CHECK(heard.poll(kStatusApplication, true, 100, 10) == Resync::Restart);
+    Rejoin loader = {kStatusBootloader, true, 0};
+    CHECK(loader.poll(kStatusBootloader, false, 100, 10) == Resync::None);
+    CHECK(loader.poll(kStatusApplication, false, 101, 10) == Resync::Restart);
+}
+
+static void rejoin_retries_each_period_until_the_psoc_answers()
+{
+    Rejoin rejoin = {kStatusApplication, true, 0};
+    CHECK(rejoin.poll(kStatusApplication, true, 100, 10) == Resync::Restart);
+    CHECK(rejoin.poll(kStatusApplication, false, 109, 10) == Resync::None);
+    CHECK(rejoin.poll(kStatusApplication, false, 110, 10) == Resync::Retry);
+    CHECK(rejoin.poll(kStatusApplication, false, 119, 10) == Resync::None);
+    CHECK(rejoin.poll(kStatusApplication, false, 120, 10) == Resync::Retry);
+    rejoin.heard = true;
+    CHECK(rejoin.poll(kStatusApplication, false, 200, 10) == Resync::None);
+}
+
+static void rejoin_waits_outside_the_application()
+{
+    Rejoin rejoin = {kStatusApplication, false, 0};
+    CHECK(rejoin.poll(kStatusBootloader, false, 100, 10) == Resync::None);
+    CHECK(rejoin.poll(0, false, 200, 10) == Resync::None);
+    CHECK(rejoin.poll(3, false, 300, 10) == Resync::None);
+}
+
 int main()
 {
     reset_clears_slots_and_indices_and_sets_the_reset_bit();
@@ -86,5 +124,9 @@ int main()
     send_refuses_a_message_longer_than_29_words();
     receive_reads_one_slot_and_frees_it();
     event_bit1_answers_the_handshake();
+    event_bit0_reports_a_restart_and_leaves_the_reset_to_the_caller();
+    rejoin_restarts_on_an_event_or_a_return_to_the_application();
+    rejoin_retries_each_period_until_the_psoc_answers();
+    rejoin_waits_outside_the_application();
     return finish();
 }

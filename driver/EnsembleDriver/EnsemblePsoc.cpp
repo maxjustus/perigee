@@ -12,6 +12,7 @@
 using namespace Ensemble;
 
 constexpr uint64_t kPollPeriodNs = 10000000;
+constexpr uint64_t kRejoinPeriodNs = 1000000000;
 
 struct EnsemblePsoc_IVars {
     EnsembleDevice * device;
@@ -21,6 +22,8 @@ struct EnsemblePsoc_IVars {
     OSSharedPtr<IOTimerDispatchSource> timer;
     OSSharedPtr<OSAction> action;
     uint64_t period;
+    uint64_t rejoin_period;
+    Rejoin rejoin;
     OSSharedPtr<OSArray> listeners;
     Monitors monitors;
 };
@@ -72,14 +75,17 @@ kern_return_t EnsemblePsoc::Start(EnsembleDevice * device, IOPCIDevice * pci, ui
     mach_timebase_info_data_t timebase;
     mach_timebase_info(&timebase);
     ivars->period = kPollPeriodNs * timebase.denom / timebase.numer;
+    ivars->rejoin_period = kRejoinPeriodNs * timebase.denom / timebase.numer;
     return Resume();
 }
 
 kern_return_t EnsemblePsoc::Resume()
 {
+    const uint64_t now = mach_absolute_time();
     ivars->mailbox.reset();
     ivars->outbox.push(getAll());
-    ivars->timer->WakeAtTime(kIOTimerClockMachAbsoluteTime, mach_absolute_time() + ivars->period, 0);
+    ivars->rejoin = {bootloaderStatus(ivars->mailbox.regs.read(kInfo)), false, now + ivars->rejoin_period};
+    ivars->timer->WakeAtTime(kIOTimerClockMachAbsoluteTime, now + ivars->period, 0);
     return ivars->timer->SetEnable(true);
 }
 
@@ -154,14 +160,22 @@ void IMPL(EnsemblePsoc, PollOccurred)
         }
         ivars->device->Reported(report);
     };
-    if (mailbox.serviceEvents()) {
+    const uint32_t status = bootloaderStatus(mailbox.regs.read(kInfo));
+    const Resync resync = ivars->rejoin.poll(status, mailbox.serviceEvents(), time, ivars->rejoin_period);
+    if (resync != Resync::None) {
+        mailbox.reset();
         ivars->outbox.push(getAll());
+    }
+    if (resync == Resync::Restart) {
         Report restarted = {};
         restarted.type = kTypeRestarted;
         handle(restarted);
+    } else if (resync == Resync::Retry) {
+        os_log(OS_LOG_DEFAULT, "EnsembleDriver: no PSoC answer, mailbox reset again");
     }
     ivars->outbox.flush(mailbox, [&](const Message & sent) { parseMessage(sent.words, sent.count, handle); });
     while (mailbox.receive(handle)) {
+        ivars->rejoin.heard = true;
     }
     ivars->timer->WakeAtTime(kIOTimerClockMachAbsoluteTime, time + ivars->period, 0);
 }

@@ -68,7 +68,7 @@ struct Mailbox {
         return true;
     }
 
-    // Returns true if the PSoC restarted. Its message state is then reset.
+    // Returns true if the PSoC restarted. Rejoin decides the reset.
     bool serviceEvents() const
     {
         const uint32_t event = regs.read(kPsocEvent);
@@ -79,11 +79,35 @@ struct Mailbox {
             regs.write(kHandshake, kHandshakeValue);
         }
         regs.write(kPsocEvent, 0);
-        if (event & 1) {
-            reset();
-            return true;
+        return (event & 1) != 0;
+    }
+};
+
+enum class Resync { None, Restart, Retry };
+
+// The PSoC accepts the host only after a mailbox reset that arrives while its
+// FPGA event interrupt is on. Its startup reports status 1 before it turns
+// that interrupt on (docs/firmware/psoc-protocol.md). So after a restart the
+// host resets the mailbox again each period until the PSoC answers.
+struct Rejoin {
+    uint32_t status;
+    bool heard;
+    uint64_t due;
+
+    Resync poll(uint32_t now_status, bool restarted, uint64_t now, uint64_t period)
+    {
+        const bool returned = now_status == kStatusApplication && status != kStatusApplication;
+        status = now_status;
+        if (restarted || returned) {
+            heard = false;
+            due = now + period;
+            return Resync::Restart;
         }
-        return false;
+        if (!heard && status == kStatusApplication && now >= due) {
+            due = now + period;
+            return Resync::Retry;
+        }
+        return Resync::None;
     }
 };
 
