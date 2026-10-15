@@ -12,8 +12,6 @@ this model.
 - `NOTES-vendor-driver.md`: the device protocol.
 - [Firmware map](docs/firmware/README.md): offline analysis, image checks,
   and unresolved recovery requirements.
-- [Send-channel guard plan](docs/plan-send-channel-guards.md): close the
-  user client send channel against the confirmed firmware parser defects.
 
 ## Requirements
 
