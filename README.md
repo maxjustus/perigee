@@ -1,4 +1,4 @@
-# Open driver for the Apogee Ensemble Thunderbolt
+# perigee
 
 This repository holds an open macOS driver for the Apogee Ensemble
 Thunderbolt and a LAN control service for it. Apogee no longer supports
