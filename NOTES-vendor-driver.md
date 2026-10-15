@@ -1801,8 +1801,8 @@ Sample rate changes need command 0x29.
 - Hot unplug returns 0xFFFFFFFF from `0x7E0`. Every register read returns
   all ones after unplug.
 - The kext never touches `HOST_CONTROL`, `STATUS` bits, or the
-  `CUR_*_ADDRESS` registers. A new driver can use `CUR_*` for position
-  instead of the wrap interrupt. This is unverified.
+  `CUR_*_ADDRESS` registers. The `CUR_*` registers are live during a
+  stream and give the position between wraps (probe-results.md).
 - The PSoC message slots hold 8 entries. Queue in software when full.
 - After a PSoC restart, the application reports startup values until its
   periodic state callback replays the stored settings. That replay ends
