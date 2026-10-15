@@ -43,7 +43,7 @@ Apogee's own values below follow from evidence in this repository.
 | `GOLDEN_IMAGE_AVAIL` | 0 | **Constrained: not applicable.** A golden image belongs to launcher builds. No golden slot appears anywhere in the CYACD. | `Bootloader.c` launcher sections |
 | Loader size | set by linker | **Determined: 64 KB reserved, 70 rows used.** The metadata records bootloader last row 255. The scan found nonzero row checksums in rows 0 to 69 of array 0 only | `image-format.md` metadata table, `probe-results.md` |
 | ECC | set by the `ECCEN` latch | **Determined: off.** All 355 image rows match the 288-byte row sums. Only 206 match the 256-byte sums | `probe-results.md` |
-| Loader row protection | `row < firstRow` refusal in 1.60 | **Open.** Report size answers rows 0 to 1023 for every array, so the reply does not show a protected loader region. Do not write array 0 until the 1.20 program-row guard is known | `probe-results.md` |
+| Loader row protection | `row < firstRow` refusal in 1.60 | **Determined: none.** The 1.20 single-application build writes any row, array 0 included. The host must refuse array 0 | `bootloader-1.20.md` |
 
 ## Recovery consequences
 
@@ -72,6 +72,9 @@ application rows before the replacement completes. The loader protects
 itself, not the application.
 
 ## Command reference
+
+This section describes the 1.60 reference. `bootloader-1.20.md` lists where
+the 1.20 loader on the unit differs.
 
 The reference dispatcher sets the reply status to `ERR_DATA` (0x04)
 before it selects a handler (`Bootloader.c:1771`). A known command with

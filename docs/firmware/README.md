@@ -47,6 +47,8 @@ Reports appear as each agent completes its work. Their presence does not imply i
 | `psoc-audio.md` | Audio controls, converter interfaces, FPGA registers, and mute constraints |
 | `front-panel.md` | Resource format, display, encoders, and touch controls |
 | `psoc-update.md` | Flash writes, bootloader entry, FPGA configuration, and recovery dependencies |
+| `bootloader-options.md` | Bootloader options, the read-only session plan, and recovery steps |
+| `bootloader-1.20.md` | Guards of the Bootloader 1.20 component on the unit, and rules for a write path |
 | `psoc-diagnostics.md` | Second pass over factory tests and hidden hardware controls |
 | `psoc-scheduler.md` | Second pass over interrupts, timers, and the save contract |
 | `psoc-runtime.md` | Second pass over runtime helpers and internal flash operations |
