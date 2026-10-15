@@ -26,8 +26,7 @@ AudioDriverKit clock and buffer model directly:
 
 ## Considered options
 
-- **Rust `AudioServerPlugIn` with a dext user client.** This is the
-  fallback in `plan.md` section 3. It adds a user client, a mailbox window
+- **Rust `AudioServerPlugIn` with a dext user client.** It adds a user client, a mailbox window
   or a mailbox call interface, a DMA mapping into another process, and an
   installer path outside SystemExtensions. Its client runs in a
   `coreaudiod` helper, which cannot hold
@@ -48,8 +47,8 @@ AudioDriverKit clock and buffer model directly:
   base address per ring. The design needs `IODMACommand::PrepareForDMA`
   to return one IOMMU segment for each ring. The vendor kext rings sit at
   IOVA 0x80000000 and 0x80224000, so the IOMMU maps them as one range on
-  Apple silicon. The DMA step in `plan.md` section 3.3 must verify this
-  for the dext, and on Intel Macs if they are in scope.
+  Apple silicon. The dext refuses a buffer that maps to more than one
+  segment (`mapForDMA` in `EnsembleDevice.cpp`).
 - `IOUserAudioCustomProperty` accepts `OSString`, `OSDictionary`, and
   `OSData` values. The Apogee Control app reads 32-bit integers and
   strings through property lists. Compatibility with Apogee Control is

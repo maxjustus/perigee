@@ -1,7 +1,7 @@
 # Probe results
 
-Results of the probe in `plan.md` section 2. The `probe/` tool reads BAR0
-through `AccessBAR0Register` (user client method 6) of the vendor kext.
+Hardware results, oldest first. The early sections use the `probe/` tool.
+It reads BAR0 through `AccessBAR0Register` (user client method 6) of the vendor kext.
 
 ## Setup
 
@@ -67,8 +67,8 @@ Findings:
   frames.
 - The unit runs at 48 kHz. 5 seconds give 14 wraps of 16384 frames.
 
-The position-from-hardware design in `plan.md` section 3 holds. The
-position resolution equals the DMA burst depth.
+A driver can read the stream position from the hardware. The position
+resolution equals the DMA burst depth.
 
 ## Interrupt bits
 
