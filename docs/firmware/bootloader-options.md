@@ -106,6 +106,11 @@ it resets into the loader.
 - **Status**: BAR0 `INFO` bits 7:6. The value 1 means the PSoC
   application runs. The value 2 means its bootloader runs.
 - **Engine**: the FPGA remote-I2C engine, BAR0 `0x18` and window `0x3C00`.
+- **Power cycle**: removal of mains power. The front-panel power button is
+  not a power cycle. The application handles that button and enters its
+  software-off state with the PSoC still on (`psoc-scheduler.md`). In the
+  bootloader, the application does not run, so the button has no known
+  effect.
 
 ### Safety rules that the dext enforces
 
@@ -205,7 +210,7 @@ units. It is not the loader bytes.
 | The tool reports `PSoC status stayed 0, not 2` or another value after 0x60 | Wait 10 s. Run `ensemble-bootloader status`. If it prints 2, run `ensemble-bootloader exit`. If it prints 1, the application runs again. For other values, power-cycle the unit |
 | The tool reports an error and the status is 2 | Run `ensemble-bootloader exit` |
 | The tool or the Mac stops during a stage | Run `ensemble-bootloader status`. If it prints 2, run `ensemble-bootloader exit` |
-| `exit` fails, or the dext refuses the transfer | Disconnect Thunderbolt. Power the unit off for 10 s. Power it on, then connect Thunderbolt |
+| `exit` fails, or the dext refuses the transfer | Disconnect Thunderbolt. Disconnect the power cord for 10 s. Connect it, turn the unit on, and wait for the front panel. Then connect Thunderbolt |
 | The status is 2 after a power cycle | The application checksum fails, or Apogee's loader differs from the reference. Run `make uninstall`, then the Apogee Firmware Updater. When the HAL finds status 2, it sends Exit first, then it can program the PSoC (`updater.md`) |
 
 ### Commands that the session does not send
