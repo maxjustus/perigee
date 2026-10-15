@@ -315,3 +315,32 @@ that a 0x40 Get triggers, not from a direct Get.
 The `kDeniedCommands` list still blocks 0x60 to 0x63, and the driver has
 no remote-I2C engine. The bootloader session therefore remains out of
 reach.
+
+## Bootloader check stage
+
+2026-10-14, 17:14, `ensemble-bootloader check` on the open driver at
+commit `f70b44e`. The plan is in `docs/firmware/bootloader-options.md`.
+
+The run took 5.4 s and exited with status 0. The Enter reply was
+`69 f0 12 2e 00 14 01 01`:
+
+| Bytes | Reading |
+|-------|---------|
+| `69 f0 12 2e` | Silicon ID 0x2E12F069, little-endian. It matches the CYACD header |
+| `00` | Silicon revision 0 |
+| `14 01 01` | Bootloader version bytes |
+
+Enter with no data succeeded, so the loader has no security key. Exit
+returned the unit to status 1 without a reply read.
+
+After the session, two Get-alls returned no report, while meter frames
+continued. The PSoC application ran, and the front panel looked normal. A
+dext restart reset the mailbox, and the next Get-all returned 936 reports.
+Without the stale `p2`, they are identical to the Get-all before the
+session. The session changed no setting.
+
+Cause: the PSoC takes the host only after a mailbox reset that it sees
+with its FPGA event interrupt on. Its startup writes status 1 before that
+interrupt is on (`docs/firmware/psoc-protocol.md`). The dext reset came
+too early. Commit `18e29e4` resets the mailbox again each second until a
+report arrives, and it treats a return to status 1 as a restart.
