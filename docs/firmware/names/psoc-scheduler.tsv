@@ -19,6 +19,7 @@ address	name	kind	evidence
 0x00017660	Power_HandlePanelRequest	function	Verified: foreground IRQ2 consumer from 0x1fa94. State 2 tests inhibit, state 3 starts hardware, state 1 requests stop.
 0x000176e0	Power_RequestDeferredRestart	function	Verified: store state 5 at 0x1fff8f1c. Caller 0x18344.
 0x00017790	Power_GetState	function	Verified: return word at 0x1fff8f1c.
+0x00018608	DawMixer_ResetOnDisconnect	function	Verified: sends 0x94 for mixers 0 to 3 with source 2; caller Power_HandleDisconnect
 0x0001f8fc	ApplicationMain	function	Verified: cooperative loop calls 0x20498 only with hardware ready and calls 0x20280 every pass.
 0x0001f9b8	IRQ0_Expander70_Handler	function	Verified: flag 0x1fff8f88, count 0x1fff8f94, disable IRQ0. Installed pointer 0x1f9b9 at 0x1fff8040.
 0x0001f9dc	IRQ1_Expander71_Handler	function	Verified: flag 0x1fff8f8c, count 0x1fff8f98, disable IRQ1. Installed pointer 0x1f9dd at 0x1fff8044.

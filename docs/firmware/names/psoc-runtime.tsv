@@ -1,5 +1,6 @@
 address	name	kind	evidence
 0x0001003c	frame_dummy_candidate	function	Inferred GCC constructor role. Verified zero weak-hook checks and constructor pointer at 0x253ac. Exact source unknown.
+0x000185FC	MainInit_NoOpHook	function	Verified: empty body, one call from 0x1F8FC between Mixer_ResetLevels and FunctionalTest_InitMode. Role unknown
 0x000221ec	PreampSPI_EmptyEnableHookA	function	Verified empty body called by 0x2216c. Inferred EnableTxInt role. Exact original name unknown.
 0x000221f8	PreampSPI_EmptyEnableHookB	function	Verified empty body called by 0x2216c. Inferred EnableRxInt role. Exact original name unknown.
 0x00022a60	I2C_PreStopNoop	function	Verified empty body called by 0x223ec before transmit STOP. Unknown original API name. Reference I2C_1_INT.c differs.

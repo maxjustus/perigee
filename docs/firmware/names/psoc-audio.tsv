@@ -33,10 +33,14 @@ address	name	kind	evidence
 0x0001198C	FPGA_SetInputReferenceBit	function	Verified: register 0x0B channel bit
 0x00011A10	FPGA_SetLineReferenceBit	function	Verified: register 0x0C channel bit
 0x00011A94	FPGA_SetSoftLimitBit	function	Verified: register 0x0D channel bit
+0x00011B18	FPGA_GetControlShadow	function	Verified: returns shadow 0x1FFF9074+i for 8 <= i < 14, which 0x1190C mirrors to FPGA 0x60800000+i; caller 0x11460
+0x00011B4C	FPGA_ReadHardwareRevision	function	Verified: FPGA 0x60800002 bits 5:3 plus 1; callers 0x10490, 0x17404
+0x00011B74	FPGA_ReadUnitIdentifier	function	Verified: reads FPGA 0x60800018 down to 0x11 into a big-endian 64-bit pair; caller 0x15C50
 0x00011BE4	FPGA_WriteMixerCoefficient	function	Verified: 0x1000 + bank*0x100 + side*0x80 + channel*2
 0x00011C24	FPGA_SetRoute	function	Verified: source at 0x200+d then control 8 at 0x300+d
 0x00011C5C	FPGA_SetRouteControl	function	Verified: source then explicit control
 0x00011C98	FPGA_SetPhaseBit	function	Verified: register 7 channel bit
+0x00011CFC	FPGA_SetInstrumentBit	function	Verified: channel below 4 sets bit p1 of FPGA register 8 through 0x1190C; caller AudioInput_SetMode
 0x00011D24	FPGA_SetOpticalFormat	function	Verified: register 0x28 mask 5 or 10
 0x00012150	FPGA_MeasureExternalRate	function	Verified: period at 0x18..0x1B then division and optical multiplier
 0x00012610	FPGA_WriteWord32LE	function	Verified: four byte writes least significant first
@@ -50,6 +54,7 @@ address	name	kind	evidence
 0x000132A4	DSP_InitProtocolState	function	Verified: version byte nonzero enables state and coefficient handshake protocol
 0x000132DC	DSP_HaltRange	function	Verified: first free of eight halt slots and 25us delay
 0x00013388	DSP_ResumeAll	function	Verified: clear halt mask and 25us delay
+0x000133A8	DSP_Erase	function	Verified: dispatch 0 to DSP_EraseCode 0x133F4, 1 to DSP_EraseCoefficients 0x13520, 2 to DSP_EraseState 0x13460
 0x000133F4	DSP_EraseCode	function	Verified: zero code words for selected thread
 0x00013460	DSP_EraseState	function	Verified: zeros buffer at start+j and uses cached transfer count
 0x00013520	DSP_EraseCoefficients	function	Verified: handshake then zero coefficient range then handshake
@@ -59,37 +64,64 @@ address	name	kind	evidence
 0x000136FC	DSP_BeginCoefficients	function	Verified: write thread to 0x1805 then poll bit 5
 0x00013754	DSP_WriteCoefficients	function	Verified: first/last chunk handshakes around words at 0x2000
 0x000137C8	DSP_EndCoefficients	function	Verified: write thread to 0x1806 then poll bit 5
+0x00013820	AudioOutput_ResetState	function	Verified: mode 1 at 0x1FFF90B4, speaker mask 0 at 0x1FFF90B5, and four 0x80 DAW pass codes at 0x1FFF90B6; called from 0x1F8FC
 0x00013860	AudioRoutes_InitFixed	function	Verified: input mixer feeds playback feeds and fixed high routes
 0x000139C8	AudioRoutes_ResetOutputs	function	Verified: default output table and mixer/playback tap routes
 0x00013AE0	AudioRoutes_ResetRecord	function	Verified: default input-pair table
+0x00013B90	AudioRoutes_SetMainOutputMode	function	Verified: stores 0x1FFF90B4 and re-applies destinations 0 to 3; command 0x0F
+0x00013BDC	AudioRoutes_SetSpeakerSetMask	function	Verified: stores 0x1FFF90B5 and re-applies one to three destinations by mode; command 0x10
+0x00013C48	AudioRoutes_SetSumToMono	function	Verified: per-destination flag at 0x1FFF90B1, then re-applies destinations 0x0F/0x10, 0, or 0x10/0x11; command 0x14
+0x00013D10	AudioRoutes_MeterPairDestination	function	Verified: 0x9A + 2p for p below 6, 0xA6 for p 15, 0xA8 for p 16; caller 0x13DFC
+0x00013D54	AudioRoutes_ReapplyDawSources	function	Verified: re-applies every destination 0 to 0x10 whose stored source is 0x30 to 0x3F; caller 0x140C0
+0x00013DA4	AudioRoutes_DawSourceMixerIndex	function	Verified: index of the matching 0x30 to 0x3F code in 0x1FFF90B6, 4 when absent; caller 0x13DFC
 0x00013DFC	AudioRoutes_SetOutputPair	function	Verified: speaker set mono DAW substitution and meter tap logic
+0x00014020	AudioRoutes_InputMeterTap	function	Verified: 0x90 + 2p for p below 4 and 0x98 for p 5; caller 0x13860
 0x00014058	AudioRoutes_SetRecordPair	function	Verified: pair 15 forced to 0x60 and pair 16 to 0x66
+0x000140C0	DawMixer_SetPassSource	function	Verified: stores 0x1FFF90B6+p1 then re-applies the DAW sources; command 0x94 with the 0x80 default
 0x000140E8	AudioRoutes_InputSource	function	Verified: record-order index to physical source table
 0x0001414C	DSP_RouteInput	function	Verified: destination 0xC0+DSP input when mode bit 0 set
 0x00014188	DSP_RouteRecord	function	Verified: destination 0x30+input with processed source for mode bits 0 and 1
 0x000141D8	DSP_RouteMixerFeed	function	Verified: destination 0x60+input with processed source for mode bit 0
 0x0001421C	DSP_ApplyRoutes	function	Verified: DSP input then mixer feed then record route
+0x00014244	AudioState_SetDefaults	function	Verified: eight 10-byte input records to type 2, level triples to 0x14, rate 0xAC44; callers 0x1F8FC and Power_HandlePanelRequest
 0x000143E8	AudioInputs_RestoreAfterPower	function	Verified: preamp state guitar gains initial reference and delayed mute release
+0x000144A8	AudioHardware_IsRestoreMute	function	Verified: returns 0x1FFF912F, set by 0x143E8 and cleared by 0x144C0 after 500 ticks; caller ProtocolStateTick
 0x000144C0	AudioHardware_ServiceRestore	function	Verified: 500 elapsed ticks then levels global unmute and front gain
 0x0001453C	AudioHardware_ArmMuteRelease	function	Verified: set pending flag and elapsed timestamp
 0x0001455C	AudioHardware_SetSampleRate	function	Verified: full mute ADC delay 100ms fixed delay and converter configuration
 0x0001459C	AudioHardware_SetClockSource	function	Verified: full mute 100ms fixed delay and source register
+0x000145E0	AudioInput_SetPhase	function	Verified: stores flag 0x1FFF90BE+10p1 and calls FPGA_SetPhaseBit; command 0x06
+0x0001463C	AudioInput_SetSoftLimit	function	Verified: stores flag 0x1FFF90BF+10p1 and calls FPGA_SetSoftLimitBit; command 0x04
 0x00014698	AudioInput_SetPhantom	function	Verified: per-channel SPI and aggregate supply mask
 0x0001478C	AudioInput_SetHighPass	function	Verified: preamp filter only in mic or instrument mode
 0x00014810	AudioInput_SetMode	function	Verified: gain path phantom reference instrument and filter sequence
 0x00014A24	AudioInput_SetMicGain	function	Verified: preamp or doubled front-mic gain
 0x00014AB0	AudioInput_SetInstrumentGain	function	Verified: preamp gain or guitar I2C gain
 0x00014B48	AudioOutput_SetReference	function	Verified: FPGA 0x08 bits 4/5 or 0x0C bit
+0x00014B98	AudioOutput_SetAttenuation	function	Verified: clamps to 0x40, stores 0x1FFF9112+3p1, then calls 0x14DF8; command 0x11
+0x00014BD8	AudioOutput_SetMute	function	Verified: stores 0x1FFF9111+3p1 on change, then calls 0x14DF8; command 0x12
+0x00014C2C	AudioOutput_SetDim	function	Verified: stores 0x1FFF9110+3p1 on change, then calls 0x14DF8; command 0x13
+0x00014C80	AudioOutput_ApplySpeakerSetLevels	function	Verified: stores the mode at 0x1FFF9123, refreshes destination 2, then applies each pair of the range from 0x14F8C; command 0x0F
 0x00014D28	AudioOutput_SetTrim	function	Verified: coarse DAC trim and FPGA remainder
 0x00014DF8	AudioOutput_ApplyMonitorLevel	function	Verified: attenuation dim mute and trim to mapped DAC pair
 0x00014EF8	AudioOutput_SetGuitarAttenuation	function	Verified: doubled attenuation to branch 1 register 0 or 1
+0x00014F54	AudioOutput_HoldMutedForUpdate	function	Verified: acts only while the 0x1FFF912F restore mute is set, mutes all outputs through 0x15288, and clears the 0x1FFF912E pending release
 0x00014F8C	AudioOutput_MonitorPairRange	function	Verified: monitor index and speaker mode to output pair range
 0x00015038	AudioInput_ApplyGainRange	function	Verified: channel-specific gain table and range-transition zero write
 0x000151D0	AudioOutput_RestoreLevels	function	Verified: monitor levels remaining line trims and guitar levels
 0x00015288	AudioOutput_MuteAll	function	Verified: all 16 attenuation registers to 255 then both global mute bits
 0x000152F0	AudioRate_DelayIndex	function	Verified: 88200 and 96000 both map to index 3
+0x00015364	ExtraAdcDelay_ForRate	function	Verified: byte of the current rate from the six-byte 0x2D setting through AudioRate_DelayIndex; caller 0x153A4
 0x000153A4	AudioRate_ApplyADCDelay	function	Verified: setting 0x2D byte to 0x60800037
+0x000177A8	Mixer_ResetLevels	function	Verified: clears the four solo flags at 0x1FFF9150 and sets four faders to 600; called from 0x1F8FC
+0x000177E8	Mixer_SetChannelMute	function	Verified: command 0x35; a mixer 0 write also reaches each post-fader mixer whose 0x90 report is zero
+0x00017854	Mixer_SetChannelLevel	function	Verified: command 0x32, stores 0x1FFF9154+8p2 and recomputes; mixer 0 writes also reach post-fader mixers
+0x000178E4	Mixer_SetSoloSafe	function	Verified: command 0x3A, recomputes mixer 0 and each mixer whose 0x90 report is zero
+0x00017930	Mixer_SetSolo	function	Verified: command 0x34, refreshes 0x1FFF9150 through 0x17EBC and recomputes the mixers
+0x00017998	Mixer_RecomputeAll	function	Verified: command 0x66 only, recomputes the four mixers through 0x179BC
+0x000179BC	Mixer_RecomputeMixer	function	Verified: recomputes channels 0 to 0x2D through Mixer_UpdateChannelCoefficients
 0x000179EC	Mixer_UpdateChannelCoefficients	function	Verified: dB sum of pan fader master and gate into stereo FPGA coefficients
+0x00017EBC	Mixer_RefreshSoloFlags	function	Verified: scans channels 0 to 0x2F through the 0x34 report, stores 0x1FFF9150+2m, returns whether it changed
 0x00017F2C	Mixer_StereoLeftBalanceDb	function	Verified: left attenuation only for pan above 64
 0x00017F5C	Mixer_StereoRightBalanceDb	function	Verified: right attenuation only for pan below 64
 0x00018420	Mixer_FaderToDb	function	Verified: value/10-60 or -200 for zero

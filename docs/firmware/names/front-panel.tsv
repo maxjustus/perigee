@@ -6,18 +6,39 @@ address	name	kind	evidence
 0x00010958	PanelDisplay_WriteCommand	function	Verified: waits for transmit state and sends one command byte
 0x00010988	PanelDisplay_WriteRegister	function	Verified: command then one parameter through 0x22B94
 0x000109DC	PanelDisplay_WriteBytes	function	Verified: data selector then byte loop
+0x00010A34	PanelDisplay_SetOscillatorControl	function	Verified: SEPS525 register 0x02 through 0x10988, values 1 then 0 in 0x10F78
+0x00010A54	PanelDisplay_SetClockDivider	function	Verified: SEPS525 register 0x03, value 0x60 in 0x10F78
+0x00010A74	PanelDisplay_SetReducedCurrent	function	Verified: SEPS525 register 0x04, values 1 then 0 in 0x10F78
+0x00010A94	PanelDisplay_SoftwareReset	function	Verified: SEPS525 register 0x05, value 0 in 0x10F78
+0x00010AB4	PanelDisplay_SetDisplayOnOff	function	Verified: SEPS525 register 0x06 with bit 7 always set, values 0 then 1 in 0x10F78
+0x00010ADC	PanelDisplay_SetPrechargeTime	function	Verified: SEPS525 registers 0x08 to 0x0A, values 2, 3, 0 in 0x10F78
+0x00010B28	PanelDisplay_SetPrechargeCurrent	function	Verified: SEPS525 registers 0x0B to 0x0D, values 0x1A, 0x19, 0x0A in 0x10F78
+0x00010B74	PanelDisplay_SetDrivingCurrent	function	Verified: SEPS525 registers 0x10 to 0x12, values 0x2F, 0x31, 0x1E in 0x10F78
+0x00010BC0	PanelDisplay_SetDisplayMode	function	Verified: SEPS525 register 0x13, value 0 in 0x10F78
+0x00010BE0	PanelDisplay_SetRgbInterface	function	Verified: SEPS525 register 0x14, value 0x31 in 0x10F78
+0x00010C00	PanelDisplay_SetRgbPolarity	function	Verified: SEPS525 register 0x15, value 0 in 0x10F78
+0x00010C20	PanelDisplay_SetMemoryWriteMode	function	Verified: SEPS525 register 0x16, value 0x66 in 0x10F78
 0x00010C40	PanelDisplay_SetColumnWindow	function	Verified: SEPS525 registers 0x17 and 0x18
 0x00010C74	PanelDisplay_SetRowWindow	function	Verified: SEPS525 registers 0x19 and 0x1A
 0x00010CA8	PanelDisplay_SetCursor	function	Verified: SEPS525 registers 0x20 and 0x21
 0x00010CDC	PanelDisplay_SelectPixelPort	function	Verified: selects register 0x22
+0x00010CF4	PanelDisplay_SetDuty	function	Verified: SEPS525 register 0x28, value 0x7F in 0x10F78
+0x00010D14	PanelDisplay_SetDisplayStartLine	function	Verified: SEPS525 register 0x29, value 0 in 0x10F78
+0x00010D34	PanelDisplay_SetReferenceMode	function	Verified: SEPS525 register 0x80, value 0 in 0x10F78
 0x00010D54	PanelDisplay_FillScreen	function	Verified: 160 by 128 two-byte pixels
 0x00010DCC	PanelDisplay_FillRectangle	function	Verified: inclusive rectangle with high-byte-first pixel color
 0x00010E6C	PanelDisplay_WriteByte	function	Verified: one-byte wrapper around 0x109DC
+0x00010E8C	PanelDisplay_SetDisplayAreaAndWindow	function	Verified: SEPS525 registers 0x2E, 0x2F, 0x33 to 0x36, values 0, 0, 0, 0x9F, 0, 0x7F in 0x10F78
 0x00010F00	PanelDisplay_LoadGrayScaleTable	function	Verified: 96 index/data writes to 0x50/0x51 from flash 0x251B4
 0x00010F78	PanelDisplay_Initialize	function	Verified: controller setup for display 0 or 1
+0x00012130	PanelMeters_Latch	function	Verified: writes 3 to FPGA 0x60800080; the peak-latch meaning is inferred. Callers 0x19208, 0x19390, 0x1A92C
 0x00012730	PanelLED_GetPin	function	Verified: low nibble of packed expander/pin code
+0x00012750	PanelPin_IsValid	function	Verified: PanelLED_GetPin result below 8; callers 0x1298C, 0x12C20
 0x00012778	PanelLED_GetBankBit	function	Verified: low three bits of pin
 0x0001279C	PanelLED_GetExpanderAddress	function	Verified: high nibble 0 maps 0x70 and 1 maps 0x71
+0x000127D4	PanelGPIO_WriteRegister	function	Verified: three-argument pass-through to AudioI2C_WriteRegister; callers 0x128E8, 0x12BD0, 0x1282C
+0x000127FC	PanelGPIO_ReadRegister	function	Verified: one-byte read through AudioI2C_ReadRegisterRetry with retry count 1; caller 0x12B84
+0x0001282C	PanelGPIO_UpdateRegisterBit	function	Verified: read 0x127FC, masked bit at p3, write 0x127D4, read again
 0x000128AC	PanelGPIO_ResetExpander	function	Inferred SX1509: register 0x7D receives 0x12 then 0x34
 0x000128E8	PanelGPIO_Initialize	function	Verified: setup devices 0x70 and 0x71 plus fourteen LEDs
 0x0001298C	PanelGPIO_ConfigurePin	function	Verified: data direction interrupt and LED mode bits
@@ -28,9 +49,11 @@ address	name	kind	evidence
 0x000188A4	PanelBuiltin_GetWidth	function	Verified: descriptor word at offset 4
 0x000188D0	PanelBuiltin_Draw	function	Verified: least-significant-bit-first monochrome expansion
 0x000189F4	PanelUI_Initialize	function	Verified: two draw queues resource init and UI state
+0x00018ADC	PanelUI_ResetAndInitialize	function	Verified: sets 0x1FFF95BC to 1, clears UI-started 0x1FFF9588, calls PanelPages_Initialize; caller Power_HandlePanelRequest
 0x00018AF8	PanelUI_Start	function	Verified: ten input and sixteen output meters plus startup timer
 0x00018BA8	PanelUI_DrawVersion	function	Verified: resident digit glyphs render 1.5.3
 0x00018CA4	PanelUI_DrawBootArtwork	function	Verified: resources 0x5B 0x5C 0x78 and version
+0x00018CF4	PanelUI_RefreshStatusIcon	function	Verified: if 0x1FFF9588 is nonzero, calls 0x1DBE4 with Power_GetState() != 2; callers Power_HandleDisconnect, Power_HandleHostReady, 0x18D24
 0x00018D24	PanelUI_DrawHome	function	Verified: clears both screens and selects home pages
 0x00018E5C	PanelUI_AdjustAttenuation	function	Verified: command 0x11 bounded 0 through 64
 0x00018F00	PanelUI_AdjustInputGain	function	Verified: Mic or Instrument gain limits 75 65 45
@@ -42,6 +65,7 @@ address	name	kind	evidence
 0x00019738	PanelUI_ApplyMessage	function	Verified: command-specific display and LED effects
 0x00019AB0	PanelUI_ShowTimedPopup	function	Verified: popup selector value and timestamp
 0x00019AEC	PanelInput_Press	function	Verified: select input or toggle menu
+0x00019B4C	PanelInput_ReleaseNoOp	function	Verified: empty body, called by 0x1FA94 on an input release edge before 0x1F19C
 0x00019B60	PanelInput_Select	function	Verified: selector state LED intensity and meter highlight
 0x00019BF4	PanelInput_ToggleMenu	function	Verified: switches input page and menu flag
 0x00019C64	PanelOutput_AllFlagsSet	function	Verified: aggregate command value across outputs 0 through 2
@@ -64,17 +88,34 @@ address	name	kind	evidence
 0x0001A9C0	PanelResource_DrawImage	function	Verified: resource open and 64-byte chunk stream
 0x0001AA94	PanelResource_DrawFrame	function	Verified: indexed frame open and chunk stream
 0x0001AB68	PanelResource_PublishVersion	function	Verified: report 0x40 parameter 3 with high/low version and zero
+0x0001ABA4	PanelMeter_Configure	function	Verified: writes descriptor bytes 0 to 8 then clears the hold fields through 0x1AC0C; caller PanelMeters_SetLayout
+0x0001AC0C	PanelMeter_ResetHold	function	Verified: zeroes descriptor bytes 9, 10, and 0x0B; callers 0x1ABA4, PanelMeters_Clear
 0x0001AC30	PanelMeter_DrawColorRows	function	Verified: row thresholds plus RGB565 colors at RAM 0x1FFF86A8
+0x0001AD3C	PanelMeter_DrawFillAndBackground	function	Verified: fills through 0x1AC30 from the fill height to the bar end, then clears the second bar with color 0xF0C1; caller PanelDraw_ServiceQueues
 0x0001ADC0	PanelMeter_DrawOverIndicator	function	Verified: background 0x18C3 or over color 0xF0C1
 0x0001AE30	PanelMeter_DrawDelta	function	Verified: level peak and over indicator changes
+0x0001B03C	PanelMeter_SetFillHeight	function	Verified: stores descriptor byte 0x0C; caller 0x1C1AC
+0x0001B058	PanelMeter_ResetFill	function	Verified: zeroes descriptor bytes 0x0C, 9, and 10; caller 0x1C1E8
+0x0001B07C	PanelMeter_DrawEndMarks	function	Verified: up to four rectangles at the bar end and the fill height, side from the fourth argument; callers 0x1B4E0, PanelMeters_SelectRange, 0x1BB58, PanelMeters_Update
+0x0001B210	PanelMeter_EraseBar	function	Verified: fills both bar rectangles with color 0; caller 0x1BB58
+0x0001B2B8	PanelMeter_DrawBarBackground	function	Verified: fills both bar rectangles with color 0x18C3; callers 0x1B4E0, PanelMeters_Clear
+0x0001B360	PanelMeter_EraseFirstBar	function	Verified: zeroes descriptor bytes 9 and 10, then fills the first rectangle with color 0x18C3; caller 0x1B9C8
 0x0001B3CC	PanelMeters_Initialize	function	Verified: count period hold thresholds and state
+0x0001B4E0	PanelMeters_DrawRange	function	Verified: per meter in [0x9F, 0x9F+0x9E) draws 0x1B2B8, 0x1AD3C, and the 0x1B07C mark; caller PanelDraw_ServiceQueues
 0x0001B5E0	PanelMeters_SelectRange	function	Verified: selected range with green border
 0x0001B720	PanelMeters_SetLayout	function	Verified: ten/eight-pixel or sixteen/five-pixel normal meter layouts
 0x0001B9C8	PanelMeters_SetPeakHold	function	Verified: updates state offset 0x230
 0x0001BA58	PanelMeters_SetOverHold	function	Verified: updates state offset 0x231
 0x0001BAA8	PanelMeters_Clear	function	Verified: reset meter state and redraw backgrounds
+0x0001BB58	PanelMeters_EraseRange	function	Verified: per meter in the same range clears through 0x1B210 and draws the 0x1B07C mark with color 0; caller PanelDraw_ServiceQueues
 0x0001BC14	PanelMeters_Update	function	Verified: decay peak hold over hold and incremental draw
+0x0001C104	PanelMeters_ClearState	function	Verified: zeroes the 20-byte meter state at page+0xD4+20i, byte offsets 0, 1, 8 and word offsets 4, 0xC, 0x10; callers PanelMeters_Initialize, PanelMeters_Clear
 0x0001C13C	PanelMeter_LevelToPixels	function	Verified: nine thresholds times seven pixels
+0x0001C190	PanelMeters_SetForceRedraw	function	Verified: stores its argument at page+0x218; queue command 3 passes 1 after the layout call
+0x0001C1AC	PanelDrawQueue_MeterClip	function	Verified: queue command 5 sets descriptor byte 0xC for the 16 meters; front-panel.md calls this the clip operation
+0x0001C1E8	PanelDrawQueue_MeterRestore	function	Verified: queue command 5 with argument 0 zeroes descriptor bytes 0xC, 9, and 10 for the 16 meters
+0x0001C220	PanelMeters_DrawVariant	function	Verified: 0 when the width at page+0x286 is below 2, 1 for an even meter index, 2 for an odd one; 0x1B07C skips one bar per value
+0x0001C25C	PanelMeters_InitializeFrame	function	Verified: stores the display index at word 0, zeroes words 2 and 3, sets word 4 to 1; callers pass 0x1FFF9B28 and 0x1FFF9B3C
 0x0001C2A0	PanelStream_SetWindow	function	Verified: inclusive window and zero pixel cursor
 0x0001C334	PanelStream_Write	function	Verified: restore interrupted window then transmit raw bytes
 0x0001C428	PanelStream_InvalidateCursor	function	Verified: clears active-window flag
@@ -109,9 +150,23 @@ address	name	kind	evidence
 0x0001CE08	PanelWidget_SetMask	function	Verified: byte 6 and dirty flag byte 7
 0x0001CE34	PanelWidget_Draw	function	Verified: choice lookup then queued image or erase
 0x0001CEA0	PanelWidget_Clear	function	Verified: resource dimensions determine clear rectangle
+0x0001CF40	PanelWidget_IsDirty	function	Verified: returns widget byte +7; caller 0x1CC30 redraws the widget when nonzero
 0x0001CF58	PanelWidget_SelectResource	function	Verified: value/mask choice entries and 0x7F sentinel
+0x0001CFD4	PanelOutputHome_ResetValues	function	Verified: words 0 to 8 become 0, 2, 0xAC44, 1, 0, 2, 1, 0, 1; callers 0x1D020
+0x0001D020	PanelOutputHome_Initialize	function	Verified: binds gauge object 0x1FFF9F7C to queue 0x1FFF93FC with style 3 and position 0x40, then resets both output value blocks; caller PanelPages_Initialize
+0x0001D074	PanelOutputHome_LoadValues	function	Verified: reads settings 0x29, 0x2A, 0x0F, and 0x11 into 0x1FFF9FCC, 0x1FFF9FD4, the mode check, and the gauge; caller 0x1DACC
 0x0001D10C	PanelOutput_DrawIdentity	function	Verified: speaker/headphone icons and set number
+0x0001D2E0	PanelOutputHome_DrawStatusIcon	function	Verified: queues resource 0x5A at (0x88, 0x1A) when 0x1FFF9FC4 is zero, then caches the flag at 0x1FFF9F9C
 0x0001D320	PanelOutput_DrawSampleRate	function	Verified: decimal digits from resource 0x53
+0x0001D444	PanelOutputHome_Update	function	Verified: compares cached 0x1FFF9F9C to 0x1FFF9FC4 and cached 0x1FFF9FA0 to 0x1FFF9FD8 with the live values, then queues the identity, sample rate, status icon, and gauge updates
+0x0001D510	PanelOutputHome_Draw	function	Verified: queues two rectangles, then the identity, sample rate, status icon, and gauge draw
+0x0001D564	PanelOutputHome_Clear	function	Verified: fills the page background and clears the gauge
+0x0001D780	PanelOutputHome_SetMeasuredClockRate	function	Verified: rounds its argument down to a multiple of ten and stores 0x1FFF9FCC; caller 0x19390 passes the 0x12150 external clock rate
+0x0001D7D0	PanelOutputHome_SetExternalLock	function	Verified: stores the lock flag at 0x1FFF9FE4, sets the indicator state 0x1FFF9FD0, and sets the widget 0x1FFF8864 mask to 2 or 4
+0x0001D834	PanelOutputHome_SelectOutput	function	Verified: stores the selection at 0x1FFF9FC8, writes it to three widget records at 0x1FFF8836+0x10k, then refreshes the attenuation, dim, gauge value, and page; caller 0x1DC20
+0x0001D8B0	PanelUI_SetStatusIconFlag	function	Verified: stores its argument at 0x1FFF9FC4, which 0x1D2E0 uses to select resource 0x5A or none
+0x0001D8CC	PanelOutputHome_RefreshAttenuation	function	Verified: reads settings 0x11 and 0x12 and sets widget 0x1FFF8834, forcing 1 for a 0x40 setting; callers 0x1D074, 0x1D834
+0x0001D930	PanelOutputHome_RefreshDimButton	function	Verified: reads setting 0x13 and forces 1 for speaker destination 2 with a nonzero monitor mode and talkback on; sets widget 0x1FFF8844; callers 0x1D074, 0x1D834
 0x0001D990	PanelPages_Initialize	function	Verified: initial page pointers and popup state
 0x0001D9C0	PanelPages_Service	function	Verified: updates pages only when their draw queues are empty
 0x0001DA30	PanelPages_ShowInputHome	function	Verified: selects page 0x1FFF8950
@@ -119,9 +174,16 @@ address	name	kind	evidence
 0x0001DACC	PanelPages_ShowOutputHome	function	Verified: selects page 0x1FFF8874
 0x0001DB1C	PanelPages_ShowOutputPopup	function	Verified: selects page 0x1FFF8BB0 and saves previous page
 0x0001DB7C	PanelPages_ApplyValue	function	Verified: forwards command value to current or saved page
+0x0001DBE4	PanelUI_SetStatusIconFromPowerState	function	Verified: forwards to 0x1D8B0; callers 0x18CF4 and 0x19738 pass Power_GetState() != 2
+0x0001DBF8	PanelUI_IsInputMenuPage	function	Verified: returns whether 0x1FFF9FE8 equals the input menu page 0x1FFF8B34; callers PanelUI_Service, 0x19AEC, 0x19B60, 0x1A778
+0x0001DC20	PanelOutputHome_SelectOutputCommand	function	Verified: one-argument pass-through to 0x1D834; caller PanelOutput_SelectMeterRange
+0x0001DC38	PanelOutputHome_UpdateClockDisplay	function	Verified: forwards its two arguments, the external clock rate and the lock flag, to 0x1D780 and 0x1D7D0; caller PanelUI_Service
 0x0001DC54	PanelPages_ShowUpdate	function	Verified: resident update text and three-square progress state
 0x0001DD44	PanelPages_ShowReconnect	function	Verified: resources 0x60 and 0x61
+0x0001DDB4	PanelPages_ShowHomeAfterUpdate	function	Verified: queues resource 0x5E, fills display 0 black, redraws the update squares, input home, output home, and a meter layout, then clears 0x1FFF9FF4; caller 0x19738 case 99
 0x0001DE0C	PanelPages_AnimateUpdate	function	Verified: advance one of three squares after more than 2000 ticks
+0x0001DEB4	PanelUpdateDraw_Squares	function	Verified: fills a 6x6 rectangle on display 1 at each of three positions in 0x1FFF888C while 0x1FFF9FF4 is nonzero; callers 0x1DD44, 0x1DDB4
+0x0001DF04	PanelInputHome_InitializeGauge	function	Verified: binds gauge object 0x1FFFA000 to the display 0 queue 0x1FFF9270 with style 3 and clears 0x1FFF8F58; caller PanelPages_Initialize
 0x0001DF30	PanelInput_LoadHomeValues	function	Verified: input type gain phantom and widget masks
 0x0001E3E8	PanelInput_SelectMenuItem	function	Verified: switches selected state masks
 0x0001E4D0	PanelInput_FilterMenu	function	Verified: input type channel and partner filters

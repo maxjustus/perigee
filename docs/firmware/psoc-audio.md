@@ -77,6 +77,15 @@ On wrap, `0x20378` subtracts one additional tick.
 | Verified | External-clock release request | `0x15F58` requires FPGA status bit 6 clear and measured rate within ±5%. It then calls `0x1453C`. |
 | Verified | External lock loss | `0x15F58` calls `0x14F54`, which performs full mute and cancels the release timer. |
 
+**Verified:** a restore mute gates the update mute path.
+`0x143E8` mutes the inputs and outputs, sets `0x1FFF912F`, stores the current tick in `0x1FFF912C`, and sets the pending-release flag `0x1FFF912E`.
+`0x144C0` releases the outputs after 500 elapsed ticks.
+`0x14F54` acts only while `0x1FFF912F` is nonzero. It mutes again through `0x15288`, then clears `0x1FFF912E`, so the pending release does not run later.
+`0x14F74` restores the outputs through `0x151D0` under the same condition.
+Consequence: on a unit that is not in the restore mute, `0x14F54` changes nothing.
+A mute that must work from any state calls `0x15288` directly.
+Evidence: `0x143E8`, `0x144A8`, `0x144C0`, `0x14F54`, `0x14F74`.
+
 **Inferred:** DAC register `0x0A` bit 0 is global soft mute.
 **Verified:** the code asserts it before clock changes and clears it after the delayed output restore.
 **Verified:** DAC reinitialization writes register `0x0A` with bit 0 clear, but leaves every attenuation register at `0xFF`.
