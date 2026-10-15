@@ -344,3 +344,26 @@ with its FPGA event interrupt on. Its startup writes status 1 before that
 interrupt is on (`docs/firmware/psoc-protocol.md`). The dext reset came
 too early. Commit `18e29e4` resets the mailbox again each second until a
 report arrives, and it treats a return to status 1 as a restart.
+
+### Second check with the mailbox fix
+
+2026-10-14, 17:32, the same check on commit `e6890f6`. The reply was the
+same 8 bytes. The dext kept its process, PID 23054.
+
+| Time after Exit | Get-all result |
+|-----------------|----------------|
+| 2 s | No report |
+| 4 s | 943 reports. Input types (0x01) and mic gains (0x02) differ from the baseline |
+| 13 s | 941 reports, still different |
+| 29 s and later | 936 reports, identical to the baseline without `p2`. Three reads agree |
+
+The mailbox fix works: the PSoC answered within 4 s, with no dext restart.
+
+The application reports startup values for about 30 s after a restart:
+input types 0x02 and mic gains 0 on inputs 1 to 8. Then it reports the
+stored settings. The extra reports in the early reads overlap the
+Get-all that the dext sends at the restart. The dext restart Get-all can
+therefore give clients startup values. The ensemble-control cache showed
+the stored values afterwards, but the later Get-alls also updated it.
+Whether the application sends the stored values without a request is
+unknown.
