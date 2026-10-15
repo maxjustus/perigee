@@ -174,7 +174,13 @@ void IMPL(EnsemblePsoc, PollOccurred)
         os_log(OS_LOG_DEFAULT, "EnsembleDriver: no PSoC answer, mailbox reset again");
     }
     ivars->outbox.flush(mailbox, [&](const Message & sent) { parseMessage(sent.words, sent.count, handle); });
-    while (mailbox.receive(handle)) {
+    auto received = [&](const Report & report) {
+        if (poweredOn(report)) {
+            ivars->outbox.push(getAll());
+        }
+        handle(report);
+    };
+    while (mailbox.receive(received)) {
         ivars->rejoin.heard = true;
     }
     ivars->timer->WakeAtTime(kIOTimerClockMachAbsoluteTime, time + ivars->period, 0);

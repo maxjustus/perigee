@@ -173,9 +173,18 @@ static void report_packs_into_async_arguments()
     CHECK(args[kReportArguments - 1] == 0);
 }
 
+static void power_on_is_report_0x43_with_value_1()
+{
+    CHECK(poweredOn({1, 0x43, 0, 0, 1, {1}}));
+    CHECK(!poweredOn({1, 0x43, 0, 0, 1, {0}}));
+    CHECK(!poweredOn({1, 0x43, 0, 0, 0, {1}}));
+    CHECK(!poweredOn({1, 0x42, 0, 0, 1, {1}}));
+}
+
 int main()
 {
     report_packs_into_async_arguments();
+    power_on_is_report_0x43_with_value_1();
     rate_index_matches_the_psoc_table();
     type1_record_carries_one_value();
     type2_record_spans_words_by_its_length();

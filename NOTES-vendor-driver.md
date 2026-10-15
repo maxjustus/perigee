@@ -1804,13 +1804,12 @@ Sample rate changes need command 0x29.
   `CUR_*_ADDRESS` registers. A new driver can use `CUR_*` for position
   instead of the wrap interrupt. This is unverified.
 - The PSoC message slots hold 8 entries. Queue in software when full.
-- After a PSoC restart, the application reports startup values for about
-  30 s: input type 0x02 and mic gain 0 on inputs 1 to 8. Then it reports
-  the stored settings (probe-results.md, "Second check with the mailbox
-  fix"). The dext sends its restart Get-all in that window, so clients can
-  hold startup values. Whether the application later sends the stored
-  values without a request is unknown. A second Get-all after the reports
-  stop is a candidate fix.
+- After a PSoC restart, the application reports startup values until its
+  periodic state callback replays the stored settings. That replay ends
+  with report 0x43 = 1 (0x15F9E to 0x15FFA), 11 s to about 25 s after the
+  restart in our runs. The dext answers 0x43 = 1 with a Get-all, as the
+  vendor HAL does (0x81D44). Without that second Get-all, clients keep the
+  startup values of the restart Get-all (probe-results.md).
 
 ### 9.3 Unverified items
 

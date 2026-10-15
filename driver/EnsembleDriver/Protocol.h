@@ -52,6 +52,16 @@ inline void pack(const Report & report, uint64_t args[kReportArguments])
     }
 }
 
+// The PSoC reports 0x43 = 1 after it replays its stored settings at start-up.
+// Until then it reports start-up values, so the host asks for every setting
+// again, as the vendor HAL does.
+constexpr uint8_t kReportPowerOn = 0x43;
+
+inline bool poweredOn(const Report & report)
+{
+    return report.command == kReportPowerOn && report.length >= 1 && report.data[0] == 1;
+}
+
 struct Message {
     uint32_t words[kSlotWords];
     uint32_t count;
