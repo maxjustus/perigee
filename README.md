@@ -9,6 +9,8 @@ this model.
 - `control/`: the control service. It gives a web UI on port 8737,
   JSON-RPC on port 8738, and a remote monitor stream on port 8739. See
   `control/README.md`.
+- `probe/`: a tool that reads the Ensemble through the vendor kext. See
+  `probe/README.md`.
 - `NOTES-vendor-driver.md`: the device protocol.
 - [Firmware map](docs/firmware/README.md): offline analysis, image checks,
   and unresolved recovery requirements.
