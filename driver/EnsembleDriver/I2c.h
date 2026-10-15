@@ -77,11 +77,14 @@ constexpr uint8_t kBootloaderReportSize = 0x32;
 constexpr uint8_t kBootloaderRowChecksum = 0x3A;
 constexpr uint8_t kBootloaderExit = 0x3B;
 constexpr uint8_t kFlashArrays = 4;
+constexpr uint32_t kFlashRows = 256;
 constexpr uint8_t kEepromArray = 0x40;
+constexpr uint32_t kEepromRows = 128;
 
 // Only the reads that the vendor updater sends pass, in the vendor shape.
-// The Cypress loader writes flash for 0x34, 0x36, 0x37, and 0x39, and hands
-// unknown commands to an optional Apogee callback.
+// The Cypress loader writes flash for 0x34, 0x36, 0x37, and 0x39. The unit's
+// v1.20 loader does not bound the row of 0x3A, so a larger row reads past
+// the array, or past the EEPROM into peripheral registers.
 inline bool validBootloaderPacket(const uint8_t * packet, uint32_t bytes)
 {
     if (bytes < 7 || packet[0] != 0x01 || packet[bytes - 1] != 0x17) {
@@ -104,8 +107,14 @@ inline bool validBootloaderPacket(const uint8_t * packet, uint32_t bytes)
         return length == 0;
     case kBootloaderReportSize:
         return length == 1 && data[0] < kFlashArrays;
-    case kBootloaderRowChecksum:
-        return length == 3 && (data[0] < kFlashArrays || data[0] == kEepromArray);
+    case kBootloaderRowChecksum: {
+        if (length != 3) {
+            return false;
+        }
+        const uint32_t row = data[1] | uint32_t(data[2]) << 8;
+        return (data[0] < kFlashArrays && row < kFlashRows) ||
+               (data[0] == kEepromArray && row < kEepromRows);
+    }
     case kBootloaderExit:
         return length == 1 && data[0] == 0;
     default:

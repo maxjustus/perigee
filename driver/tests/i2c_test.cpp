@@ -108,6 +108,9 @@ static void writes_carry_only_vendor_reads()
     CHECK(!writes(packet(0x32, {0x40})));
     CHECK(!writes(packet(0x3A, {4, 0, 0})));
     CHECK(!writes(packet(0x3A, {0, 0})));
+    CHECK(writes(packet(0x3A, {3, 0xFF, 0})));
+    CHECK(!writes(packet(0x3A, {3, 0x00, 1})));
+    CHECK(!writes(packet(0x3A, {0x40, 0x80, 0})));
     CHECK(!writes(packet(0x3B, {})));
     CHECK(!writes(packet(0x3B, {1})));
 }
