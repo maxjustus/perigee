@@ -397,3 +397,18 @@ Exit was identical to the baseline without `p2`.
 Consequence for a future update: the 1.20 report-size reply does not show
 a protected loader region. The 1.60 reference refuses program rows below
 the loader end. The 1.20 guard is unknown, so no write may target array 0.
+
+## Settings after a PSoC restart
+
+2026-10-14, two check runs inside a passive 60 to 75 s log, with no other
+Get-all.
+
+Before `67b9569`: the dext Get-all at the restart, 3 s after it, returned
+start-up values. Report 0x43 = 1 came 11 s after the restart, with no other
+report. Two minutes later the ensemble-control cache still showed Mic and
+gain 0 on inputs 1 to 8, while a fresh Get-all returned the stored values.
+
+After `67b9569`: the restart Get-all came at 3 s, and a second Get-all came
+at 11 s, after 0x43. The cache then held the stored values: +4dBu on inputs
+1, 2, and 5 to 8, Instrument on inputs 3 and 4, and mic gains 0, 0, 0, 41,
+45, 45, 7, 58.
