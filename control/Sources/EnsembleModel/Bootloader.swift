@@ -112,8 +112,8 @@ public struct BootloaderSession {
         while true {
             do {
                 return try exchange(BootloaderPacket.enter, replyLength: 8)
-            } catch let error as BootloaderError {
-                throw error
+            } catch BootloaderError.status(let command, let status) {
+                throw BootloaderError.status(command: command, status: status)
             } catch {
                 if attempt == Self.enterAttempts {
                     throw error
@@ -144,7 +144,10 @@ public struct BootloaderSession {
     private func exchange(_ command: UInt8, data: [UInt8] = [], replyLength: Int) throws -> [UInt8] {
         try link.writeI2c(BootloaderPacket.encode(command: command, data: data))
         pause(Self.replyDelay)
-        let reply = try BootloaderPacket.parse(link.readI2c(count: BootloaderPacket.overhead + replyLength))
+        let bytes = try link.readI2c(count: BootloaderPacket.overhead + replyLength)
+        guard let reply = try? BootloaderPacket.parse(bytes) else {
+            throw BootloaderError.badReply(command: command, bytes: bytes)
+        }
         guard reply.status == 0 else {
             throw BootloaderError.status(command: command, status: reply.status)
         }
@@ -174,6 +177,7 @@ public enum BootloaderError: Error, Equatable, CustomStringConvertible {
     case outboxFull
     case timeout(expected: Int, last: Int)
     case status(command: UInt8, status: UInt8)
+    case badReply(command: UInt8, bytes: [UInt8])
     case shortReply(command: UInt8, length: Int)
     case unstable(rows: Int)
     case exitFailed(exit: String, earlier: String?)
@@ -190,6 +194,9 @@ public enum BootloaderError: Error, Equatable, CustomStringConvertible {
             return "PSoC status stayed \(last), not \(expected)"
         case .status(let command, let status):
             return String(format: "command 0x%02x returned status 0x%02x", command, status)
+        case .badReply(let command, let bytes):
+            return String(format: "command 0x%02x got no valid reply: ", command) +
+                bytes.map { String(format: "%02x", $0) }.joined(separator: " ")
         case .shortReply(let command, let length):
             return String(format: "command 0x%02x returned %d data bytes", command, length)
         case .unstable(let rows):

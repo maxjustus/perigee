@@ -12,6 +12,7 @@ final class FakeLoader: BootloaderLink, @unchecked Sendable {
     var entryReads = 0
     var failRow: Int?
     var enterStatus: UInt8 = 0
+    var silent = false
     var staleOnce: (array: UInt8, row: Int)?
     var exitWorks = true
     private var reply: [UInt8] = []
@@ -44,6 +45,8 @@ final class FakeLoader: BootloaderLink, @unchecked Sendable {
         commands.append(command)
         packets.append(packet)
         switch command {
+        case BootloaderPacket.enter where silent:
+            break
         case BootloaderPacket.enter:
             reply = BootloaderPacket.encode(command: enterStatus,
                                             data: enterStatus == 0 ? [0x69, 0xf0, 0x12, 0x2e, 0, 1, 0x1e, 1] : [])
@@ -131,6 +134,16 @@ func session(_ loader: FakeLoader) -> BootloaderSession {
         try session(loader).run { _, _ in }
     }
     #expect(loader.commands == [BootloaderPacket.enter, BootloaderPacket.exit])
+}
+
+@Test func aBrokenReplyNamesTheCommandAndItsBytes() {
+    let loader = FakeLoader()
+    loader.silent = true
+    #expect(throws: BootloaderError.badReply(command: BootloaderPacket.enter, bytes: [UInt8](repeating: 0xff, count: 15))) {
+        try session(loader).run { _, _ in }
+    }
+    #expect(loader.commands.filter { $0 == BootloaderPacket.enter }.count == 20)
+    #expect(loader.commands.last == BootloaderPacket.exit)
 }
 
 @Test func aFailedExitNamesTheEarlierError() {
