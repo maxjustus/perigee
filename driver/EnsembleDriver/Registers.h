@@ -47,6 +47,16 @@ constexpr uint32_t kGeneralMailboxReset = 0x20;
 constexpr uint32_t kGeneralDoorbell = 0x40;
 constexpr uint32_t kInterruptWrap = 0x01000000;
 
+// INFO bits 7:6 read 1 while the PSoC application runs, and 2 while its
+// bootloader runs.
+constexpr uint32_t kStatusApplication = 1;
+constexpr uint32_t kStatusBootloader = 2;
+
+inline uint32_t bootloaderStatus(uint32_t info)
+{
+    return (info >> 6) & 3;
+}
+
 constexpr uint32_t kRingFrames = 0x4000;
 constexpr uint32_t kOutputChannels = 36;
 constexpr uint32_t kInputChannels = 34;

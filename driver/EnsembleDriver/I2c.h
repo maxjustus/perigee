@@ -25,15 +25,6 @@ constexpr uint32_t kI2cPollSleepMilliseconds = 1;
 // The vendor HAL waits this long after it enables the engine, before Enter.
 constexpr uint32_t kI2cSettleMilliseconds = 3000;
 
-// INFO bits 7:6 read 1 while the PSoC application runs, and 2 while its
-// bootloader runs.
-constexpr uint32_t kStatusBootloader = 2;
-
-inline uint32_t bootloaderStatus(uint32_t info)
-{
-    return (info >> 6) & 3;
-}
-
 inline uint32_t i2cControl(uint32_t control, uint32_t bytes, bool read)
 {
     return (control & kI2cControlMask) | (bytes << 8) | (read ? kI2cReadBit : 0) |

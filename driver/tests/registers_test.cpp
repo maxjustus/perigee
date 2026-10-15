@@ -41,6 +41,13 @@ static void latency_matches_the_vendor_hal()
     CHECK(quad.safety == 48 && quad.input == 45 && quad.output == 43);
 }
 
+static void bootloader_status_reads_info_bits_7_to_6()
+{
+    CHECK(bootloaderStatus(0x50) == kStatusApplication);
+    CHECK(bootloaderStatus(0x90) == kStatusBootloader);
+    CHECK(bootloaderStatus(0xFFFFFFFF) == 3);
+}
+
 int main()
 {
     meter_timer_divides_the_core_clock_constant();
@@ -48,5 +55,6 @@ int main()
     depth_follows_the_vendor_rate_bands();
     wraps_count_ring_periods_not_interrupts();
     latency_matches_the_vendor_hal();
+    bootloader_status_reads_info_bits_7_to_6();
     return finish();
 }
