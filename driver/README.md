@@ -26,8 +26,10 @@ match that the dext wins.
 ## Test
 
 `driver/test.sh` builds and runs the host-side unit tests. They cover the
-PSoC message parser and encoder in `EnsembleDriver/Protocol.h`. They run
-under AddressSanitizer and UndefinedBehaviorSanitizer.
+headers that do not need DriverKit: the PSoC message parser and encoder,
+the mailbox, the register sequences, the CoreAudio controls and channel
+names, the outbox, and the remote-I2C engine. They run under
+AddressSanitizer and UndefinedBehaviorSanitizer.
 
 `driver/fuzz.sh [seconds]` fuzzes the message parser and the RX mailbox
 with values that the PSoC controls, 60 s per target by default. It needs

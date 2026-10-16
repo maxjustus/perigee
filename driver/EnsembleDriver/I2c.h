@@ -56,6 +56,42 @@ struct I2cRequest {
     const uint8_t * packet;
 };
 
+// One transfer. Regs needs read(offset) and write(offset, value). Returns
+// true when the engine stays busy, which means the reply bytes are absent.
+template <typename Regs, typename Sleep>
+bool i2cTransfer(const Regs & regs, const I2cRequest & request, uint8_t * in, Sleep && sleep)
+{
+    const uint32_t words = i2cWindowWords(request.bytes);
+    if (!request.read) {
+        for (uint32_t i = 0; i < words; i++) {
+            uint32_t word = 0;
+            for (uint32_t b = 0; b < 4 && i * 4 + b < request.bytes; b++) {
+                word |= uint32_t(request.packet[i * 4 + b]) << (8 * b);
+            }
+            regs.write(kI2cWindow + 4 * i, word);
+        }
+    }
+    regs.write(kI2cControlRegister,
+               i2cControl(regs.read(kI2cControlRegister), request.bytes, request.read));
+    sleep(i2cDelayMilliseconds(request.bytes));
+    bool busy = true;
+    for (uint32_t attempt = 0; attempt < kI2cPollTries && busy; attempt++) {
+        busy = (regs.read(kI2cControlRegister) & kI2cBusyBit) != 0;
+        if (busy) {
+            sleep(kI2cPollSleepMilliseconds);
+        }
+    }
+    if (request.read && !busy) {
+        for (uint32_t i = 0; i < words; i++) {
+            const uint32_t word = regs.read(kI2cWindow + 4 * i);
+            for (uint32_t b = 0; b < 4 && i * 4 + b < request.bytes; b++) {
+                in[i * 4 + b] = uint8_t(word >> (8 * b));
+            }
+        }
+    }
+    return busy;
+}
+
 inline bool validBootloaderPacket(const uint8_t * packet, uint32_t bytes);
 
 // A client sends [1, count] to read or [0, packet...] to write.

@@ -88,11 +88,14 @@ static void valid_message_accepts_what_the_senders_send()
     CHECK(validMessage(set(0x29, 0, 3)));
     CHECK(validMessage(message({1, 0, word(2, 0x35, 1, 0), word(1, 1, 0, 0)})));
     CHECK(validMessage(message({1, 0, word(2, 0x32, 5, 1), word(2, 0x02, 0x58, 0)})));
+    CHECK(validMessage(message({1, 0, word(2, 0xd6, 0, 0), word(4, 1, 1, 0), word(0xff, 0, 0, 0)})));
+    CHECK(validMessage(message({1, 0, word(2, 0xd7, 0, 0), word(4, 0, 0, 0), word(32, 0, 0, 0)})));
+    CHECK(validMessage(message({1, 0, word(2, 0xd7, 1, 0), word(4, 0, 0, 0), word(0, 0, 0, 0)})));
 }
 
-static void valid_message_denies_update_and_dsp_halt_commands()
+static void valid_message_denies_update_commands()
 {
-    for (uint8_t command : {0x60, 0x61, 0x62, 0x63, 0xd6, 0xd7}) {
+    for (uint8_t command : {0x60, 0x61, 0x62, 0x63}) {
         CHECK(!validMessage(set(command, 0, 0)));
         CHECK(!validMessage(message({1, 0, word(2, command, 0, 0), word(1, 0, 0, 0)})));
     }
@@ -193,7 +196,7 @@ int main()
     get_all_is_one_type4_word_after_the_header();
     set_packs_type_command_p1_and_value();
     valid_message_accepts_what_the_senders_send();
-    valid_message_denies_update_and_dsp_halt_commands();
+    valid_message_denies_update_commands();
     bootloader_entry_needs_a_session_and_the_exact_shape();
     valid_message_accepts_types_1_to_4();
     valid_message_requires_one_record_that_ends_in_the_last_word();

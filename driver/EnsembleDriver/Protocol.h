@@ -82,9 +82,9 @@ inline uint8_t byteAt(const uint32_t * words, uint32_t i)
     return uint8_t(words[i / 4] >> (8 * (i % 4)));
 }
 
-// Firmware selectors, update data, the restart-state store, and DSP core
-// erase and halt. Clients must not send these.
-constexpr uint8_t kDeniedCommands[] = {0x61, 0x62, 0x63, 0xD6, 0xD7};
+// Firmware selectors, update data, and the restart-state store. Clients must
+// not send these.
+constexpr uint8_t kDeniedCommands[] = {0x61, 0x62, 0x63};
 
 // Command 0x60 mode 0 writes the EEPROM restart marker and resets the PSoC
 // into its bootloader. Only an explicitly enabled session may send it, and

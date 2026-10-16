@@ -36,7 +36,7 @@ Do not program those images into the unit.
 
 ### Analysis areas
 
-Reports appear as each agent completes its work. Their presence does not imply independent review.
+A report's presence does not imply independent review.
 
 | Report | Scope |
 | --- | --- |
@@ -60,6 +60,8 @@ Reports appear as each agent completes its work. Their presence does not imply i
 | `verify-memory-safety.md` | Independent review of parser, resource, and persistent-state bounds |
 | `verify-recovery.md` | Independent review of flash boundaries and reset dependencies |
 | `verify-mailbox.md` | Independent review of mailbox bounds and callback storage |
+| `psoc-harness.md` | Emulator that boots the application image and answers host commands |
+| `cross-model.md` | Comparison of the Element and Ensemble firmware images |
 | `coverage.md` | Coverage snapshot, conflicts, and unresolved areas |
 | `function-coverage.tsv` | Baseline functions with source maps or explicit gaps |
 | `names/*.tsv` | Address names with supporting evidence |
@@ -123,6 +125,15 @@ Run the scheduler and mailbox emulators:
 uv run --with unicorn python scripts/firmware/psoc-scheduler-check.py
 uv run --with unicorn==2.1.4 python scripts/firmware/verify-mailbox.py
 uv run --with unicorn==2.1.4 --with capstone python scripts/firmware/verify-descriptor-writes.py
+uv run --with unicorn==2.1.4 python scripts/firmware/psoc-harness-test.py
+```
+
+Run the image builder, bootloader scan, and cross-model tests:
+
+```sh
+python3 scripts/firmware/cyacd-build-test.py
+python3 scripts/firmware/bootloader-rows-test.py
+python3 scripts/firmware/cross-model-compare-test.py -v
 ```
 
 Run the static evidence checkers:

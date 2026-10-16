@@ -3,6 +3,7 @@
 #include "I2c.h"
 
 #include <stdio.h>
+#include <map>
 #include <vector>
 
 static int failures = 0;
@@ -51,6 +52,58 @@ static void window_words_round_up()
     CHECK(Ensemble::i2cWindowWords(4) == 1);
     CHECK(Ensemble::i2cWindowWords(5) == 2);
     CHECK(Ensemble::i2cWindowWords(255) == 64);
+}
+
+struct FakeRegs {
+    std::map<uint64_t, uint32_t> * values;
+    bool stuck;
+
+    uint32_t read(uint64_t offset) const
+    {
+        const uint32_t value = (*values)[offset];
+        return offset == Ensemble::kI2cControlRegister && stuck ? value | Ensemble::kI2cBusyBit : value;
+    }
+    void write(uint64_t offset, uint32_t value) const { (*values)[offset] = value; }
+};
+
+static void write_transfer_packs_the_window_low_byte_first()
+{
+    std::map<uint64_t, uint32_t> r = {{Ensemble::kI2cControlRegister, Ensemble::kI2cEnable}};
+    const uint8_t packet[] = {1, 2, 3, 4, 5};
+    uint32_t slept = 0;
+    const bool busy = Ensemble::i2cTransfer(FakeRegs{&r, false}, {false, 5, packet}, nullptr,
+                                            [&](uint32_t ms) { slept += ms; });
+    CHECK(!busy);
+    CHECK(r[Ensemble::kI2cWindow] == 0x04030201 && r[Ensemble::kI2cWindow + 4] == 0x05);
+    CHECK(r.count(Ensemble::kI2cWindow + 8) == 0);
+    CHECK(r[Ensemble::kI2cControlRegister] == Ensemble::i2cControl(Ensemble::kI2cEnable, 5, false));
+    CHECK(slept == Ensemble::i2cDelayMilliseconds(5));
+}
+
+static void read_transfer_unpacks_only_the_requested_bytes()
+{
+    std::map<uint64_t, uint32_t> r = {{Ensemble::kI2cWindow, 0x44332211},
+                                      {Ensemble::kI2cWindow + 4, 0x88776655}};
+    uint8_t in[8] = {};
+    const bool busy = Ensemble::i2cTransfer(FakeRegs{&r, false}, {true, 5, nullptr}, in, [](uint32_t) {});
+    CHECK(!busy);
+    const uint8_t expected[8] = {0x11, 0x22, 0x33, 0x44, 0x55, 0, 0, 0};
+    for (int i = 0; i < 8; i++) {
+        CHECK(in[i] == expected[i]);
+    }
+    CHECK(r[Ensemble::kI2cWindow] == 0x44332211 && r[Ensemble::kI2cWindow + 4] == 0x88776655);
+}
+
+static void busy_engine_times_out_without_a_reply()
+{
+    std::map<uint64_t, uint32_t> r = {{Ensemble::kI2cWindow, 0x44332211}};
+    uint8_t in[4] = {};
+    uint32_t sleeps = 0;
+    const bool busy = Ensemble::i2cTransfer(FakeRegs{&r, true}, {true, 4, nullptr}, in,
+                                            [&](uint32_t) { sleeps++; });
+    CHECK(busy);
+    CHECK(in[0] == 0 && in[3] == 0);
+    CHECK(sleeps == 1 + Ensemble::kI2cPollTries);
 }
 
 static void length_bound()
@@ -149,6 +202,9 @@ int main()
     control_word_clears_the_previous_count();
     delay_matches_the_verified_divisor();
     window_words_round_up();
+    write_transfer_packs_the_window_low_byte_first();
+    read_transfer_unpacks_only_the_requested_bytes();
+    busy_engine_times_out_without_a_reply();
     length_bound();
     reads_carry_a_count();
     writes_carry_only_vendor_reads();
