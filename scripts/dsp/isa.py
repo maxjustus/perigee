@@ -24,7 +24,8 @@ P, Q = -0.5, 0.5
 LEAK = 0.018
 # A one-word 0xD4 write changes other state words, so the test writes all of them once.
 STATE = [0.0] * 8 + B_VALUES + [0.0] * (255 - 16)
-MIXER = {"mixers/1/channels/1/mute": False, "mixers/1/channels/1/pan": 0,
+MIXER = {"mixers/channels/1/enabled": True, "mixers/channels/2/enabled": True,
+         "mixers/1/channels/1/mute": False, "mixers/1/channels/1/pan": 0,
          "mixers/1/channels/2/mute": False, "mixers/1/channels/2/pan": 127,
          **{f"mixers/{m}/channels/{c}/mute": True for m in (2, 3, 4) for c in (1, 2)}}
 # The monitor test sends raw 0x15 messages to Headphone 1 and ends them with Mixer 2.
