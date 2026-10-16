@@ -635,6 +635,24 @@ mixer meters:
   side stays at 0 dB. A mono input (Analog 1 in Mixer 1) follows a pan law
   instead: 64 gives 0.704 (-3.0 dB) on each side, 0 gives 1.000 left and
   0.0003 right, and 127 gives 1.000 right and 0.018 left.
+- In a stereo pair, only the pan of the first channel acts. It sets the
+  balance of the pair: the first channel feeds only the left side, the
+  second channel feeds only the right side, and the pan attenuates the far
+  side. The pan of the second channel has no effect at any value. The
+  balance follows the mono pan law over half the range, so 32 attenuates
+  the right side as much as a mono pan of 64 does. Measured with a 1 kHz
+  square wave on Playback 3 and 4 into Mixer 3:
+
+  | Pan of the first channel | Left side | Right side |
+  |---|---|---|
+  | 0 | 0 dB | off |
+  | 16 | 0 dB | -8.3 dB |
+  | 32 | 0 dB | -3.1 dB |
+  | 48 | 0 dB | -1.1 dB |
+  | 64 | 0 dB | 0 dB |
+  | 80 | -1.1 dB | 0 dB |
+  | 96 | -3.1 dB | 0 dB |
+  | 127 | -32.2 dB | 0 dB |
 - `MixerChannelSolo` and `MixerChannelSoloSafe` exist on Mixer 1 only.
   Solo arrives as type 1 without a mixer index.
 
