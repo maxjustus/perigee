@@ -382,8 +382,8 @@ The FPGA writes meter values into the meter buffer on a timer.
     METER_TIMER = (K / rateHz) - 1
     K = 0x3B9AC (244140) if GENERAL bit 30 set, else 0x1DCD6 (122070)
 
-The kext uses 20 Hz. Meter DMA runs whenever a user client is attached,
-independent of audio.
+The kext uses 20 Hz. The open driver uses 30 Hz (`kMeterHz`). Meter DMA
+runs whenever a user client is attached, independent of audio.
 
 Buffer layout (`Ensemble2AudioDevice::CopyMeterData`):
 
@@ -402,10 +402,27 @@ Ensemble reports 88 host meters, so the buffer is 4 + 88 * 2 = 0xB4
 bytes. The HAL thread polls byte 0 every 5 ms and copies the block when the
 value changes.
 
-Each value is a linear peak level with full scale at 16384 (2^14): a
-1 kHz sine at -40 dBFS reads 164, and at -20 dBFS reads 1639. So
-dBFS = 20 * log10(value / 16384). The meters measure before the monitor
-mute. Measured with the open driver.
+Bits 13:0 of each value hold a linear peak level with full scale at
+16384 (2^14): a 1 kHz sine at -40 dBFS reads 164, and at -20 dBFS reads
+1639. So dBFS = 20 * log10((value & 0x3FFF) / 16384). A full-scale
+signal reads 0x3FFF. The meters measure before the monitor mute.
+Measured with the open driver.
+
+Bit 15 is an over flag. A 1 kHz full-scale square wave on Playback 3
+reads 0xBFFF. One full-scale sample every 100 ms reads 0x3FFF, with no
+flag. Mixer 3 sets the flag when the sum of its inputs passes full
+scale, and its level bits stay at 0x3FFF. Bit 14 was 0 in every test.
+The front panel reads the same flag (`docs/firmware/front-panel.md`,
+Meter reference).
+
+Each value is the peak of one update interval. With one full-scale
+sample every 100 ms, each sample showed in exactly one update, and the
+next update read 0. The FPGA applies no fall time, so a meter display
+must add its own.
+
+The Mixer 4 values read 0 in every test, also with Playback 3 through
+Mixer 4 at 0 dB. No destination took Mixer 4 during the test. Unknown:
+whether the FPGA meters Mixer 4 only when a destination takes it.
 
 The HAL does not interpret the values. It repacks them into an
 `ApogeeMeterData` struct for Apogee Control (`_serializeMeterData`). The
