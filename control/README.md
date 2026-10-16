@@ -30,8 +30,8 @@ The web UI source is TypeScript in `web/`. `npm run build` bundles
 `web/src/main.ts` with esbuild into one page, with the script and the
 styles inline: `Sources/ensemble-control/Public/index.html`. Git ignores
 the page. `swift build` copies it into the service bundle, so build the
-page before `swift build` or `swift test`. If the page is missing,
-`swift build` fails.
+page before `swift build`. Without the page, `swift build` and
+`swift test` pass, but the service stops at start.
 
 `main.swift` replaces `@RPC_PORT@`, `@MONITOR_PORT@` and
 `@CAPTURE_NAMES@` in the page. Only the config script in
