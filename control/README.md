@@ -134,9 +134,11 @@ The server sends five notifications:
   mixer channels 1-30. `outputs` holds the 30 physical outputs.
   `headphones` is Headphone 1 L/R, then Headphone 2 L/R. `playback` is
   Playback 1-16 before the mixers.
-  `mixers` is the L/R master of each of the 4 mixers. Each value is
-  linear, with full scale at 16384: dBFS = 20 * log10(value / 16384).
-  The FPGA updates the meters 30 times a second.
+  `mixers` is the L/R master of each of the 4 mixers. Bits 13:0 of each
+  value are a linear peak level, with full scale at 0x3FFF:
+  dBFS = 20 * log10((value & 0x3FFF) / 0x3FFF). Bit 15 is an over flag.
+  Each value is the peak of one update. The FPGA updates the meters 30
+  times a second and applies no fall time.
 
 `EnsembleModel/Parameters.swift` defines the paths and their PSoC commands.
 Mixer paths are `mixers/<1-4>/channels/<n>/{fader,mute,pan}`. Channel
