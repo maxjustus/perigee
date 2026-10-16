@@ -1,0 +1,33 @@
+/* Flat fill bar: the fill is the value, the dark bands are the level, a red cap is a clip. */
+.ctl { position: relative; height: 40px; border-radius: 5px; background: #0d0e10; overflow: hidden; touch-action: pan-y;
+       cursor: ew-resize; user-select: none; -webkit-user-select: none; outline: none; --c: #ff9f43; --a: 0; --b: 0; }
+.ctl.sm { height: 32px; }
+.ctl:focus-visible { box-shadow: 0 0 0 2px var(--text); }
+.ctl.current { box-shadow: inset 0 0 0 1px var(--accent); }
+.ctl .fill { position: absolute; top: 0; bottom: 0; left: calc(var(--a) * 100%); width: calc((var(--b) - var(--a)) * 100%);
+             min-width: 2px; background: var(--c); }
+.ctl .t { position: absolute; inset: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+          padding: 0 14px 0 10px; font-size: 13px; font-weight: 650; white-space: nowrap; color: #e8e8e8; z-index: 2;
+          font-variant-numeric: tabular-nums; pointer-events: none; }
+.ctl.metered .t { align-items: flex-start; padding-top: 5px; }
+.ctl.sm.metered .t { padding-top: 3px; font-size: 12px; }
+.ctl .t .name { overflow: hidden; text-overflow: ellipsis; }
+.ctl .t.dark { color: #101113; clip-path: inset(0 calc((1 - var(--b)) * 100%) 0 calc(var(--a) * 100%)); }
+.ctl .unity { position: absolute; top: 0; bottom: 0; width: 1px; left: calc(var(--u) * 100%);
+              background: linear-gradient(#ffffff55 0 5px, transparent 5px calc(100% - 5px), #ffffff55 0); pointer-events: none; }
+.ctl .band { position: absolute; left: 0; width: 0; pointer-events: none; }
+.ctl .band.avg { background: #00000080; }
+.ctl .band.peak { background: #00000038; }
+.ctl.scale-dbfs .band.avg { background: #ffffff70; }
+.ctl.scale-dbfs .band.peak { background: #ffffff30; }
+.ctl .hold { position: absolute; width: 2px; background: #000b; pointer-events: none; }
+.ctl.scale-dbfs .hold { background: #fff; }
+.ctl .cap { position: absolute; top: 0; bottom: 0; right: 0; width: 6px; background: var(--clip); z-index: 4;
+            box-shadow: -2px 0 8px #ff3b3099; pointer-events: none; }
+.ctl .badge { position: absolute; top: 2px; left: 50%; transform: translateX(-50%); padding: 0 5px; border-radius: 3px;
+              font-size: 10px; font-weight: 600; background: #000c; color: #fff; pointer-events: none; z-index: 5; }
+.ctl .badge:empty { display: none; }
+.ctl .edit { position: absolute; inset: 3px; z-index: 6; width: calc(100% - 6px); height: calc(100% - 6px); padding: 0 8px;
+             font: 600 16px system-ui, sans-serif; text-align: center; color: #fff; background: #000;
+             border: 1px solid var(--c); border-radius: 4px; outline: none; }
+.ctl .edit.bad { border-color: var(--clip); }

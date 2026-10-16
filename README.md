@@ -20,6 +20,7 @@ this model.
 - SIP disabled and `systemextensionsctl developer on`. The builds sign ad
   hoc, without a provisioning profile.
 - Xcode with the DriverKit SDK, and `xcodegen`.
+- Node.js and npm, to build the web UI.
 - The vendor driver installed. The open driver uses the vendor kext to
   switch between the two drivers.
 

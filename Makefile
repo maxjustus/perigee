@@ -39,6 +39,8 @@ status:
 	@scripts/vendor-hal.sh status | head -1 | sed 's/^bundle/vendor HAL plugin/'
 
 service:
+	npm --prefix control/web ci
+	npm --prefix control/web run build
 	cd control && env -u CC -u CXX -u LLVM_CONFIG swift build -c release
 	codesign --force --sign - --entitlements control/user-client.entitlements $(service)
 	codesign --force --sign - --entitlements control/user-client.entitlements $(ctl)
