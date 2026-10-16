@@ -551,6 +551,7 @@ void EnsembleDevice::startAudio(uint64_t sample_time)
     zero(ivars->input.buffer.get());
     ivars->sample_time = sample_time;
     regs.write(kSampleDepth, depthFor(GetSampleRate()) - 1);
+    ivars->driver->RequireMaxBusStall(kIOMaxBusStall10usec);
     regs.write(kGeneral, regs.read(kGeneral) | kGeneralAudioArmAndRun);
     ivars->wrap_time = mach_absolute_time();
     UpdateCurrentZeroTimestamp(sample_time, ivars->wrap_time);
@@ -564,6 +565,7 @@ kern_return_t EnsembleDevice::StopIO(IOUserAudioStartStopFlags in_flags)
         const Bar0 & regs = ivars->bar0;
         regs.write(kInterrupt, regs.read(kInterrupt) & ~kInterruptWrap);
         regs.write(kGeneral, regs.read(kGeneral) & ~kGeneralAudioRun);
+        ivars->driver->RequireMaxBusStall(kIOMaxBusStallNone);
         ivars->running = false;
         ret = super::StopIO(in_flags);
     });
