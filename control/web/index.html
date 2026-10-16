@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#15171a">
+<title>Ensemble</title>
+<!-- style -->
+</head>
+<body>
+<header>
+  <div class="top">
+    <span class="dot" id="status" role="img" title="connecting" aria-label="connecting"></span><h1>Ensemble</h1>
+    <nav id="tabs"></nav>
+  </div>
+  <div class="mixbar" id="mixbar">
+    <span class="lbl narrow">Mix</span><div class="segment" id="mix-tabs"></div>
+    <button id="pre-fader" aria-pressed="false" title="Mixers 2-4 take their inputs before the Mix 1 faders.">Pre-fader</button>
+    <button id="clear-solo" class="solo" aria-pressed="true" aria-label="Clear solo" title="Clear every solo in Mix 1" hidden></button>
+    <button id="clear-clips" class="clips" aria-label="Clear clips" title="Clear every clip and peak hold" hidden>Clip ✕</button>
+    <button id="hide-off" class="end" aria-pressed="false">Hide off</button>
+  </div>
+</header>
+<main>
+  <div class="view" id="mixer">
+    <div class="groups" id="groups"></div>
+    <div class="masters" id="masters"></div>
+  </div>
+  <div class="view" id="meters"></div>
+  <div class="view cards" id="inputs"></div>
+  <div class="view cards" id="outputs"></div>
+  <div class="view cards" id="routing"></div>
+  <div class="view cards" id="device"></div>
+  <div class="view cards" id="presets">
+    <section>
+      <h2>Presets</h2>
+      <div class="row"><select id="preset-names" aria-label="Preset"></select>
+        <button id="preset-load">Load</button><button id="preset-delete">Delete</button></div>
+      <div class="row"><input id="preset-name" aria-label="Name" placeholder="Name">
+        <button id="preset-save">Save</button></div>
+      <div class="row"><output id="preset-status"></output></div>
+    </section>
+  </div>
+  <div class="view cards" id="monitor">
+    <section>
+      <h2>Remote monitor</h2>
+      <div class="row"><span class="name">Channel</span><select id="monitor-channel" aria-label="Channel"></select></div>
+      <div class="row"><span class="name">Listen</span>
+        <button id="monitor-listen" class="switch" aria-pressed="false" aria-label="Listen"></button></div>
+      <div class="row"><span class="name">Level</span><output id="monitor-db"></output>
+        <div class="meter level"><div class="fill" id="monitor-level"></div></div></div>
+    </section>
+  </div>
+</main>
+<script>window.ensemble = { rpcPort: @RPC_PORT@, monitorPort: @MONITOR_PORT@, captureNames: @CAPTURE_NAMES@ };</script>
+<!-- script -->
+</body>
+</html>

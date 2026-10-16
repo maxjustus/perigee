@@ -7,7 +7,8 @@ user client.
 ## Run
 
 `make install` in the repository root installs the service as the launch
-agent `dev.ensemble.control`. `make service` builds the release binaries.
+agent `dev.ensemble.control`. `make service` builds the web UI and the
+release binaries.
 It signs `ensemble-control` and `ensemblectl` ad hoc with
 `com.apple.developer.driverkit.userclient-access`. The signature needs SIP
 disabled, like the dext build. To run a new build:
@@ -22,6 +23,32 @@ on a dext reload. launchd starts it again within 10 s.
 - Remote monitor: `ws://<host>:8739`
 
 All three listen on all interfaces, with no authentication.
+
+## Web UI
+
+The web UI source is TypeScript in `web/`. `npm run build` bundles
+`web/src/main.ts` with esbuild into one page, with the script and the
+styles inline: `Sources/ensemble-control/Public/index.html`. Git ignores
+the page. `swift build` copies it into the service bundle, so build the
+page before `swift build` or `swift test`. If the page is missing,
+`swift build` fails.
+
+`main.swift` replaces `@RPC_PORT@`, `@MONITOR_PORT@` and
+`@CAPTURE_NAMES@` in the page. Only the config script in
+`web/index.html` holds them.
+
+Run these commands in `control/web`:
+
+| Command | Result |
+|---------|--------|
+| `npm ci` | Installs esbuild and TypeScript |
+| `npm run build` | Writes the page |
+| `npm run check` | Runs the TypeScript type check |
+| `npm test` | Runs the tests of the pure modules with `node --test` |
+
+Node.js runs the `.ts` test files directly, with type stripping. The
+source thus uses only erasable TypeScript syntax: no enums, no
+namespaces, and no parameter properties. Node.js 26 passes the tests.
 
 ## JSON-RPC methods
 
@@ -165,3 +192,4 @@ changes with each build, so macOS can ask again after `make install`.
 ## Test
 
     cd control && swift test
+    cd control/web && npm test
