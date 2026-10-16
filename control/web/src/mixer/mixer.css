@@ -1,0 +1,62 @@
+.mixbar { display: flex; flex: 1 1 auto; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 0; }
+.segment { display: flex; }
+.segment button { min-width: 40px; padding: 0 8px; border-radius: 0; margin-left: -1px; }
+.segment button:first-child { border-radius: 6px 0 0 6px; margin-left: 0; }
+.segment button:last-child { border-radius: 0 6px 6px 0; }
+.mixbar .narrow { display: none; }
+@media (max-width: 599px) { .segment .word { display: none; } .mixbar .narrow { display: inline; } }
+.mixbar .end { margin-left: auto; }
+
+.groups { columns: 1; column-gap: 10px; }
+@media (min-width: 760px) { .groups { columns: 2; } }
+@media (min-width: 1200px) { .groups { columns: 3; } }
+@media (min-width: 1650px) { .groups { columns: 4; } }
+.group { break-inside: avoid; background: var(--card); border-radius: 8px; margin: 0 0 10px; overflow: clip; }
+.ghead { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 40px; padding: 0 10px; border: 0;
+         border-radius: 0; background: var(--card); text-align: left; }
+@media (max-width: 759px) { .ghead { position: sticky; top: var(--head); z-index: 2; } }
+.ghead .caret { width: 12px; color: var(--dim); transition: transform .12s; }
+.ghead[aria-expanded=false] .caret { transform: rotate(-90deg); }
+.ghead .title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--dim); }
+.gmeters { display: flex; align-items: flex-end; gap: 2px; height: 14px; }
+.gmeters i { position: relative; width: 4px; height: 14px; background: var(--well); border-radius: 1px; overflow: hidden; }
+.gmeters i b { position: absolute; bottom: 0; left: 0; right: 0; background: var(--c, var(--accent)); }
+.gmeters i.clip { background: var(--clip); }
+.gstat { margin-left: auto; display: flex; gap: 6px; font-size: 12px; color: var(--dim); white-space: nowrap; }
+.gstat .m { color: #e08080; }
+.gstat .s { color: #d9c45c; }
+
+.groups .rows { display: grid; gap: 6px; padding: 0 8px 8px; }
+.groups .row { display: grid; grid-template-columns: 32px minmax(0, 1fr) 36px 36px; gap: 0 6px; align-items: center;
+       border-radius: 6px; }
+.no-solo .row { grid-template-columns: 32px minmax(0, 1fr) 36px; }
+.groups .row > button { padding: 0; height: 40px; font-weight: 600; }
+.groups .row > .more { position: relative; color: var(--dim); background: none; border-color: transparent; }
+.groups .row > .more svg { display: block; margin: auto; }
+.groups .row > .more::before { content: ""; position: absolute; inset: -3px -6px -3px -8px; }
+.groups .row > .more span { display: inline-block; transition: transform .12s; }
+.groups .row > .more[aria-expanded=true] { color: var(--text); }
+.groups .row > .more[aria-expanded=true] span { transform: rotate(90deg); }
+.groups .row.open { background: #262a30; box-shadow: 0 0 0 6px #262a30; margin: 6px 0; }
+.groups .row.off > .ctl { opacity: .45; }
+.hide-off .row.off { display: none; }
+.groups .row.implied > .ctl .fill { filter: saturate(.2) brightness(.7); }
+.groups .row.implied > .ctl .name { text-decoration: line-through; }
+
+.detail { grid-column: 1 / -1; display: grid; gap: 8px; padding: 10px 0 4px; }
+.detail h3 { margin: 2px 0 -2px; font-size: 11px; font-weight: 600; color: var(--dim); text-transform: uppercase;
+             letter-spacing: .04em; }
+.detail .section { display: grid; gap: 6px; }
+.detail .section + .section { padding-top: 8px; border-top: 1px dashed var(--line); }
+.line { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 0 8px; align-items: center; }
+.lbl { font-size: 12px; color: var(--dim); }
+.toggles { display: flex; flex-wrap: wrap; gap: 6px; }
+.note { margin: 0; font-size: 12px; color: var(--dim); }
+.send { display: grid; grid-template-columns: minmax(0, 1fr) 36px; gap: 0 6px; align-items: center; }
+.send > button { padding: 0; height: 32px; font-size: 12px; font-weight: 600; }
+
+.masters { position: sticky; bottom: 0; z-index: 4; display: grid; grid-template-columns: minmax(0, 1fr) 36px; gap: 0 6px;
+           align-items: center; margin: 0 calc(-1 * var(--pad)); border-top: 1px solid var(--line);
+           padding: 6px var(--pad) max(6px, env(safe-area-inset-bottom)); background: var(--card); }
+.masters > button { padding: 0; height: 40px; font-weight: 600; }
+@media (min-width: 760px) { .masters { grid-template-columns: minmax(0, 720px) 36px; } }

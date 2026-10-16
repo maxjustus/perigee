@@ -13,7 +13,7 @@ export type Param = {
 };
 
 export const clamp = (value: number, low: number, high: number) => Math.min(high, Math.max(low, value));
-const minus = (text: string) => text.replace(/-/g, "\u2212");
+export const minus = (text: string) => text.replace(/-/g, "\u2212");
 const ascii = (text: string) => text.trim().replace(/\u2212/g, "-");
 
 // Fader values are tenths of a dB: 600 is 0 dB, 720 is +12 dB, and 0 closes the channel.
