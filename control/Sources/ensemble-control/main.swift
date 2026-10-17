@@ -20,13 +20,16 @@ do {
         .appendingPathComponent("ensemble-control/presets.json")
     let controller = Controller(transport: device, presets: presets) { server.broadcast($0) }
     try device.subscribe { controller.receive($0) }
-    let page = try String(contentsOf: Bundle.module.url(forResource: "index", withExtension: "html",
-                                                        subdirectory: "Public")!, encoding: .utf8)
-        .replacingOccurrences(of: "@RPC_PORT@", with: "\(webSocketPort)")
-        .replacingOccurrences(of: "@MONITOR_PORT@", with: "\(monitorPort)")
-    try server.start(controller: controller,
-                     page: { Data(page.replacingOccurrences(of: "@CAPTURE_NAMES@", with: captureNames()).utf8) },
-                     httpPort: httpPort, webSocketPort: webSocketPort)
+    // The page is read on each request, so `make dev` can point ENSEMBLE_WEB_PAGE at the page that it rebuilds.
+    let pageURL = ProcessInfo.processInfo.environment["ENSEMBLE_WEB_PAGE"].map { URL(fileURLWithPath: $0) }
+        ?? Bundle.module.url(forResource: "index", withExtension: "html", subdirectory: "Public")!
+    _ = try String(contentsOf: pageURL, encoding: .utf8)
+    try server.start(controller: controller, page: {
+        let page = (try? String(contentsOf: pageURL, encoding: .utf8)) ?? ""
+        return Data(page.replacingOccurrences(of: "@RPC_PORT@", with: "\(webSocketPort)")
+            .replacingOccurrences(of: "@MONITOR_PORT@", with: "\(monitorPort)")
+            .replacingOccurrences(of: "@CAPTURE_NAMES@", with: captureNames()).utf8)
+    }, httpPort: httpPort, webSocketPort: webSocketPort)
     try monitor.start(port: monitorPort)
     poller = MeterPoller(buffer: try device.mapMeters()) { controller.meters($0) }
     try controller.send(getAll)

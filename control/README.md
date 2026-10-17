@@ -37,14 +37,19 @@ page before `swift build`. Without the page, `swift build` and
 `@CAPTURE_NAMES@` in the page. Only the config script in
 `web/index.html` holds them.
 
+The service reads the page on each request. If the environment variable
+`ENSEMBLE_WEB_PAGE` names a file, the service reads that file in place of
+the page in the bundle. `make dev` uses this with `npm run watch`.
+
 Run these commands in `control/web`:
 
 | Command | Result |
 |---------|--------|
 | `npm ci` | Installs esbuild and TypeScript |
 | `npm run build` | Writes the page |
-| `npm run check` | Runs the TypeScript type check |
-| `npm test` | Runs the tests of the pure modules with `node --test` |
+| `npm run watch` | Writes the page again on each change in `src` or `index.html` |
+| `npm run check` | Runs the TypeScript type check, with every strict option on |
+| `npm test` | Runs the tests of the pure modules with `node --test`, and seeded fuzz tests of the parsers |
 
 Node.js runs the `.ts` test files directly, with type stripping. The
 source thus uses only erasable TypeScript syntax: no enums, no
@@ -195,3 +200,5 @@ changes with each build, so macOS can ask again after `make install`.
 
     cd control && swift test
     cd control/web && npm test
+
+`make test` in the repository root runs these and the other test suites.

@@ -49,15 +49,19 @@ export const PAN: Param = {
 
 // In a stereo pair, the first channel's pan is the balance of the pair and the second channel's pan does nothing.
 // The balance cuts the far side by these amounts, in dB, at each distance from center, as measured on the unit.
-const BALANCE_CUT: [number, number][] = [[0, 0], [16, -1.1], [32, -3.1], [48, -8.3], [63, -32.2]];
-const BALANCE_DISTANCE = BALANCE_CUT.map(([distance, cut]): [number, number] => [-cut, distance]);
+type Points = [[number, number], ...[number, number][]];
 
-function interpolate(x: number, points: [number, number][]) {
-  for (let i = 1; i < points.length; i++) {
-    const [[x0, y0], [x1, y1]] = [points[i - 1], points[i]];
+const BALANCE_CUT: Points = [[0, 0], [16, -1.1], [32, -3.1], [48, -8.3], [63, -32.2]];
+const invert = ([distance, cut]: [number, number]): [number, number] => [-cut, distance];
+const BALANCE_DISTANCE: Points = [invert(BALANCE_CUT[0]), ...BALANCE_CUT.slice(1).map(invert)];
+
+function interpolate(x: number, [first, ...rest]: Points) {
+  let [x0, y0] = first;
+  for (const [x1, y1] of rest) {
     if (x <= x1) return y0 + (y1 - y0) * (x - x0) / (x1 - x0);
+    [x0, y0] = [x1, y1];
   }
-  return points[points.length - 1][1];
+  return y0;
 }
 
 export const balanceCut = (distance: number) => distance >= 64 ? -Infinity : interpolate(distance, BALANCE_CUT);
@@ -74,9 +78,10 @@ export const BALANCE: Param = {
   // "L32" is a position. "R-3", "R 3 dB" and "R off" cut the right side by that much.
   parse: text => {
     const cut = ascii(text).toUpperCase().replace(/\s+/g, "").match(/^([LR])(OFF|-\d+(?:\.\d+)?(?:DB)?|\d+(?:\.\d+)?DB)$/);
-    if (!cut) return PAN.parse(text);
-    const distance = cut[2] === "OFF" ? 64 : Math.round(interpolate(Math.abs(parseFloat(cut[2])), BALANCE_DISTANCE));
-    return cut[1] === "R" ? 64 - distance : 64 + distance;
+    const [, side, amount] = cut ?? [];
+    if (side === undefined || amount === undefined) return PAN.parse(text);
+    const distance = amount === "OFF" ? 64 : Math.round(interpolate(Math.abs(parseFloat(amount)), BALANCE_DISTANCE));
+    return side === "R" ? 64 - distance : 64 + distance;
   },
 };
 

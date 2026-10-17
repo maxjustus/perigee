@@ -70,7 +70,7 @@ def main():
         check(machine.hits[address] > 0, f'substitution at {address:#x} never fired')
     check(machine.bridge_ops[0x12] > 0, 'flash bridge read never ran')
     quiet = sorted(hex(a) for a, n in machine.hits.items() if n == 0)
-    print(f'PASS substitution accounting: exercised-path substitutes fired')
+    print('PASS substitution accounting: exercised-path substitutes fired')
     print(f'path-conditional, not exercised here: {", ".join(quiet)}')
 
     machine = h.PSoCMachine(image, resource=resource, config=config)

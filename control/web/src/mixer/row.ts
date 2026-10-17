@@ -4,11 +4,11 @@ import { toDb } from "../meters.ts";
 import { BALANCE, FADER, PAN, balanceDb, clamp, gainParam } from "../params.ts";
 import { description, get, set } from "../store.ts";
 import { MIXES, channelName, enabled, inputPath, linkPath, pairable, partner, stereoFlag, strip,
-         unitName } from "./channels.ts";
+         unitName, type Unit } from "./channels.ts";
 import { picker, toggle, type View } from "./controls.ts";
 import { bus, clearKeys, dbfs, meterKey } from "./levels.ts";
 
-export function row(view: View, unit: number[], color: string, open: boolean, onExpand: () => void) {
+export function row(view: View, unit: Unit, color: string, open: boolean, onExpand: () => void) {
   const [channel] = unit;
   const { mix } = view;
   const name = unitName(unit);
@@ -25,7 +25,7 @@ export function row(view: View, unit: number[], color: string, open: boolean, on
 }
 
 type Options = { label: string; color: string; aria: string; small?: boolean; current?: boolean };
-type Metered = { channels: number[]; scale: "post" | "bus" };
+type Metered = { channels: Unit; scale: "post" | "bus" };
 
 // The service writes the partner of a stereo pair, so a row writes only its first channel.
 export function faderBar(view: View, path: string, options: Options, metered?: Metered, paths = [path]) {
@@ -44,7 +44,7 @@ export function faderBar(view: View, path: string, options: Options, metered?: M
 
 // The unit has no meter after a channel fader, so the UI calculates it from the input meter, the fader and, for
 // a stereo pair, the balance.
-function post(control: Bar, channels: number[], mix: number) {
+function post(control: Bar, channels: Unit, mix: number) {
   const [first] = channels;
   return (amplitude: number, side: number) => {
     if (!amplitude || control.value === 0) return 0;
@@ -61,7 +61,7 @@ function chevron() {
   return span;
 }
 
-function details(view: View, unit: number[], name: string, color: string) {
+function details(view: View, unit: Unit, name: string, color: string) {
   const [channel] = unit;
   const { mix } = view;
   const stereo = unit.length > 1;
@@ -91,29 +91,33 @@ function details(view: View, unit: number[], name: string, color: string) {
 
 // A stereo row writes both input channels, except Phase. A linked input pair shows one gain bar, because the unit
 // applies a gain change to both channels of the pair.
-function inputControls(view: View, unit: number[], name: string, color: string) {
-  const prefixes = unit.map(inputPath).filter(prefix => prefix !== null);
-  if (!prefixes.length) return null;
-  const stereo = prefixes.length > 1;
-  const paths = (control: string) => prefixes.map(prefix => `${prefix}/${control}`);
-  const has = (control: string) => description(`${prefixes[0]}/${control}`) !== undefined;
+function inputControls(view: View, unit: Unit, name: string, color: string) {
+  const inputs = unit.flatMap(channel => {
+    const prefix = inputPath(channel);
+    return prefix === null ? [] : [{ channel, prefix, gain: gainPath(prefix) }];
+  });
+  const [first, second] = inputs;
+  if (!first) return null;
+  const stereo = second !== undefined;
+  const paths = (control: string) => inputs.map(input => `${input.prefix}/${control}`);
+  const has = (control: string) => description(`${first.prefix}/${control}`) !== undefined;
   const section = h("div", { class: "section" }, h("h3", {}, "Input"));
   if (has("type")) {
     section.append(h("div", { class: "line" }, h("span", { class: "lbl" }, "Type"),
-      picker(view, paths("type"), description(`${prefixes[0]}/type`)?.choices ?? [], `${name} type`)));
+      picker(view, paths("type"), description(`${first.prefix}/type`)?.choices ?? [], `${name} type`)));
   }
-  const link = linkPath(unit[0]);
-  const gains = prefixes.map(gainPath);
-  const shared = stereo && link !== null && get(link) === true && gains[0] !== null &&
-                 gains[0].split("/").pop() === gains[1]?.split("/").pop();
-  const single = shared || gains.every(path => path === null);
-  (single ? [gains[0]] : gains).forEach((path, index) => {
-    const side = stereo && !single ? (index ? " R" : " L") : "";
+  const link = linkPath(first.channel);
+  const shared = stereo && link !== null && get(link) === true && first.gain !== null &&
+                 first.gain.split("/").pop() === second.gain?.split("/").pop();
+  const gains = shared || inputs.every(input => input.gain === null)
+    ? [{ path: first.gain, channels: inputs.map(input => input.channel), side: "" }]
+    : inputs.map((input, index) => ({ path: input.gain, channels: [input.channel], side: stereo ? (index ? " R" : " L") : "" }));
+  for (const { path, channels, side } of gains) {
     if (path === null) {
       section.append(h("p", { class: "note" }, "Line level has no preamp gain."));
-      return;
+      continue;
     }
-    const keys = (single ? unit : [unit[index]]).map(channel => meterKey(channel, view.mix));
+    const keys = channels.map(channel => meterKey(channel, view.mix));
     const gain = bar({
       param: gainParam(description(path)?.max ?? 0), label: `Gain${side}`, color, small: true,
       aria: `${name}${side} gain`, meter: { scale: "dbfs", sides: keys.length },
@@ -122,11 +126,11 @@ function inputControls(view: View, unit: number[], name: string, color: string) 
     view.watch(path, value => gain.show(Number(value)));
     view.meters.push({ bar: gain, keys, position: dbfs, peakText: true });
     section.append(gain.el);
-  });
+  }
   const toggles = h("div", { class: "toggles" });
   if (has("phantom")) toggles.append(toggle(view, paths("phantom"), "48V", "", `${name} 48V`));
   if (has("phase")) {
-    prefixes.forEach((prefix, index) => {
+    inputs.forEach(({ prefix }, index) => {
       const side = stereo ? (index ? " R" : " L") : "";
       toggles.append(toggle(view, [`${prefix}/phase`], `Phase${side}`, "", `${name} phase${side}`));
     });
@@ -135,7 +139,7 @@ function inputControls(view: View, unit: number[], name: string, color: string) 
   if (has("softLimit")) toggles.append(toggle(view, paths("softLimit"), "Soft limit", "", `${name} soft limit`));
   if (has("insert")) toggles.append(toggle(view, paths("insert"), "Insert", "", `${name} insert`));
   if (link !== null) {
-    const text = stereo ? "Link gain" : `Link gain with ${channelName(partner(unit[0]))}`;
+    const text = stereo ? "Link gain" : `Link gain with ${channelName(partner(first.channel))}`;
     toggles.append(toggle(view, [link], text, "", `${name} gain link`));
   }
   if (toggles.children.length) section.append(toggles);

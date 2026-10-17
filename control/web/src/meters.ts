@@ -6,7 +6,7 @@ const UPDATE = 1 / 30;
 const AVERAGE = 0.3;
 
 // The params of a meters notification: arrays of meter words by source.
-export type Bank = Record<string, number[]>;
+export type Bank = Record<"inputs" | "outputs" | "headphones" | "playback" | "mixers", number[]>;
 
 export const level = (word: number) => (word & FULL) / FULL;
 export const over = (word: number) => (word & OVER) !== 0;

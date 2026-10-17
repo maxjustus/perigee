@@ -21,6 +21,8 @@ this model.
   hoc, without a provisioning profile.
 - Xcode with the DriverKit SDK, and `xcodegen`.
 - Node.js and npm, to build the web UI.
+- For `make test` and `make check`: `uv`, Rust with `cargo`, and
+  Homebrew LLVM (`brew install llvm`) for the fuzzers.
 - The vendor driver installed. The open driver uses the vendor kext to
   switch between the two drivers.
 
@@ -63,3 +65,25 @@ the approval in System Settings again.
 
 The command shows the dext, the driver that owns the Ensemble, the launch
 daemon, the control service, and the vendor HAL plugin.
+
+## Build and test
+
+No target in this list needs the Ensemble, except `make dev`.
+
+| Command | Result |
+|---------|--------|
+| `make build` | Builds the web UI, the control service and the dext. It installs nothing. |
+| `make service` | Builds the web UI and the control service only. |
+| `make test` | Runs the web UI, control service, driver host, probe and Python tests. |
+| `make lint` | Runs the strict TypeScript check, the Swift build with warnings as errors, `cargo clippy` and `ruff check`. |
+| `make fuzz` | Fuzzes the driver's PSoC parser and RX mailbox, `FUZZ_SECONDS` per target (default 30). |
+| `make check` | Runs `lint`, `test` and `fuzz`. |
+| `make dev` | Runs the control service in the foreground with a live web UI build. |
+
+`make test` leaves out `scripts/firmware/fpga-reconstruction-test.py`,
+because that test needs an external Mistral checkout.
+
+`make dev` stops the launch agent, because the service holds the ports.
+It rebuilds the page on each change in `control/web`, and the service
+reads the page on each request, so a browser reload shows the change.
+Ctrl-C stops the service and starts the launch agent again.

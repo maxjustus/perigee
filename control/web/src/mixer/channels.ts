@@ -16,7 +16,7 @@ export const groups: Group[] = [
   { id: "playback", title: "Playback", channels: range(31, 46), color: "#4fd1c5" },
 ];
 export const OUTPUT_COLOR = "#a3a8f0";
-export const OUTPUTS = [47, 48];
+export const OUTPUTS: [number, number] = [47, 48];
 export const MIXES = [1, 2, 3, 4];
 
 export const strip = (mix: number, channel: number, control: string) => `mixers/${mix}/channels/${channel}/${control}`;
@@ -27,8 +27,10 @@ export const pairable = (channel: number) => channel <= 46 && channel !== 9;
 const isStereo = (channel: number) => pairable(channel) && get(stereoFlag(channel - 1 + channel % 2)) === true;
 
 // A unit is one row: a mono channel, or a stereo pair with its first channel first.
+export type Unit = [number] | [number, number];
+
 export function units(group: Group) {
-  const list: number[][] = [];
+  const list: Unit[] = [];
   for (const channel of group.channels) {
     if (list.some(unit => unit.includes(channel))) continue;
     list.push(isStereo(channel) && channel % 2 ? [channel, channel + 1] : [channel]);
@@ -36,9 +38,9 @@ export function units(group: Group) {
   return list;
 }
 
-export const channelName = (channel: number) => names[channel - 1];
+export const channelName = (channel: number) => names[channel - 1] ?? `Channel ${channel}`;
 
-export function unitName([left, right]: number[]) {
+export function unitName([left, right]: Unit) {
   if (!right) return channelName(left);
   const [a, b] = [channelName(left), channelName(right)];
   if (a.endsWith(" L") && b.endsWith(" R")) return a.slice(0, -2);

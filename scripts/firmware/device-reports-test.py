@@ -1,13 +1,13 @@
 """Offline tests for the read-only device report client."""
 
 import asyncio
+import importlib.util
 import json
 from pathlib import Path
 import sys
 import unittest
 
 sys.dont_write_bytecode = True
-import importlib.util
 SCRIPT = Path(__file__).with_name("device-reports.py")
 spec = importlib.util.spec_from_file_location("device_reports", SCRIPT)
 tool = importlib.util.module_from_spec(spec)

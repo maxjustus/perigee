@@ -16,7 +16,7 @@ function side(key: string) {
 
 export function receive(bank: Bank) {
   const now = performance.now();
-  for (const name of ["inputs", "playback", "mixers"]) {
+  for (const name of ["inputs", "playback", "mixers"] as const) {
     bank[name].forEach((word, index) => ingest(side(`${name}/${index}`), word, now));
   }
 }

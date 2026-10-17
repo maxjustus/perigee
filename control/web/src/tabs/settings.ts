@@ -8,19 +8,20 @@ export function layout(parameters: Description[]) {
     groups.set(group, [...(groups.get(group) ?? []), parameter]);
   }
   for (const [group, list] of groups) {
-    const tab = ({ inputs: "inputs", outputs: "outputs", routing: "routing" } as Record<string, string>)[group.split("/")[0]]
-      ?? "device";
-    const numbered = group.match(/^(.*)\/(\d+)$/);
-    const siblings = numbered ? [...groups.keys()].filter(other => other.startsWith(`${numbered[1]}/`)).length : 0;
-    if (list.length === 1) {
-      addRow(card(tab, `${tab}/more`, "More"), `${title(group)} ${label(list[0]).toLowerCase()}`, list);
-    } else if (numbered && list.length <= 2 && siblings >= 3) {
-      addRow(card(tab, numbered[1], title(numbered[1])), numbered[2], list);
+    const top = group.split("/", 1)[0] ?? group;
+    const tab = ({ inputs: "inputs", outputs: "outputs", routing: "routing" } as Record<string, string>)[top] ?? "device";
+    const [, parent, number] = group.match(/^(.*)\/(\d+)$/) ?? [];
+    const siblings = parent ? [...groups.keys()].filter(other => other.startsWith(`${parent}/`)).length : 0;
+    const [only] = list;
+    if (only && list.length === 1) {
+      addRow(card(tab, `${tab}/more`, "More"), `${title(group)} ${label(only).toLowerCase()}`, list);
+    } else if (parent && number && list.length <= 2 && siblings >= 3) {
+      addRow(card(tab, parent, title(parent)), number, list);
     } else {
       const section = card(tab, group, title(group));
-      const rows = Object.fromEntries(list.map(parameter =>
+      const rows = new Map(list.map(parameter =>
         [parameter.path.slice(group.length + 1), addRow(section, label(parameter), [parameter])]));
-      if (rows.type) followType(`${group}/type`, rows);
+      if (rows.has("type")) followType(`${group}/type`, rows);
     }
   }
   const more = document.querySelectorAll("[id$='/more']");
@@ -29,10 +30,11 @@ export function layout(parameters: Description[]) {
 
 // The unit applies mic gain only to the Mic type and instrument gain only
 // to the Instrument type (NOTES-vendor-driver.md 5.8).
-function followType(path: string, rows: Record<string, HTMLElement>) {
+function followType(path: string, rows: Map<string, HTMLElement>) {
   watch(path, type => {
-    if (rows.micGain) rows.micGain.hidden = type !== "Mic";
-    if (rows.instrumentGain) rows.instrumentGain.hidden = type !== "Instrument";
+    const mic = rows.get("micGain"), instrument = rows.get("instrumentGain");
+    if (mic) mic.hidden = type !== "Mic";
+    if (instrument) instrument.hidden = type !== "Instrument";
   });
 }
 
@@ -44,7 +46,7 @@ const words: Record<string, string> = {
 function human(segment: string) {
   if (words[segment]) return words[segment];
   const spaced = segment.replace(/([a-z])([A-Z0-9])/g, "$1 $2");
-  return spaced[0].toUpperCase() + spaced.slice(1).toLowerCase();
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1).toLowerCase();
 }
 
 function title(group: string) {
@@ -96,7 +98,8 @@ function addRow(section: HTMLElement, name: string, parameters: Description[]) {
       row.append(...slider(parameter.path, parameter.min ?? 0, parameter.max ?? 0, text, format(parameter)));
     }
   }
-  const tip = parameters.length === 1 && tips[parameters[0].path.split("/").pop()!];
+  const [only] = parameters;
+  const tip = only && parameters.length === 1 && tips[only.path.split("/").pop()!];
   if (tip) addTip(row, name, tip);
   section.append(row);
   return row;

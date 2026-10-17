@@ -15,7 +15,7 @@ export type BarOptions = {
   aria: string;
   small?: boolean;
   current?: boolean;
-  meter?: { scale: Scale; sides: number };
+  meter?: { scale: Scale; sides: number } | undefined;
   change(value: number): void;
   clearClip?(): void;
 };
@@ -155,9 +155,11 @@ export function bar(options: BarOptions): Bar {
     } else {
       const move = ({ ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1 } as Record<string, number>)[event.key];
       const page = ({ PageUp: 10, PageDown: -10 } as Record<string, number>)[event.key];
-      if (!move && !page) return;
+      const delta = page !== undefined ? page * param.step
+        : move !== undefined ? move * (event.shiftKey ? param.fine : param.step) : undefined;
+      if (delta === undefined) return;
       event.preventDefault();
-      input(value + (page ? page * param.step : move * (event.shiftKey ? param.fine : param.step)));
+      input(value + delta);
     }
   };
 
@@ -215,9 +217,10 @@ export function bar(options: BarOptions): Bar {
       if (!dragging) place(next);
     },
     paint(levels, peak, clipped, extra) {
-      levels.forEach((level, index) => {
-        bands[index].peak.style.width = `${level.peak * 100}%`;
-        bands[index].avg.style.width = `${level.avg * 100}%`;
+      bands.forEach((band, index) => {
+        const level = levels[index] ?? { peak: 0, avg: 0 };
+        band.peak.style.width = `${level.peak * 100}%`;
+        band.avg.style.width = `${level.avg * 100}%`;
       });
       hold.hidden = !peak;
       hold.style.left = `calc(${peak * 100}% - 2px)`;

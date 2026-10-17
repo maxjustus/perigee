@@ -1,13 +1,13 @@
 import "./mixer.css";
 import { h } from "../dom.ts";
 import { get, set, watch, watchAll } from "../store.ts";
-import { MIXES, OUTPUTS, OUTPUT_COLOR, enabled, groups, strip, units, type Group } from "./channels.ts";
+import { MIXES, OUTPUTS, OUTPUT_COLOR, enabled, groups, strip, units, type Group, type Unit } from "./channels.ts";
 import { toggle, type View } from "./controls.ts";
 import { anyClipped, clearAll, meterKey, paint, paintMini, settleAll } from "./levels.ts";
 import { faderBar, row } from "./row.ts";
 
 type Prefs = { mix: number; hideOff: boolean; collapsed: string[] };
-type Section = { units: number[][]; stat: HTMLElement; rows: { element: HTMLElement; channel: number }[] };
+type Section = { units: Unit[]; stat: HTMLElement; rows: { element: HTMLElement; channel: number }[] };
 type Task = "render" | "decorate";
 
 const PREFS = "mixer-layout";
@@ -75,7 +75,7 @@ function render() {
   view = { mix: prefs.mix, watch: (path, update) => { unwatch.push(watch(path, update)); }, meters: [], minis: [] };
   const { mix } = view;
   mixTabs.querySelectorAll("button").forEach(button =>
-    button.setAttribute("aria-pressed", String(Number(button.dataset.mix) === mix)));
+    button.setAttribute("aria-pressed", String(Number(button.dataset["mix"]) === mix)));
   hideOff.setAttribute("aria-pressed", String(prefs.hideOff));
   preFader.hidden = mix === 1;
   if (mix > 1) view.watch(`mixers/${mix}/preFader`, value => preFader.setAttribute("aria-pressed", String(value)));
@@ -117,7 +117,7 @@ function renderGroup(group: Group) {
 // The mix output has no host pair, so the output bar and its mute write both channels.
 function renderOutput() {
   const { mix } = view;
-  const [left, right] = OUTPUTS.map(channel => strip(mix, channel, "fader"));
+  const [left, right] = [strip(mix, OUTPUTS[0], "fader"), strip(mix, OUTPUTS[1], "fader")];
   document.getElementById("masters")!.replaceChildren(
     faderBar(view, left, { label: `Mix ${mix} out \u21c6`, color: OUTPUT_COLOR, aria: `Mix ${mix} output level` },
              { channels: OUTPUTS, scale: "bus" }, [left, right]).el,

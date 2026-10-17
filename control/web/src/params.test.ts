@@ -43,7 +43,7 @@ test("pan formats and parses positions", () => {
 });
 
 test("balance cut follows the measured points", () => {
-  const points = [[0, 0], [16, -1.1], [32, -3.1], [48, -8.3], [63, -32.2], [64, -Infinity]];
+  const points: [number, number][] = [[0, 0], [16, -1.1], [32, -3.1], [48, -8.3], [63, -32.2], [64, -Infinity]];
   for (const [distance, cut] of points) assert.equal(balanceCut(distance), cut);
   assert.ok(Math.abs(balanceCut(24) - -2.1) < 1e-9);
 });
