@@ -94,9 +94,6 @@ private let guitarOutputs: [Parameter] = (0..<2).flatMap { guitar in
 private let frontPanel = [
     Parameter(path: "frontPanel/knobTarget", command: 0x20, p1: 0,
               kind: choices(["Headphone 1", "Headphone 2", "Speaker"])),
-    Parameter(path: "frontPanel/encoderInput", command: 0x23, p1: 0,
-              kind: .choice((0..<8).map { Choice(name: "Analog \($0 + 1)", code: $0) }
-                  + [Choice(name: "Guitar 1", code: 10), Choice(name: "Guitar 2", code: 11)])),
     Parameter(path: "frontPanel/lockHome", command: 0x24, p1: 0, kind: .bool),
     Parameter(path: "meters/peakHold", command: 0x21, p1: 0, kind: choices(["Off", "2 Seconds", "Infinite"])),
     Parameter(path: "meters/overHold", command: 0x22, p1: 0, kind: choices(["Off", "2 Seconds", "Infinite"])),
