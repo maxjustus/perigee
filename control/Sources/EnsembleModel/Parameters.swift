@@ -100,7 +100,20 @@ private let frontPanel = [
     Parameter(path: "frontPanel/lockHome", command: 0x24, p1: 0, kind: .bool),
     Parameter(path: "meters/peakHold", command: 0x21, p1: 0, kind: choices(["Off", "2 Seconds", "Infinite"])),
     Parameter(path: "meters/overHold", command: 0x22, p1: 0, kind: choices(["Off", "2 Seconds", "Infinite"])),
-]
+] + (0..<4).map { pad in
+    Parameter(path: "frontPanel/pads/\(pad + 1)", command: 0x25, p1: UInt8(pad), kind: padActions)
+}
+
+// docs/firmware/front-panel.md, "Pad assignments". The vendor HAL enum
+// _Ensemble2TouchButtonFunction uses other codes.
+private let padActions = choices(["None"] + targets("Mute") + ["Swap Speaker and Headphone Mute"]
+    + targets("Dim") + targets("Mono")
+    + ["Speaker Set A", "Speaker Set B", "Speaker Set C", "Alternate Speaker Sets A/B", "Clear Meters",
+       "Momentary Talkback", "Guitar 1 Output Mode", "Guitar 2 Output Mode", "Guitar 1-2 Output Mode"])
+
+private func targets(_ action: String) -> [String] {
+    ["Speaker", "Headphone 1", "Headphone 2", "All Outputs"].map { "\(action) \($0)" }
+}
 
 private let sourceChoices: [Choice] = playbackSources + inputSources + mixerSources
 private let sources = Kind.choice(sourceChoices)
