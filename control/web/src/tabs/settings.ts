@@ -8,7 +8,8 @@ export function layout(parameters: Description[]) {
     groups.set(group, [...(groups.get(group) ?? []), parameter]);
   }
   for (const [group, list] of groups) {
-    const tab = ({ inputs: "inputs", outputs: "outputs", routing: "routing" } as Record<string, string>)[group.split("/")[0]]
+    const tab = ({ inputs: "inputs", outputs: "outputs", routing: "routing", capture: "routing" } as
+      Record<string, string>)[group.split("/")[0]]
       ?? "device";
     const numbered = group.match(/^(.*)\/(\d+)$/);
     const siblings = numbered ? [...groups.keys()].filter(other => other.startsWith(`${numbered[1]}/`)).length : 0;
@@ -25,6 +26,9 @@ export function layout(parameters: Description[]) {
   }
   const more = document.querySelectorAll("[id$='/more']");
   more.forEach(section => section.parentElement!.append(section));
+  document.querySelector("#card-capture h2")?.after(Object.assign(document.createElement("p"), { className: "tip",
+    textContent: "Each pair carries its source to the computer in place of the default input. Apps keep the " +
+                 "default channel names. Channels 31-34 always carry Mixer 1 and FX Send." }));
 }
 
 // The unit applies mic gain only to the Mic type and instrument gain only
@@ -50,11 +54,13 @@ function human(segment: string) {
 function title(group: string) {
   const rest = group.split("/").slice(1);
   if (rest.length) return rest.map(human).join(" ");
-  return ({ outputs: "Speakers", routing: "Output sources" } as Record<string, string>)[group] ?? human(group);
+  return ({ outputs: "Speakers", routing: "Output sources", capture: "Computer inputs" } as Record<string, string>)[group]
+    ?? human(group);
 }
 
 function label(parameter: Description) {
-  return human(parameter.path.slice(parameter.path.lastIndexOf("/") + 1));
+  const segment = parameter.path.slice(parameter.path.lastIndexOf("/") + 1);
+  return parameter.path.startsWith("capture/") ? `Channels ${segment}` : human(segment);
 }
 
 function card(tab: string, group: string, heading: string) {
