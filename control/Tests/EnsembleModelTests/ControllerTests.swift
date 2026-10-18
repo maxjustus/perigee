@@ -227,6 +227,26 @@ func call(_ controller: Controller, _ method: String, _ params: String) -> [Stri
     #expect((changed["params"] as? [String: Any])?["routing/headphone2"] as? String == "Mixer 3")
 }
 
+@Test func captureSendsTheSourceCodeForAComputerInputPair() {
+    let (controller, transport, _) = makeController()
+    _ = controller.handle(#"{"jsonrpc":"2.0","id":1,"method":"set","params":{"capture/1-2":"Mixer 2"}}"#)
+    _ = controller.handle(#"{"jsonrpc":"2.0","id":2,"method":"set","params":{"capture/29-30":"Playback 3-4"}}"#)
+    #expect(transport.sent == [[1, 0, word(1, 0x09, 0, 0x62)], [1, 0, word(1, 0x09, 14, 0x32)]])
+}
+
+// The unit always records Mixer 1 on pair 15 and FX Send on pair 16 (0x14058).
+@Test func captureCoversOnlyTheRemappablePairs() {
+    let pairs = parameters.filter { $0.command == 0x09 }.map(\.p1)
+    #expect(pairs == Array(0...14))
+}
+
+@Test func captureReportShowsTheSourceName() {
+    let (controller, _, broadcasts) = makeController()
+    controller.receive(Report(type: 1, command: 0x09, p1: 6, p2: 0, data: [0x54]))
+    let changed = object(broadcasts.texts.last!)
+    #expect((changed["params"] as? [String: Any])?["capture/13-14"] as? String == "S/PDIF Coax")
+}
+
 @Test func unknownSourceCodeStaysANumber() {
     let (controller, _, broadcasts) = makeController()
     controller.receive(Report(type: 1, command: 0x15, p1: 0, p2: 0, data: [0x7F]))

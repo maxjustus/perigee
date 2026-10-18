@@ -53,7 +53,7 @@ connect(`ws://${location.hostname}:${config.rpcPort}`, {
       const list = await call<Description[]>("describe");
       describe(list);
       layout(list);
-      startMixer();
+      startMixer(config.captureNames);
       described = true;
     }
     load(await call<Record<string, Value>>("get"));

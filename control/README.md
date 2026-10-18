@@ -165,6 +165,13 @@ Routing paths name the output pair: `routing/line1-2` to
 `routing/headphone2`. The value is a source name, for example
 `Mixer 1`, `Playback 3-4`, `Analog 1-2`, or `Optical 1-2`.
 
+Capture paths name a pair of computer input channels: `capture/1-2` to
+`capture/29-30`. The value is a source name, as for routing. The unit
+sends that source to the computer in place of the default input. Apps
+keep the default channel names, for example "Analog 1". Channels 31-34
+always carry Mixer 1 and FX Send. The unit keeps capture routes across a
+power cycle.
+
 `outputs/speakerSource` sets the source of every speaker set in one step,
 like the vendor's speaker source setting. It writes `routing/line1-2`, plus
 `routing/line3-4` in "2 Speaker Sets" mode, plus `routing/line5-6` in
