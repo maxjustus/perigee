@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { appNames, channelName, options, pairsOf, place, replacement } from "./capture.ts";
+import { appNames, channelName, fixedPair, options, pairsOf, place, replacement } from "./capture.ts";
 
 const values = (entries: Record<string, string>) => (path: string) => entries[path];
 
@@ -43,6 +43,13 @@ test("a computer input channel adds the source that it carries now to its app na
   assert.equal(channelName(1, "Analog 1", get), "Analog 1 (now Mix 2)");
   assert.equal(channelName(3, "Analog 3", get), "Analog 3");
   assert.equal(channelName(31, "Mix 1 L", get), "Mix 1 L");
+});
+
+test("Mix 1 and Mix 4 always have a computer input pair", () => {
+  assert.equal(fixedPair(1), "31-32");
+  assert.equal(fixedPair(4), "33-34");
+  assert.equal(fixedPair(2), undefined);
+  assert.equal(replacement(29, values({ "capture/29-30": "FX Send" })), "Mix 4 \u00b7 FX Send");
 });
 
 test("apps keep the default channel names", () => {

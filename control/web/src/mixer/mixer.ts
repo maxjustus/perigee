@@ -1,7 +1,8 @@
 import "./mixer.css";
 import { h } from "../dom.ts";
 import { get, set, watch, watchAll } from "../store.ts";
-import { appNames, homeOf, options, pairsOf, place } from "./capture.ts";
+import { mixName, mixSource } from "../names.ts";
+import { appNames, fixedPair, homeOf, options, pairsOf, place } from "./capture.ts";
 import { MIXES, OUTPUTS, OUTPUT_COLOR, enabled, groups, strip, units, type Group } from "./channels.ts";
 import { toggle, type View } from "./controls.ts";
 import { anyClipped, clearAll, meterKey, paint, paintMini, settleAll } from "./levels.ts";
@@ -39,7 +40,8 @@ function load(): Partial<Prefs> {
 export function start(names: string[]) {
   captureNames = names;
   for (const mix of MIXES) {
-    mixTabs.append(h("button", { "data-mix": mix, "aria-label": `Mix ${mix}`, onclick: () => update({ mix }) },
+    const name = mixName(mixSource(mix));
+    mixTabs.append(h("button", { "data-mix": mix, "aria-label": name, title: name, onclick: () => update({ mix }) },
       h("span", { class: "word" }, "Mix "), String(mix)));
   }
   hideOff.onclick = () => update({ hideOff: !prefs.hideOff });
@@ -140,10 +142,11 @@ function destination(mix: number) {
     select.prepend(several);
   }
   select.value = pairs.length > 1 ? "several" : pairs[0] ?? "";
-  const names = pairs.length === 1 && appNames(pairs[0], captureNames);
+  const listed = pairs.length === 1 ? pairs[0] : pairs.length === 0 ? fixedPair(mix) : undefined;
+  const names = listed && appNames(listed, captureNames);
   const note = pairs.length > 1 ? `Mix ${mix} is on ${pairs.length} channel pairs. The Routing tab lists them.`
-    : pairs.length ? `${names ? `Apps list Mix ${mix} as ${names}. ` : ""}` +
-                     `${homeOf(pairs[0])} still feeds the mixes, but not the computer.` : "";
+    : [names && `Apps list Mix ${mix} as ${names}.`,
+       pairs.length && `${homeOf(pairs[0])} still feeds the mixes, but not the computer.`].filter(Boolean).join(" ");
   const line = h("label", { class: "dest" }, h("span", { class: "lbl" }, "To computer"), select);
   return note ? [line, h("p", { class: "note dest" }, note)] : [line];
 }

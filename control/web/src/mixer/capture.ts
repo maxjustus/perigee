@@ -10,6 +10,8 @@ const HOME = ["Analog 1-2", "Analog 3-4", "Analog 5-6", "Analog 7-8", "Front Pan
 const PAIRS = HOME.map((_, i) => `${2 * i + 1}-${2 * i + 2}`);
 const FIXED: Record<number, string> = { 1: "31-32", 4: "33-34" };
 
+export const fixedPair = (mix: number): string | undefined => FIXED[mix];
+
 const path = (pair: string) => `capture/${pair}`;
 const dash = (text: string) => text.replace(/(\d)-(\d)/g, "$1\u2013$2");
 
