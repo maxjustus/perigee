@@ -39,7 +39,7 @@ public struct Parameter: Sendable {
     public let kind: Kind
 }
 
-public let parameters: [Parameter] = clock + outputs + frontPanel + routing + inputs + mixers
+public let parameters: [Parameter] = clock + outputs + frontPanel + routing + capture + inputs + mixers
 
 private func choices(_ names: [String]) -> Kind {
     .choice(names.enumerated().map { Choice(name: $0.element, code: $0.offset) })
@@ -123,6 +123,11 @@ private let destinations = ["line1-2", "line3-4", "line5-6", "line7-8", "line9-1
 
 private let routing = destinations.enumerated().map { pair, name in
     Parameter(path: "routing/\(name)", command: 0x15, p1: UInt8(pair), kind: sources)
+}
+
+// The unit always records Mixer 1 on pair 15 and FX Send on pair 16 (0x14058).
+private let capture = (0..<15).map { pair in
+    Parameter(path: "capture/\(2 * pair + 1)-\(2 * pair + 2)", command: 0x09, p1: UInt8(pair), kind: sources)
 }
 
 private let inputs = (0..<8).flatMap { channel in
