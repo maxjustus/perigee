@@ -187,7 +187,8 @@ audio when the screen locks.
 A client sends a text message `{"channel": n}` to `ws://<host>:8739`.
 `n` is 1 to 34, the element of a CoreAudio input channel of the device
 "Ensemble". The Monitor tab lists the channel names that the driver gives
-them. A new message changes the channel.
+them. If a capture route puts another source on a channel, the tab adds
+that source to the name. A new message changes the channel.
 After each CoreAudio IO cycle, the service sends the new samples in
 binary messages: the nominal sample rate as a little-endian uint32, then
 the samples as little-endian int16. The service runs CoreAudio input only while a client

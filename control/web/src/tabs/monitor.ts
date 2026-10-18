@@ -1,3 +1,5 @@
+import { channelName } from "../mixer/capture.ts";
+import { get, watchAll } from "../store.ts";
 import { drawLevel } from "./meters.ts";
 
 const channel = document.getElementById("monitor-channel") as HTMLSelectElement;
@@ -8,6 +10,10 @@ let socket: WebSocket | null = null, audio: AudioContext | null = null, playAt =
 
 export function start(port: number, captureNames: string[]) {
   channel.append(...captureNames.map((name, index) => new Option(name, String(index + 1))));
+  watchAll(path => {
+    if (!path.startsWith("capture/")) return;
+    [...channel.options].forEach((option, index) => { option.text = channelName(index + 1, captureNames[index], get); });
+  });
   channel.value = localStorage.getItem("monitorChannel") ?? "9";
   channel.onchange = () => {
     localStorage.setItem("monitorChannel", channel.value);

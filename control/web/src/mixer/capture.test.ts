@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { appNames, options, pairsOf, place, replacement } from "./capture.ts";
+import { appNames, channelName, options, pairsOf, place, replacement } from "./capture.ts";
 
 const values = (entries: Record<string, string>) => (path: string) => entries[path];
 
@@ -36,6 +36,13 @@ test("each option names the source that the mix replaces", () => {
   assert.deepEqual(third, { value: "5-6", text: "Channels 5\u20136 \u00b7 replaces Playback 1\u20132" });
   assert.equal(options(1, get)[0].text, "Channels 31\u201332 only");
   assert.equal(options(4, get)[0].text, "Channels 33\u201334 only");
+});
+
+test("a computer input channel adds the source that it carries now to its app name", () => {
+  const get = values({ "capture/1-2": "Mixer 2" });
+  assert.equal(channelName(1, "Analog 1", get), "Analog 1 (now Mix 2)");
+  assert.equal(channelName(3, "Analog 3", get), "Analog 3");
+  assert.equal(channelName(31, "Mix 1 L", get), "Mix 1 L");
 });
 
 test("apps keep the default channel names", () => {

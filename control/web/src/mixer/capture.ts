@@ -45,6 +45,11 @@ const label = (value: Value) => dash(mixName(String(value)));
 export const homeOf = (pair: string) => dash(HOME[PAIRS.indexOf(pair)]);
 
 // CoreAudio names the computer input channels by their default inputs, so apps keep these names after a change.
+export function channelName(channel: number, appName: string, get: Get) {
+  const now = replacement(channel, get);
+  return now ? `${appName} (now ${now})` : appName;
+}
+
 export function appNames(pair: string, captureNames: string[]) {
   const [left, right] = pair.split("-").map(channel => captureNames[Number(channel) - 1]);
   return left && right ? `\u201c${left}\u201d and \u201c${right}\u201d` : null;
