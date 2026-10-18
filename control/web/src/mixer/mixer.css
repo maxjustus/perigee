@@ -42,6 +42,8 @@
 .hide-off .row.off { display: none; }
 .groups .row.implied > .ctl .fill { filter: saturate(.2) brightness(.7); }
 .groups .row.implied > .ctl .name { text-decoration: line-through; }
+.groups .row.away > .ctl .name::after { content: "  \2192  computer gets " var(--away); font-size: 11px; font-weight: 400;
+                                        opacity: .75; }
 
 .detail { grid-column: 1 / -1; display: grid; gap: 8px; padding: 10px 0 4px; }
 .detail h3 { margin: 2px 0 -2px; font-size: 11px; font-weight: 600; color: var(--dim); text-transform: uppercase;
@@ -59,4 +61,7 @@
            align-items: center; margin: 0 calc(-1 * var(--pad)); border-top: 1px solid var(--line);
            padding: 6px var(--pad) max(6px, env(safe-area-inset-bottom)); background: var(--card); }
 .masters > button { padding: 0; height: 40px; font-weight: 600; }
+.masters .dest { grid-column: 1 / -1; }
+.masters label.dest { display: flex; gap: 8px; align-items: center; padding-top: 6px; }
+.masters label.dest select { flex: 1; min-width: 0; min-height: 32px; }
 @media (min-width: 760px) { .masters { grid-template-columns: minmax(0, 720px) 36px; } }

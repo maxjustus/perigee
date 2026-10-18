@@ -3,6 +3,7 @@ import { h } from "../dom.ts";
 import { toDb } from "../meters.ts";
 import { BALANCE, FADER, PAN, balanceDb, clamp, gainParam } from "../params.ts";
 import { description, get, set } from "../store.ts";
+import { replacement } from "./capture.ts";
 import { MIXES, channelName, enabled, inputPath, linkPath, pairable, partner, stereoFlag, strip,
          unitName } from "./channels.ts";
 import { picker, toggle, type View } from "./controls.ts";
@@ -12,12 +13,15 @@ export function row(view: View, unit: number[], color: string, open: boolean, on
   const [channel] = unit;
   const { mix } = view;
   const name = unitName(unit);
-  const element = h("div", { class: `row${open ? " open" : ""}` });
+  const away = replacement(channel, get);
+  const element = h("div", { class: `row${open ? " open" : ""}${away ? " away" : ""}`,
+                             style: away && `--away:"${away}"` });
   element.append(
     h("button", { class: "more", "aria-expanded": String(open), "aria-label": `${name} details`, onclick: onExpand },
       chevron()),
     faderBar(view, strip(mix, channel, "fader"), { label: name + (unit.length > 1 ? " \u21c6" : ""), color,
-                                                   aria: `${name} level` }, { channels: unit, scale: "post" }).el,
+                                                   aria: `${name} level${away ? `, computer gets ${away}` : ""}` },
+             { channels: unit, scale: "post" }).el,
     toggle(view, [strip(mix, channel, "mute")], "M", "mute", `Mute ${name}`));
   if (mix === 1) element.append(toggle(view, [strip(1, channel, "solo")], "S", "solo", `Solo ${name}`));
   if (open) element.append(details(view, unit, name, color));

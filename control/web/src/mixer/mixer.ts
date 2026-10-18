@@ -1,6 +1,7 @@
 import "./mixer.css";
 import { h } from "../dom.ts";
 import { get, set, watch, watchAll } from "../store.ts";
+import { appNames, homeOf, options, pairsOf, place } from "./capture.ts";
 import { MIXES, OUTPUTS, OUTPUT_COLOR, enabled, groups, strip, units, type Group } from "./channels.ts";
 import { toggle, type View } from "./controls.ts";
 import { anyClipped, clearAll, meterKey, paint, paintMini, settleAll } from "./levels.ts";
@@ -23,6 +24,7 @@ let view: View;
 let sections: Section[] = [];
 let unwatch: (() => void)[] = [];
 let queued: Task | null = null;
+let captureNames: string[] = [];
 
 function load(): Partial<Prefs> {
   try {
@@ -34,7 +36,8 @@ function load(): Partial<Prefs> {
 
 // A stereo flag, an input type or a gain link changes which rows and bars exist. Mutes, solos and enables
 // change only the row styles and the group stats.
-export function start() {
+export function start(names: string[]) {
+  captureNames = names;
   for (const mix of MIXES) {
     mixTabs.append(h("button", { "data-mix": mix, "aria-label": `Mix ${mix}`, onclick: () => update({ mix }) },
       h("span", { class: "word" }, "Mix "), String(mix)));
@@ -44,7 +47,7 @@ export function start() {
   clearSolo.onclick = () => set(Object.fromEntries(soloed().map(channel => [strip(1, channel, "solo"), false])));
   clearClips.onclick = clearAll;
   watchAll(path => {
-    if (/\/stereo$|^inputs\/.*\/(type|link)$/.test(path)) schedule("render");
+    if (/\/stereo$|^inputs\/.*\/(type|link)$|^capture\//.test(path)) schedule("render");
     else if (/^mixers\/(channels\/\d+\/enabled|\d+\/channels\/\d+\/(solo|soloSafe|mute))$/.test(path)) schedule("decorate");
   });
   render();
@@ -121,7 +124,28 @@ function renderOutput() {
   document.getElementById("masters")!.replaceChildren(
     faderBar(view, left, { label: `Mix ${mix} out \u21c6`, color: OUTPUT_COLOR, aria: `Mix ${mix} output level` },
              { channels: OUTPUTS, scale: "bus" }, [left, right]).el,
-    toggle(view, OUTPUTS.map(channel => strip(mix, channel, "mute")), "M", "mute", `Mute Mix ${mix} output`));
+    toggle(view, OUTPUTS.map(channel => strip(mix, channel, "mute")), "M", "mute", `Mute Mix ${mix} output`),
+    ...destination(mix));
+}
+
+// A mix takes the place of an input on the computer, so the note names the input that the computer loses.
+function destination(mix: number) {
+  const pairs = pairsOf(mix, get);
+  const select = h("select", { "aria-label": `Send Mix ${mix} to the computer`,
+                               onchange: () => set(place(mix, select.value || null, get)) });
+  select.append(...options(mix, get).map(({ value, text }) => new Option(text, value)));
+  if (pairs.length > 1) {
+    const several = new Option("Several channels", "several");
+    several.disabled = true;
+    select.prepend(several);
+  }
+  select.value = pairs.length > 1 ? "several" : pairs[0] ?? "";
+  const names = pairs.length === 1 && appNames(pairs[0], captureNames);
+  const note = pairs.length > 1 ? `Mix ${mix} is on ${pairs.length} channel pairs. The Routing tab lists them.`
+    : pairs.length ? `${names ? `Apps list Mix ${mix} as ${names}. ` : ""}` +
+                     `${homeOf(pairs[0])} still feeds the mixes, but not the computer.` : "";
+  const line = h("label", { class: "dest" }, h("span", { class: "lbl" }, "To computer"), select);
+  return note ? [line, h("p", { class: "note dest" }, note)] : [line];
 }
 
 const soloed = () => sections.flatMap(section => section.units.map(([channel]) => channel))
