@@ -282,6 +282,15 @@ func call(_ controller: Controller, _ method: String, _ params: String) -> [Stri
                     Choice(name: "Infinite", code: 2)]))
 }
 
+@Test func padActionsUseTheLocalFirmwareCodes() {
+    let (controller, transport, broadcasts) = makeController()
+    _ = controller.handle(#"{"jsonrpc":"2.0","id":1,"method":"set","params":{"frontPanel/pads/2":"Momentary Talkback"}}"#)
+    #expect(transport.sent == [[1, 0, word(1, 0x25, 1, 19)]])
+    controller.receive(Report(type: 1, command: 0x25, p1: 3, p2: 0, data: [13]))
+    let changed = object(broadcasts.texts.last!)
+    #expect((changed["params"] as? [String: Any])?["frontPanel/pads/4"] as? String == "Mono All Outputs")
+}
+
 @Test func channelEnableWritesAllFourMixersAndReadsOneReport() {
     let (controller, transport, broadcasts) = makeController()
     _ = controller.handle(#"{"jsonrpc":"2.0","id":1,"method":"set","params":{"mixers/channels/33/enabled":true}}"#)
