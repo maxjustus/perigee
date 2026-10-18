@@ -1,3 +1,4 @@
+import { mixName } from "../names.ts";
 import { set, watch, type Description } from "../store.ts";
 
 export function layout(parameters: Description[]) {
@@ -28,7 +29,7 @@ export function layout(parameters: Description[]) {
   more.forEach(section => section.parentElement!.append(section));
   document.querySelector("#card-capture h2")?.after(Object.assign(document.createElement("p"), { className: "tip",
     textContent: "Each pair carries its source to the computer in place of the default input. Apps keep the " +
-                 "default channel names. Channels 31-34 always carry Mixer 1 and FX Send." }));
+                 "default channel names. Channels 31-34 always carry Mix 1 and Mix 4." }));
 }
 
 // The unit applies mic gain only to the Mic type and instrument gain only
@@ -139,7 +140,7 @@ function toggle(path: string) {
 
 function picker(path: string, choices: string[]) {
   const select = document.createElement("select");
-  select.append(...choices.map(choice => new Option(choice, choice)));
+  select.append(...choices.map(choice => new Option(mixName(choice), choice)));
   select.onchange = () => set({ [path]: select.value });
   watch(path, value => { select.value = String(value); });
   return select;

@@ -1,3 +1,4 @@
+import { mixName, mixSource } from "../names.ts";
 import type { Value } from "../store.ts";
 
 type Get = (path: string) => Value | undefined;
@@ -7,17 +8,16 @@ type Get = (path: string) => Value | undefined;
 const HOME = ["Analog 1-2", "Analog 3-4", "Analog 5-6", "Analog 7-8", "Front Panel Mic", "Guitar 1-2", "S/PDIF Coax",
               ...Array.from({ length: 8 }, (_, i) => `Optical ${2 * i + 1}-${2 * i + 2}`)];
 const PAIRS = HOME.map((_, i) => `${2 * i + 1}-${2 * i + 2}`);
-const SOURCES = ["Mixer 1", "Mixer 2", "Mixer 3", "FX Send"];
 const FIXED: Record<number, string> = { 1: "31-32", 4: "33-34" };
 
 const path = (pair: string) => `capture/${pair}`;
 const dash = (text: string) => text.replace(/(\d)-(\d)/g, "$1\u2013$2");
 
-export const pairsOf = (mix: number, get: Get) => PAIRS.filter(pair => get(path(pair)) === SOURCES[mix - 1]);
+export const pairsOf = (mix: number, get: Get) => PAIRS.filter(pair => get(path(pair)) === mixSource(mix));
 
 // One mix goes to at most one pair here. A pair that the mix leaves gets its default input back.
 export function place(mix: number, pair: string | null, get: Get) {
-  const changes: Record<string, Value> = pair ? { [path(pair)]: SOURCES[mix - 1] } : {};
+  const changes: Record<string, Value> = pair ? { [path(pair)]: mixSource(mix) } : {};
   for (const other of pairsOf(mix, get)) {
     if (other !== pair) changes[path(other)] = HOME[PAIRS.indexOf(other)];
   }
@@ -35,13 +35,12 @@ export function options(mix: number, get: Get) {
   const off = FIXED[mix] ? `Channels ${dash(FIXED[mix])} only` : "Off";
   return [{ value: "", text: off }, ...PAIRS.map(pair => {
     const value = get(path(pair));
-    const now = value === undefined || value === SOURCES[mix - 1] ? "" : ` \u00b7 replaces ${label(value)}`;
+    const now = value === undefined || value === mixSource(mix) ? "" : ` \u00b7 replaces ${label(value)}`;
     return { value: pair, text: `Channels ${dash(pair)}${now}` };
   })];
 }
 
-const label = (value: Value) => SOURCES.includes(String(value)) ? `Mix ${SOURCES.indexOf(String(value)) + 1}`
-  : dash(String(value));
+const label = (value: Value) => dash(mixName(String(value)));
 
 export const homeOf = (pair: string) => dash(HOME[PAIRS.indexOf(pair)]);
 
