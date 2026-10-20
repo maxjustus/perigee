@@ -1,8 +1,17 @@
 # perigee
 
-This repository holds an open macOS driver for the Apogee Ensemble
-Thunderbolt and a LAN control service for it. Apogee no longer supports
-this model.
+This repository holds a modern fully functional reverse engineered macOS driver
+and configuration UI for the Apogee Ensemble Thunderbolt.
+Yes, I used AI to drive the reverse engineering work. no, I did not blindly
+let it drive the implementation and design.
+
+The core motivation for doing this is that the Ensemble Thunderbolt is no longer
+supported and its official driver is buggy on new versions of macOS and uses now
+deprecated SDKs. This implementation uses a thin DriverKit extension in C++
+to interact with the hardware, a swift daemon which communicates with that extension and
+exposes all functionality over JSON-RPC such that any client can interact with the
+driver via HTTP, and a web UI which communicates with the JSON-RPC API to expose
+the full mixer and configuration interface.
 
 - `driver/`: a DriverKit extension (dext). It publishes the Ensemble to
   CoreAudio. See `driver/README.md`.
